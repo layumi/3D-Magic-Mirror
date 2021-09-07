@@ -20,7 +20,7 @@ import torchvision.utils as vutils
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
-
+from networks import Discriminator, weights_init
 # import kaolin related
 import kaolin as kal
 from kaolin.render.camera import generate_perspective_projection
@@ -74,8 +74,8 @@ print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
 
-if torch.cuda.is_available():
-    cudnn.benchmark = True
+#if torch.cuda.is_available():
+#    cudnn.benchmark = True
 
 train_dataset = Dataset(opt.dataroot, opt.imageSize, train=True)
 test_dataset = Dataset(opt.dataroot, opt.imageSize, train=False)
@@ -386,50 +386,6 @@ class AttributeEncoder(nn.Module):
         }
         return attributes
 
-
-class Discriminator(nn.Module):
-    def __init__(self, nc, nf):
-        super(Discriminator, self).__init__()
-        self.main = nn.Sequential(
-            nn.Conv2d(nc, nf, 3, 1, 3, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # 128 -> 64
-            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # 64 -> 32
-            nn.Conv2d(nf * 2, nf * 4, 3, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # 32 -> 16
-            nn.Conv2d(nf * 4, nf * 8, 3, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # 16 -> 8
-            nn.Conv2d(nf * 8, nf * 16, 3, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            # nn.AdaptiveAvgPool2d(1),
-
-            nn.Conv2d(nf * 16, nf * 8, 1, 1, 0, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(nf * 8, 1, 1, 1, 0, bias=False)
-        )
-
-    def forward(self, input):
-        output = self.main(input).mean([2, 3])
-        return output
-
-
-# custom weights initialization called on netE and netD
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv2d') != -1:
-        m.weight.data.normal_(0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
 
 if __name__ == '__main__':
     # differentiable renderer
