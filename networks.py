@@ -1,10 +1,21 @@
+import numpy as np
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import kaolin as kal
+import math
+from kaolin.render.camera import generate_perspective_projection
+from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
+                               spherical_harmonic_lighting, prepare_vertices
+from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
+from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
+from fid_score import calculate_fid_given_paths
 
 class Discriminator(nn.Module):
     def __init__(self, nc, nf):
         super(Discriminator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv2d(nc, nf, 3, 1, 3, bias=False),
+            nn.Conv2d(nc, nf, 3, 1, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # 128 -> 64
             nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=False),
