@@ -37,12 +37,12 @@ from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, Textu
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--outf', default='./log/Bird/SMR', help='folder to output images and model checkpoints')
+parser.add_argument('--name', default='baseline', help='folder to output images and model checkpoints')
 parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--batchSize', type=int, default=24, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
 parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
@@ -64,6 +64,7 @@ parser.add_argument('--elev_range', type=str, default="0~30", help='~ separated 
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
 opt = parser.parse_args()
+opt.outf = './log/'+ opt.name
 print(opt)
 
 
@@ -73,9 +74,8 @@ print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
 
-if torch.cuda.is_available() and not opt.cuda:
-    print("WanING: You have a CUDA device, so you should probably run with --cuda")
-
+if torch.cuda.is_available():
+    cudnn.benchmark = True
 
 train_dataset = Dataset(opt.dataroot, opt.imageSize, train=True)
 test_dataset = Dataset(opt.dataroot, opt.imageSize, train=False)
@@ -391,7 +391,7 @@ class Discriminator(nn.Module):
     def __init__(self, nc, nf):
         super(Discriminator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv2d(nc, nf, 7, 1, 3, bias=False),
+            nn.Conv2d(nc, nf, 3, 1, 3, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # 128 -> 64
             nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=False),
