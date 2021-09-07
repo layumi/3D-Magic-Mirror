@@ -209,15 +209,17 @@ if __name__ == '__main__':
                 _, Aire = diffRender.render(**Aire)
 
                 # discriminate loss
-                lossD_real = opt.lambda_gan * (-netD(Xa.detach().clone()).mean())
-                lossD_fake = opt.lambda_gan * (netD(Xer.detach().clone()).mean() + \
-                                            netD(Xir.detach().clone()).mean()) / 2.0
+                outs0 = netD(Xa.detach().clone())
+                outs1 = netD(Xer.detach().clone())
+                outs2 = netD(Xir.detach().clone())
+                lossD_real = opt.lambda_gan * torch.mean(outs0)
+                lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
 
                 # WGAN-GP
                 lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer.data) + \
                                             compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
 
-                lossD = lossD_real + lossD_fake + lossD_gp
+                lossD = lossD_fake - lossD_real + lossD_gp
                 lossD.backward()
                 optimizerD.step()
 
