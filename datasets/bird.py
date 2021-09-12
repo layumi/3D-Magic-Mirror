@@ -21,7 +21,7 @@ def default_loader(path):
 
 class CUBDataset(data.Dataset):
     def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False):
-        super(Dataset, self).__init__()
+        super(CUBDataset, self).__init__()
         self.root = root
         if train:
             self.im_list = glob.glob(os.path.join(self.root, 'train', '*/*.jpg'))
