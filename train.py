@@ -30,7 +30,7 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 
 # import from folder
 from fid_score import calculate_fid_given_paths
-from datasets.bird import Dataset
+from datasets.bird import CUBDataset
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
@@ -77,8 +77,8 @@ torch.manual_seed(opt.manualSeed)
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
-train_dataset = Dataset(opt.dataroot, opt.imageSize, train=True)
-test_dataset = Dataset(opt.dataroot, opt.imageSize, train=False)
+train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
+test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
 
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers))
