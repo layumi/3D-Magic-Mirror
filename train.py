@@ -243,7 +243,7 @@ if __name__ == '__main__':
                         lossD_fake += (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         reg += netD.compute_grad2(out0, Xa).mean()
                     lossD = lossD_fake + lossD_real + 0.01*reg
-                    lossD =  0.01 * lossD
+                    lossD =  100.0 * opt.lambda_gan * lossD
 
                 lossD.backward()
                 optimizerD.step()
