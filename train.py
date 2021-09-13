@@ -443,7 +443,7 @@ if __name__ == '__main__':
             fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
             print('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
-            with open(output_txt, 'w') as fp:
+            with open(output_txt, 'a') as fp:
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
-                fp.write('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
+                fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
             netE.train()
