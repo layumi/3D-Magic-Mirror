@@ -20,7 +20,7 @@ import torchvision.utils as vutils
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
-from networks import Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
+from networks import MS_Discriminator, Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
 # import kaolin related
 import kaolin as kal
 from kaolin.render.camera import generate_perspective_projection
@@ -39,6 +39,7 @@ torch.autograd.set_detect_anomaly(True)
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline', help='folder to output images and model checkpoints')
 parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
+parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
@@ -53,7 +54,7 @@ parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
 parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')
 parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
-parser.add_argument('--resume', action='store_true', default=True, help='whether resume ckpt')
+parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
@@ -106,8 +107,14 @@ if __name__ == '__main__':
         netL = torch.nn.DataParallel(netL)
     netL = netL.cuda()
 
-    # netD: Discriminator
-    netD = Discriminator(nc=4, nf=64)
+    # netD: Discriminator rgb+seg
+    if opt.gan_type == 'wgan':
+        netD = Discriminator(nc=4, nf=32)
+    elif opt.gan_type == 'lsgan':
+        netD = MS_Discriminator(nc=4, nf=32)
+    else:
+        print('unknow gan type. Only lsgan or wgan is accepted.')
+
     netD.apply(weights_init)
     if opt.multigpus:
         netD = torch.nn.DataParallel(netD)
@@ -209,17 +216,26 @@ if __name__ == '__main__':
                 _, Aire = diffRender.render(**Aire)
 
                 # discriminate loss
-                outs0 = netD(Xa.detach().clone())
-                outs1 = netD(Xer.detach().clone())
-                outs2 = netD(Xir.detach().clone())
-                lossD_real = opt.lambda_gan * torch.mean(outs0)
-                lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
+                outs0 = netD(Xa.requires_grad_()) # real
+                outs1 = netD(Xer.detach().clone()) # fake - recon?
+                outs2 = netD(Xir.detach().clone()) # fake - inter?
+                lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
+                if opt.gan_type == 'wgan':
+                    # WGAN-GP
+                    lossD_real = opt.lambda_gan * torch.mean(outs0)
+                    lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
 
-                # WGAN-GP
-                lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer.data) + \
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer.data) + \
                                             compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
 
-                lossD = lossD_fake - lossD_real + lossD_gp
+                    lossD = lossD_fake - lossD_real + lossD_gp
+                elif opt.gan_type == 'lsgan':
+                    for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
+                        lossD_real += torch.mean((out0 - 1)**2)
+                        lossD_fake += torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)
+                        reg += netD.compute_grad2(out0, Xa).mean()
+                    lossD = lossD_fake + lossD_real + 0.01*reg
+                
                 lossD.backward()
                 optimizerD.step()
 
@@ -228,7 +244,15 @@ if __name__ == '__main__':
                 ###########################
                 optimizerE.zero_grad()
                 # GAN loss
-                lossR_fake = opt.lambda_gan * (-netD(Xer).mean() - netD(Xir).mean()) / 2.0
+                lossR_fake = 0
+                if opt.gan_type == 'wgan':
+                    lossR_fake = opt.lambda_gan * (-netD(Xer).mean() - netD(Xir).mean()) / 2.0
+                elif opt.gan_type == 'lsgan':
+                    outs1 = netD(Xer) # fake - recon?
+                    outs2 = netD(Xir) # fake - inter?
+                    for it, (out1, out2) in enumerate(zip(outs1, outs2)):
+                        lossR_fake += torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)
+
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa)
 
                 # mesh regularization
@@ -261,9 +285,9 @@ if __name__ == '__main__':
                 'lossR: %.4f lossR_fake: %.4f lossR_reg: %.4f lossR_data: %.4f '
                 'lossR_IC: %.4f \n'
                     % (epoch, opt.niter, iter, len(train_dataloader),
-                        lossD.item(), lossD_real.item(), lossD_fake.item(), lossD_gp.item(),
-                        lossR.item(), lossR_fake.item(), lossR_reg.item(), lossR_data.item(),
-                        lossR_IC.item()
+                        lossD, lossD_real, lossD_fake, lossD_gp,
+                        lossR, lossR_fake, lossR_reg, lossR_data,
+                        lossR_IC
                         )
                 )
         schedulerD.step()
@@ -271,17 +295,17 @@ if __name__ == '__main__':
 
         if epoch % 1 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
-            summary_writer.add_scalar('Train/lossD', lossD.item(), epoch)
-            summary_writer.add_scalar('Train/lossD_real', lossD_real.item(), epoch)
-            summary_writer.add_scalar('Train/lossD_fake', lossD_fake.item(), epoch)
-            summary_writer.add_scalar('Train/lossD_gp', lossD_gp.item(), epoch)
-            summary_writer.add_scalar('Train/lossR', lossR.item(), epoch)
-            summary_writer.add_scalar('Train/lossR_fake', lossR_fake.item(), epoch)
-            summary_writer.add_scalar('Train/lossR_reg', lossR_reg.item(), epoch)
-            summary_writer.add_scalar('Train/lossR_data', lossR_data.item(), epoch)
-            summary_writer.add_scalar('Train/lossR_IC', lossR_IC.item(), epoch)
-            summary_writer.add_scalar('Train/lossR_LC', lossR_LC.item(), epoch)
-            summary_writer.add_scalar('Train/lossR_flip', lossR_flip.item(), epoch)
+            summary_writer.add_scalar('Train/lossD', lossD, epoch)
+            summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
+            summary_writer.add_scalar('Train/lossD_fake', lossD_fake, epoch)
+            summary_writer.add_scalar('Train/lossD_gp', lossD_gp, epoch)
+            summary_writer.add_scalar('Train/lossR', lossR, epoch)
+            summary_writer.add_scalar('Train/lossR_fake', lossR_fake, epoch)
+            summary_writer.add_scalar('Train/lossR_reg', lossR_reg, epoch)
+            summary_writer.add_scalar('Train/lossR_data', lossR_data, epoch)
+            summary_writer.add_scalar('Train/lossR_IC', lossR_IC, epoch)
+            summary_writer.add_scalar('Train/lossR_LC', lossR_LC, epoch)
+            summary_writer.add_scalar('Train/lossR_flip', lossR_flip, epoch)
 
             num_images = Xa.shape[0]
             textures = Ae['textures']

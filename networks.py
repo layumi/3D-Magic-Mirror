@@ -11,6 +11,62 @@ from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, Textu
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
 
+class MS_Discriminator(nn.Module):
+    def __init__(self, nc, nf):
+        super(MS_Discriminator, self).__init__()
+        self.cnns = nn.ModuleList()
+        self.num_scales = 3
+        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+        for _ in range(self.num_scales):
+            Dis = self._make_net(nc, nf)
+            Dis.apply(weights_init)
+            self.cnns.append(Dis)
+
+    def _make_net(self, nc, nf):
+        cnn_x = nn.Sequential(
+            nn.Conv2d(nc, nf//2, 1, 1, 0, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 128 -> 64
+            nn.Conv2d(nf//2, nf//2, 3, 1, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 64 -> 32
+            nn.Conv2d(nf//2, nf , 3, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(nf , nf , 3, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 32 -> 16
+            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # 16 -> 8
+            nn.Conv2d(nf * 2, nf * 2, 3, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(nf * 2, nf * 2, 1, 1, 0, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=False)
+        )
+        return cnn_x
+
+    def forward(self, x):
+        outputs = []
+        for model in self.cnns:
+            outputs.append(model(x))
+            x = self.downsample(x)
+        return outputs
+
+    def compute_grad2(self, d_out, x_in):
+        batch_size = x_in.size(0)
+        grad_dout = torch.autograd.grad(
+            outputs=d_out.sum(), inputs=x_in,
+            create_graph=True, retain_graph=True, only_inputs=True
+        )[0]
+        grad_dout2 = grad_dout.pow(2)
+        assert(grad_dout2.size() == x_in.size())
+        reg = grad_dout2.contiguous().view(batch_size, -1).sum(1)
+        return reg
+
 class Discriminator(nn.Module):
     def __init__(self, nc, nf):
         super(Discriminator, self).__init__()
@@ -27,23 +83,23 @@ class Discriminator(nn.Module):
             nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # 32 -> 16
-            nn.Conv2d(nf * 4, nf * 8, 3, 2, 1, bias=False),
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             # 16 -> 8
-            nn.Conv2d(nf * 8, nf * 16, 3, 2, 1, bias=False),
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
 
             # nn.AdaptiveAvgPool2d(1),
 
-            nn.Conv2d(nf * 16, nf * 8, 1, 1, 0, bias=False),
+            nn.Conv2d(nf * 4, nf * 2, 1, 1, 0, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(nf * 8, 1, 1, 1, 0, bias=False)
+            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=False)
         )
 
     def forward(self, input):
-        output = self.main(input).mean([2, 3])
-        return output
+        outputs = self.main(input).mean([2, 3])
+        return outputs
 
 def deep_copy(att, index=None, detach=False):
     if index is None:

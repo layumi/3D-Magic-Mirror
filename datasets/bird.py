@@ -41,7 +41,7 @@ class CUBDataset(data.Dataset):
         self.train = train
         self.image_size = image_size
 
-        print('Seceed loading dataset!')
+        print('Succeed loading dataset!')
 
     def __getitem__(self, index):
         img_path, label = self.imgs[index]
