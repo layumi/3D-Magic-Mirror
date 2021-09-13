@@ -69,6 +69,8 @@ opt = parser.parse_args()
 opt.outf = './log/'+ opt.name
 print(opt)
 
+if not os.path.isdir(opt.outf):
+    os.mkdir(opt.outf)
 
 if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
