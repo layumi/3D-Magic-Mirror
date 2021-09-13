@@ -167,6 +167,7 @@ if __name__ == '__main__':
     os.makedirs(ckpt_dir, exist_ok=True)
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
+    output_txt = './log/%s/result.txt'%opt.name
 
     for epoch in range(start_epoch, opt.niter):
         for iter, data in enumerate(train_dataloader):
@@ -240,7 +241,7 @@ if __name__ == '__main__':
                         lossD_fake += (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         reg += netD.compute_grad2(out0, Xa).mean()
                     lossD = lossD_fake + lossD_real + 0.01*reg
-                    lossD =  0.1 * lossD
+                    lossD =  0.01 * lossD
 
                 lossD.backward()
                 optimizerD.step()
@@ -435,10 +436,12 @@ if __name__ == '__main__':
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                         output_Xa.save(ori_path, 'JPEG', quality=100)
             fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 32, True)
-            print('Test recon fid: %0.2f' % fid_recon)
+            print('Epoch %03d Test recon fid: %0.2f' % (epoch, fid_recon) ) 
             summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch)
-
             fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
-            print('Test rotation fid: %0.2f' % fid_inter)
+            print('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
+            with open(output_txt, 'w') as fp:
+                fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
+                fp.write('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             netE.train()
