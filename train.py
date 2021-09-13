@@ -300,7 +300,7 @@ if __name__ == '__main__':
         schedulerD.step()
         schedulerE.step()
 
-        if epoch % 1 == 0:
+        if epoch % 5 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
             summary_writer.add_scalar('Train/lossD', lossD, epoch)
             summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
@@ -395,7 +395,7 @@ if __name__ == '__main__':
             current_rotate_path = os.path.join(opt.outf, 'current_rotation.gif')
             shutil.copyfile(rotate_path, current_rotate_path)
 
-        if epoch % 2 == 0:
+        if epoch % 10 == 0 and epoch > 0:
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
             latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
             state_dict = {
