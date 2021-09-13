@@ -7,6 +7,7 @@ import shutil
 import imageio
 import numpy as np
 import trimesh
+import yaml
 
 # import torch related
 import torch
@@ -48,7 +49,7 @@ parser.add_argument('--imageSize', type=int, default=128, help='the height / wid
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
 parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
 parser.add_argument('--niter', type=int, default=500, help='number of epochs to train for')
-parser.add_argument('--lr', type=float, default=0.0001, help='leaning rate, default=0.0002')
+parser.add_argument('--lr', type=float, default=0.0001, help='leaning rate, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
 parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
 parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')
@@ -74,6 +75,10 @@ if opt.manualSeed is None:
 print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
+
+### save option
+with open('log/%s/opts.yaml'%opt.name,'w') as fp:
+    yaml.dump(vars(opt), fp, default_flow_style=False)
 
 if torch.cuda.is_available():
     cudnn.benchmark = True
@@ -232,10 +237,11 @@ if __name__ == '__main__':
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
                         lossD_real += torch.mean((out0 - 1)**2)
-                        lossD_fake += torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)
+                        lossD_fake += (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         reg += netD.compute_grad2(out0, Xa).mean()
                     lossD = lossD_fake + lossD_real + 0.01*reg
-                
+                    lossD =  0.1 * lossD
+
                 lossD.backward()
                 optimizerD.step()
 
