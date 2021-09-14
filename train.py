@@ -237,18 +237,19 @@ if __name__ == '__main__':
 
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer.data) + \
                                             compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
-
+                    if opt.reg > 0:
+                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         if opt.reg > 0:
-                            reg += opt.lambda_gan * opt.reg * netD.compute_grad2(out0, Xa).mean()
+                            reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xer.data) + \
                                             compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
-                    lossD = lossD_fake + lossD_real + lossD_gp + reg
-
+                    lossD = lossD_fake + lossD_real + lossD_gp 
+                lossD  += reg 
                 lossD.backward()
                 optimizerD.step()
 
