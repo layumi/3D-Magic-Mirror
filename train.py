@@ -171,7 +171,7 @@ if __name__ == '__main__':
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
 
-    for epoch in range(start_epoch, opt.niter):
+    for epoch in range(start_epoch, opt.niter+1):
         for iter, data in enumerate(train_dataloader):
             with Timer("Elapsed time in update: %f"):
                 ############################
@@ -397,7 +397,7 @@ if __name__ == '__main__':
             current_rotate_path = os.path.join(opt.outf, 'current_rotation.gif')
             shutil.copyfile(rotate_path, current_rotate_path)
 
-        if epoch % 10 == 0 and epoch > 0:
+        if epoch % 20 == 0 and epoch > 0:
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
             latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
             state_dict = {
