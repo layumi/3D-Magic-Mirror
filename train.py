@@ -61,6 +61,7 @@ parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
+parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="0~30", help='~ separated list of classes for the lsun data set')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
@@ -224,8 +225,8 @@ if __name__ == '__main__':
                 _, Aire = diffRender.render(**Aire)
 
                 # discriminate loss
-                #outs0 = netD(Xa.requires_grad_()) # real
-                outs0 = netD(Xa.detach().clone()) # real
+                outs0 = netD(Xa.requires_grad_()) # real
+                #outs0 = netD(Xa.detach().clone()) # real
                 outs1 = netD(Xer.detach().clone()) # fake - recon?
                 outs2 = netD(Xir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
@@ -242,10 +243,11 @@ if __name__ == '__main__':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
-                        #reg += netD.compute_grad2(out0, Xa).mean()
+                        if opt.reg > 0:
+                            reg += opt.lambda_gan * opt.reg * netD.compute_grad2(out0, Xa).mean()
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xer.data) + \
                                             compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
-                    lossD = lossD_fake + lossD_real + lossD_gp
+                    lossD = lossD_fake + lossD_real + lossD_gp + reg
 
                 lossD.backward()
                 optimizerD.step()
