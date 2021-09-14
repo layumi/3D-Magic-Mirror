@@ -238,7 +238,7 @@ if __name__ == '__main__':
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer.data) + \
                                             compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
                     if opt.reg > 0:
-                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
+                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Xa).mean()
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):

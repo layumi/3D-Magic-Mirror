@@ -104,6 +104,17 @@ class Discriminator(nn.Module):
         outputs = self.main(input).mean([2, 3])
         return outputs
 
+    def compute_grad2(self, d_out, x_in):
+        batch_size = x_in.size(0)
+        grad_dout = torch.autograd.grad(
+            outputs=d_out.sum(), inputs=x_in,
+            create_graph=True, retain_graph=True, only_inputs=True
+        )[0]
+        grad_dout2 = grad_dout.pow(2)
+        assert(grad_dout2.size() == x_in.size())
+        reg = grad_dout2.contiguous().view(batch_size, -1).sum(1)
+        return reg
+
 def deep_copy(att, index=None, detach=False):
     if index is None:
         index = torch.arange(att['distances'].shape[0]).cuda()
