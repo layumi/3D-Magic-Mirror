@@ -32,7 +32,7 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 # import from folder
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
-from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
+from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
@@ -224,7 +224,8 @@ if __name__ == '__main__':
                 _, Aire = diffRender.render(**Aire)
 
                 # discriminate loss
-                outs0 = netD(Xa.requires_grad_()) # real
+                #outs0 = netD(Xa.requires_grad_()) # real
+                outs0 = netD(Xa.detach().clone()) # real
                 outs1 = netD(Xer.detach().clone()) # fake - recon?
                 outs2 = netD(Xir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
@@ -239,11 +240,12 @@ if __name__ == '__main__':
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
-                        lossD_real += torch.mean((out0 - 1)**2)
-                        lossD_fake += (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
-                        reg += netD.compute_grad2(out0, Xa).mean()
-                    lossD = lossD_fake + lossD_real + 0.01*reg
-                    lossD =  100.0 * opt.lambda_gan * lossD
+                        lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
+                        lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
+                        #reg += netD.compute_grad2(out0, Xa).mean()
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xer.data) + \
+                                            compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
+                    lossD = lossD_fake + lossD_real + lossD_gp
 
                 lossD.backward()
                 optimizerD.step()

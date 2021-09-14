@@ -92,6 +92,31 @@ def generate_transformation_matrix(camera_position, look_at, camera_up_direction
     return torch.cat([rot_part, trans_part], dim=1)
 
 
+def compute_gradient_penalty_list(D, real_samples, fake_samples):
+    Tensor = torch.cuda.FloatTensor
+    """Calculates the gradient penalty loss for WGAN-GP"""
+    # Random weight term for interpolation between real and fake samples
+    alpha = Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
+    # Get random interpolation between real and fake samples
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+    d_interpolates = D(interpolates)
+    # Get gradient w.r.t. interpolates
+    for iter, _ in enumerate(d_interpolates):
+        fake = Variable(Tensor(torch.ones_like(d_interpolates[iter])), requires_grad=False)
+        gradients = autograd.grad(
+        outputs=d_interpolates[iter],
+        inputs=interpolates,
+        grad_outputs=fake,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+        )[0]
+        gradients = gradients.contiguous().view(gradients.size(0), -1)
+        if iter==0:
+            gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+        else:
+            gradient_penalty += ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gradient_penalty
 
 def compute_gradient_penalty(D, real_samples, fake_samples):
     Tensor = torch.cuda.FloatTensor
