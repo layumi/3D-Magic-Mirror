@@ -302,7 +302,7 @@ if __name__ == '__main__':
         schedulerD.step()
         schedulerE.step()
 
-        if epoch % 5 == 0:
+        if epoch % 10 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
             summary_writer.add_scalar('Train/lossD', lossD, epoch)
             summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
