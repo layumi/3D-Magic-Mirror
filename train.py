@@ -265,7 +265,7 @@ if __name__ == '__main__':
                     outs1 = netD(Xer) # fake - recon?
                     outs2 = netD(Xir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
-                        lossR_fake += torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)
+                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
 
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa)
 
