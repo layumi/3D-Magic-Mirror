@@ -12,10 +12,11 @@ from utils import camera_position_from_spherical_angles, generate_transformation
 from fid_score import calculate_fid_given_paths
 
 class MS_Discriminator(nn.Module):
-    def __init__(self, nc, nf):
+    def __init__(self, nc, nf, use_bias = True):
         super(MS_Discriminator, self).__init__()
         self.cnns = nn.ModuleList()
         self.num_scales = 3
+        self.use_bias = use_bias
         self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
         for _ in range(self.num_scales):
             Dis = self._make_net(nc, nf)
@@ -24,31 +25,31 @@ class MS_Discriminator(nn.Module):
 
     def _make_net(self, nc, nf):
         cnn_x = nn.Sequential(
-            nn.Conv2d(nc, nf//2, 1, 1, 0, bias=True),
+            nn.Conv2d(nc, nf//2, 1, 1, 0, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(nf//2, nf//2, 3, 1, 1, bias=True),
+            nn.Conv2d(nf//2, nf//2, 3, 1, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
             # 128 -> 64
-            nn.Conv2d(nf//2, nf , 3, 2, 1, bias=True),
+            nn.Conv2d(nf//2, nf , 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(nf, nf , 3, 1, 1, bias=True),
+            nn.Conv2d(nf, nf , 3, 1, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 64 -> 32
-            nn.Conv2d(nf , nf , 3, 2, 1, bias=True),
+            nn.Conv2d(nf , nf , 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(nf, nf , 3, 1, 1, bias=True),
+            nn.Conv2d(nf, nf , 3, 1, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
             # 32 -> 16
-            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=True),
+            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(nf * 2, nf * 2, 1, 1, 0, bias=True),
+            nn.Conv2d(nf * 2, nf * 2, 1, 1, 0, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=True)
+            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias)
         )
         return cnn_x
 
@@ -71,33 +72,34 @@ class MS_Discriminator(nn.Module):
         return reg
 
 class Discriminator(nn.Module):
-    def __init__(self, nc, nf):
+    def __init__(self, nc, nf, use_bias = False):
         super(Discriminator, self).__init__()
+        self.use_bias = use_bias
         self.main = nn.Sequential(
-            nn.Conv2d(nc, nf, 3, 1, 1, bias=True),
+            nn.Conv2d(nc, nf, 3, 1, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
             # 128 -> 64
-            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=True),
+            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
             # 64 -> 32
-            nn.Conv2d(nf * 2, nf * 4, 3, 2, 1, bias=True),
+            nn.Conv2d(nf * 2, nf * 4, 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=True),
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
             # 32 -> 16
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=True),
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
             # 16 -> 8
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=True),
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
             # nn.AdaptiveAvgPool2d(1),
 
-            nn.Conv2d(nf * 4, nf * 2, 1, 1, 0, bias=True),
+            nn.Conv2d(nf * 4, nf * 2, 1, 1, 0, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=True)
+            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias)
         )
 
     def forward(self, input):
