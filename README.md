@@ -42,7 +42,10 @@ You can also install the required packages seperately
 #### Training and Testing On the CUB-200-2011 (Bird) dataset
 
 * Dataset
-  
+
+```
+  gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
+```
   Download the processed data from [Google Drive](https://drive.google.com/file/d/1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc/view?usp=sharing).
 * Run
     ```sh
