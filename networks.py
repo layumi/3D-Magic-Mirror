@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import init
 import kaolin as kal
 import math
 from kaolin.render.camera import generate_perspective_projection
@@ -421,9 +422,17 @@ class AttributeEncoder(nn.Module):
 # custom weights initialization called on netE and netD
 def weights_init(m):
     classname = m.__class__.__name__
-    if classname.find('Conv2d') != -1:
-        m.weight.data.normal_(0.0, 0.02)
+    if classname.find('Conv') != -1:
+        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in') # For old pytorch, you may use kaiming_normal.
+    elif classname.find('Linear') != -1:
+        init.kaiming_normal_(m.weight.data, a=0, mode='fan_out')
     elif classname.find('BatchNorm') != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
+        init.normal_(m.weight.data, 1.0, 0.02)
+    if hasattr(m, 'bias') and m.bias is not None:
+        init.constant_(m.bias.data, 0.0)
 
+def weights_init_classifier(m):
+    classname = m.__class__.__name__
+    if classname.find('Linear') != -1:
+        init.normal_(m.weight.data, std=0.001)
+        init.constant_(m.bias.data, 0.0)

@@ -54,8 +54,10 @@ parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. de
 parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
 parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')
 parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
+parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
+parser.add_argument('--beta', action='store_true', default=False, help='using beta distribution instead of uniform.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
@@ -197,8 +199,12 @@ if __name__ == '__main__':
                 # linearly interpolate 3D attributes
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
-                    alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                    Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    if opt.beta:
+                        alpha_camera = torch.FloatTensor(np.random.beta(0.2, 0.2, batch_size)).cuda()
+                        Ai['azimuths'] = torch.FloatTensor( (np.random.beta(0.2, 0.2, batch_size)-0.5) *opt.azi_scope ).cuda() 
+                    else:
+                        alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                        Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
                     Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
 
