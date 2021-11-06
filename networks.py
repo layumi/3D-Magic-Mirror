@@ -12,6 +12,14 @@ from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, Textu
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
 
+class cnn2(nn.Module):
+    def __init__(self, model1, model2):
+        super(cnn2, self).__init__()
+        self.model1 = model1
+        self.model2 = model2 
+    def forward(self, x):
+        return self.model2(self.model1(x))
+
 class MS_Discriminator(nn.Module):
     def __init__(self, nc, nf, use_bias = True):
         super(MS_Discriminator, self).__init__()
@@ -21,8 +29,8 @@ class MS_Discriminator(nn.Module):
         self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
         for _ in range(self.num_scales):
             Dis = self._make_net(nc, nf)
-            Dis.apply(weights_init)
             self.cnns.append(Dis)
+
     def _make_net(self, nc, nf):
         cnn_x = nn.Sequential(
             nn.Conv2d(nc, nf//2, 1, 1, 0, bias=self.use_bias),
@@ -48,10 +56,10 @@ class MS_Discriminator(nn.Module):
 
             nn.Conv2d(nf * 2, nf * 2, 1, 1, 0, bias=self.use_bias),
             nn.LeakyReLU(0.2, inplace=True),
-
             nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias)
         )
         cnn_x.apply(weights_init)
+        cnn_x[-1].apply(weights_init_classifier)
         return cnn_x
 
     def forward(self, x):
@@ -349,6 +357,7 @@ class Landmark_Consistency(nn.Module):
         )
         self.cross_entropy = nn.CrossEntropyLoss(reduction='none')
         self.classifier.apply(weights_init)
+        self.classifier[-1].apply(weights_init_classifier)
 
     def forward(self, img_feat, landmark_2d, visiable):
         batch_size = landmark_2d.shape[0]
@@ -434,6 +443,7 @@ def weights_init(m):
 
 def weights_init_classifier(m):
     classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
-        init.normal_(m.weight.data, std=0.001)
+    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
+        init.normal_(m.weight.data, std=0.01)
+    if hasattr(m, 'bias') and m.bias is not None:
         init.constant_(m.bias.data, 0.0)
