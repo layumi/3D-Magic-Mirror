@@ -444,6 +444,6 @@ def weights_init(m):
 def weights_init_classifier(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        init.normal_(m.weight.data, std=0.01)
+        init.normal_(m.weight.data, std=0.1)
     if hasattr(m, 'bias') and m.bias is not None:
         init.constant_(m.bias.data, 0.0)
