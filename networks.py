@@ -23,7 +23,6 @@ class MS_Discriminator(nn.Module):
             Dis = self._make_net(nc, nf)
             Dis.apply(weights_init)
             self.cnns.append(Dis)
-
     def _make_net(self, nc, nf):
         cnn_x = nn.Sequential(
             nn.Conv2d(nc, nf//2, 1, 1, 0, bias=self.use_bias),
@@ -52,6 +51,7 @@ class MS_Discriminator(nn.Module):
 
             nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias)
         )
+        cnn_x.apply(weights_init)
         return cnn_x
 
     def forward(self, x):
@@ -102,7 +102,7 @@ class Discriminator(nn.Module):
 
             nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias)
         )
-
+        self.main.apply(weights_init)
     def forward(self, input):
         outputs = self.main(input).mean([2, 3])
         return outputs
@@ -348,7 +348,8 @@ class Landmark_Consistency(nn.Module):
             nn.Conv1d(1024, self.num_landmarks, 1, 1, 0)
         )
         self.cross_entropy = nn.CrossEntropyLoss(reduction='none')
-    
+        self.classifier.apply(weights_init)
+
     def forward(self, img_feat, landmark_2d, visiable):
         batch_size = landmark_2d.shape[0]
         grid_x = landmark_2d.unsqueeze(1)  # (N, 1, V, 2)

@@ -125,7 +125,6 @@ if __name__ == '__main__':
     else:
         print('unknow gan type. Only lsgan or wgan is accepted.')
 
-    netD.apply(weights_init)
     if opt.multigpus:
         netD = torch.nn.DataParallel(netD)
     netD = netD.cuda()
