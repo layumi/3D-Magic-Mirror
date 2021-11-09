@@ -32,7 +32,7 @@ You can also install the required packages seperately
 * Kaolin Library
     ```sh
     $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
-    $ git checkout v0.9.0
+    $ git checkout v0.9.1
     $ python setup.py develop
     ```
 
