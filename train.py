@@ -172,7 +172,7 @@ if __name__ == '__main__':
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
-
+    init_beta = 0.2
     for epoch in range(start_epoch, opt.niter+1):
         for iter, data in enumerate(train_dataloader):
             with Timer("Elapsed time in update: %f"):
@@ -199,8 +199,9 @@ if __name__ == '__main__':
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
                     if opt.beta:
-                        alpha_camera = torch.FloatTensor(np.random.beta(0.2, 0.2, batch_size)).cuda()
-                        Ai['azimuths'] = torch.FloatTensor( (np.random.beta(0.2, 0.2, batch_size)-0.5) *opt.azi_scope ).cuda() 
+                        beta = min(1.0, init_beta + 0.8*epoch/40)
+                        alpha_camera = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).cuda()
+                        Ai['azimuths'] = torch.FloatTensor( (np.random.beta(beta, beta, batch_size)-0.5) *opt.azi_scope ).cuda() 
                     else:
                         alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                         Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
