@@ -4,7 +4,7 @@ Licensed under the CC BY-NC-SA 4.0 license
 (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 import os.path
-from PIL import Image
+from PIL import Image, ImageFilter, ImageOps
 import glob
 
 import torch.utils.data as data
@@ -12,12 +12,14 @@ import torch
 import torchvision
 import numpy as np
 import random
-from PIL import ImageFilter, ImageOps
-
+import accimage # conda install -c conda-forge accimage
 
 def default_loader(path):
-    return Image.open(path).convert('RGB')
-
+    #return accimage.Image(path)#.convert('RGB')
+    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+    with open(path, 'rb') as f:
+        img = Image.open(f)
+        return img.convert('RGB')
 
 class CUBDataset(data.Dataset):
     def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False):
@@ -79,10 +81,10 @@ class CUBDataset(data.Dataset):
         seg = seg.resize((target_height, target_width))
         seg = seg.point(lambda p: p > 160 and 255)
 
-        edge = seg.filter(ImageFilter.FIND_EDGES)
-        edge = edge.filter(ImageFilter.SMOOTH_MORE)
-        edge = edge.point(lambda p: p > 20 and 255)
-        edge = torchvision.transforms.functional.to_tensor(edge).max(0, True)[0]
+        #edge = seg.filter(ImageFilter.FIND_EDGES)
+        #edge = edge.filter(ImageFilter.SMOOTH_MORE)
+        #edge = edge.point(lambda p: p > 20 and 255)
+        #edge = torchvision.transforms.functional.to_tensor(edge).max(0, True)[0]
 
         img = torchvision.transforms.functional.to_tensor(img)
         seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
@@ -90,8 +92,8 @@ class CUBDataset(data.Dataset):
         img = img * seg + torch.ones_like(img) * (1 - seg)
         rgbs = torch.cat([img, seg], dim=0)
 
-        data= {'images': rgbs, 'path': img_path, 'label': label,
-               'edge': edge}
+        data= {'images': rgbs, 'path': img_path, 'label': label} #,
+              # 'edge': edge}
 
         return {'data': data}
 
