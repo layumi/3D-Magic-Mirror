@@ -75,6 +75,7 @@ class MarketDataset(data.Dataset):
             img = img.crop((left, upper, right, lower))
             seg = seg.crop((left, upper, right, lower))
 
+        # make a square 512x512
         W, H = img.size
         desired_size = max(W, H)
         delta_w = desired_size - W
@@ -84,6 +85,7 @@ class MarketDataset(data.Dataset):
         img = ImageOps.expand(img, padding)
         seg = ImageOps.expand(seg, padding)
 
+        # resize 128x128 (the effective part is 128x64)
         img = img.resize((target_height, target_width))
         seg = seg.resize((target_height, target_width))
         seg = seg.point(lambda p: p > 160 and 255)
