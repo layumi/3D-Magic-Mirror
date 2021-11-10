@@ -32,14 +32,15 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 # import from folder
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
+from datasets.market import MarketDataset
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', default='baseline', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
+parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
+parser.add_argument('--dataroot', default='../Market/hq/pytorch', help='path to dataset root dir')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
@@ -88,8 +89,8 @@ with open('log/%s/opts.yaml'%opt.name,'w') as fp:
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
-train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
-test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
+train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True)
+test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False)
 
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),

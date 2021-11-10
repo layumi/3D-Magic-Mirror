@@ -27,7 +27,8 @@ $ pip install -r requirements.txt
 You can also install the required packages seperately
 * Pytorch
     ```sh
-    $ conda install pytorch==1.6.0 torchvision==0.7.0 cudatoolkit=10.2 -c pytorch
+    $ conda install libpng jpeg 
+    $ conda install pytorch==1.9.0 torchvision=0.10.0 torchaudio cudatoolkit=10.2 -c pytorch
     ```
 * Kaolin Library
     ```sh

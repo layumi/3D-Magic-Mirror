@@ -12,13 +12,6 @@ from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, Textu
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
 
-class cnn2(nn.Module):
-    def __init__(self, model1, model2):
-        super(cnn2, self).__init__()
-        self.model1 = model1
-        self.model2 = model2 
-    def forward(self, x):
-        return self.model2(self.model1(x))
 
 class MS_Discriminator(nn.Module):
     def __init__(self, nc = 4, nf = 32, use_bias = True):
@@ -141,15 +134,13 @@ def deep_copy(att, index=None, detach=False):
 
 
 class DiffRender(object):
-    def __init__(self, filename_obj, image_size):
+    def __init__(self, mesh, image_size):
         self.image_size = image_size
         # camera projection matrix
         camera_fovy = np.arctan(1.0 / 2.5) * 2
         self.cam_proj = generate_perspective_projection(camera_fovy, ratio=image_size/image_size)
 
-        mesh = kal.io.obj.import_mesh(filename_obj, with_materials=True)
-        # the sphere is usually too small (this is fine-tuned for the clock)
-
+        # https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/dibr_tutorial.ipynb
         # get vertices_init
         vertices = mesh.vertices
         vertices.requires_grad = False
@@ -344,14 +335,13 @@ class DiffRender(object):
 
 # network of landmark consistency
 class Landmark_Consistency(nn.Module):
-    def __init__(self, num_landmarks, dim_feat, num_samples):
+    def __init__(self, num_landmarks=1280, dim_feat=256, num_samples=64):
         super(Landmark_Consistency, self).__init__()
         self.num_landmarks = num_landmarks
         self.num_samples = num_samples
 
-        n_features = dim_feat
         self.classifier = nn.Sequential(
-            nn.Conv1d(n_features, 1024, 1, 1, 0), nn.BatchNorm1d(1024), nn.ReLU(),
+            nn.Conv1d(dim_feat, 1024, 1, 1, 0), nn.BatchNorm1d(1024), nn.ReLU(),
             nn.Conv1d(1024, self.num_landmarks, 1, 1, 0)
         )
         self.cross_entropy = nn.CrossEntropyLoss(reduction='none')
