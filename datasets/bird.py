@@ -12,7 +12,7 @@ import torch
 import torchvision
 import numpy as np
 import random
-import accimage # conda install -c conda-forge accimage
+#import accimage # conda install -c conda-forge accimage
 
 def default_loader(path):
     #return accimage.Image(path)#.convert('RGB')
