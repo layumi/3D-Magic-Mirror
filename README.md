@@ -44,6 +44,18 @@ You can also install the required packages seperately
 
 * Dataset
 
+- Market-HQ
+```
+gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
+```
+
+- Market-Seg
+```
+gdrive download 1TxKpVMiRjYknQyf0MJthvzSWfPJ0h6fm
+```
+
+
+- CUB
 ```
   gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
 ```
