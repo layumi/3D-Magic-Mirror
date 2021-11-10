@@ -436,9 +436,15 @@ if __name__ == '__main__':
                     Xer, Ae = diffRender.render(**Ae)
 
                     Ai = deep_copy(Ae)
+                    Ai2 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-                    Xir, Ai = diffRender.render(**Ai)
+                    Ai2['azimuths'] += 90
+                    if Ai2['azimuths']>180:
+                        Ai2['azimuths'] -=360
 
+                    Xir, Ai = diffRender.render(**Ai)
+                    Xir2, Ai2 = diffRender.render(**Ai2)
+                    
                     for i in range(len(paths)):
                         path = paths[i]
                         image_name = os.path.basename(path)
@@ -449,6 +455,10 @@ if __name__ == '__main__':
                         inter_path = os.path.join(inter_dir, image_name)
                         output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
                         output_Xir.save(inter_path, 'JPEG', quality=100)
+
+                        inter_path2 = os.path.join(inter_dir, '2+'+image_name)
+                        output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
+                        output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
                         ori_path = os.path.join(ori_dir, image_name)
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
