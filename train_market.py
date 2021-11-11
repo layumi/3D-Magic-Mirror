@@ -93,11 +93,13 @@ if torch.cuda.is_available():
 train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold)
 test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold)
 
+torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
-                                         persistent_workers=True) # for pytorch>1.6.0
+                                         prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=False, pin_memory=True, num_workers=int(opt.workers))
+                                         shuffle=False, pin_memory=True, 
+                                         num_workers=int(opt.workers), prefetch_factor=2)
 
 
 
