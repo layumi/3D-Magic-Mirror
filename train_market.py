@@ -426,7 +426,7 @@ if __name__ == '__main__':
             }
             torch.save(state_dict, latest_name)
 
-        if epoch % 20 == 0 and epoch > 0:
+        if epoch % 20 == 0: # and epoch > 0:
             netE.eval()
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
                 Xa = Variable(data['data']['images']).cuda()
@@ -440,8 +440,6 @@ if __name__ == '__main__':
                     Ai2 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai2['azimuths'] += 90
-                    if Ai2['azimuths']>180:
-                        Ai2['azimuths'] -=360
 
                     Xir, Ai = diffRender.render(**Ai)
                     Xir2, Ai2 = diffRender.render(**Ai2)
