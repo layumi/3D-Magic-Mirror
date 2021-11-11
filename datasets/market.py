@@ -28,15 +28,23 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09):
         super(MarketDataset, self).__init__()
         self.root = root
+        self.im_list = []
         if train:
-            self.im_list = glob.glob(os.path.join(self.root, 'train_all', '*/*.png'))
+            old_im_list = glob.glob(os.path.join(self.root, 'train_all', '*/*.png'))
             self.class_dir = glob.glob(os.path.join(self.root, 'train_all', '*'))
         else:
-            self.im_list = glob.glob(os.path.join(self.root, 'query', '*/*.png'))
+            old_im_list = glob.glob(os.path.join(self.root, 'query', '*/*.png'))
             self.class_dir = glob.glob(os.path.join(self.root, 'query', '*'))
+
+        # threshold
+        for index, name in enumerate(old_im_list):
+            precentage = float(name[-8:-4])
+            if precentage>threshold:
+                self.im_list.append(name)
+        print(len(old_im_list),'After threshold:',len(self.im_list))
 
         self.transform = transform
         self.loader = loader
@@ -52,11 +60,13 @@ class MarketDataset(data.Dataset):
         print('Succeed loading dataset!')
 
     def __getitem__(self, index):
-        img_path, label = self.imgs[index]
+        seg_path, label = self.imgs[index]
         target_height, target_width = self.image_size, self.image_size
 
         # image and its flipped image
-        seg_path = img_path.replace('pytorch', 'seg')
+        img_path = seg_path.replace('seg', 'pytorch')
+        # remove foreground precentage
+        img_path = img_path[:-9] + '.png'
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path)
         W, H = img.size

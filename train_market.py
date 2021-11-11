@@ -40,7 +40,7 @@ torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='../Market/hq/pytorch', help='path to dataset root dir')
+parser.add_argument('--dataroot', default='../Market/hq/seg', help='path to dataset root dir')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
@@ -65,6 +65,7 @@ parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
+parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="0~30", help='~ separated list of classes for the lsun data set')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
@@ -89,8 +90,8 @@ with open('log/%s/opts.yaml'%opt.name,'w') as fp:
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
-train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True)
-test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False)
+train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold)
+test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold)
 
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
