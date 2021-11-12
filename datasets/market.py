@@ -42,7 +42,7 @@ class MarketDataset(data.Dataset):
         # threshold
         for index, name in enumerate(old_im_list):
             precentage = float(name[-8:-4])
-            if precentage>threshold:
+            if precentage>threshold and precentage<0.81:
                 self.im_list.append(name)
         print(len(old_im_list),'After threshold:',len(self.im_list))
 
