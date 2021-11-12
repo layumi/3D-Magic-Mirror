@@ -446,7 +446,9 @@ if __name__ == '__main__':
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-                    Ai2['azimuths'] += 90
+                    #Ai2['azimuths'] += 90
+                    Ai2['azimuths'] = Ai['azimuths'] + 90.0
+                    Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
 
                     Xir, Ai = diffRender.render(**Ai)
                     Xir2, Ai2 = diffRender.render(**Ai2)
