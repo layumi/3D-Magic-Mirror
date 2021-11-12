@@ -180,8 +180,13 @@ if __name__ == '__main__':
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
     init_beta = 0.2
+    warm_up = 0.1 # We start from the 0.1*lrRate
+    warm_iteration = len(train_dataloader)*opt.warm_epoch # first 5 epoch
+    print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
         for iter, data in enumerate(train_dataloader):
+            if epoch<opt.warm_epoch:
+                warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
@@ -263,6 +268,7 @@ if __name__ == '__main__':
                                             compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD  += reg 
+                lossD *= warm_up
                 lossD.backward()
                 optimizerD.step()
 
@@ -302,7 +308,7 @@ if __name__ == '__main__':
                 
                 # overall loss
                 lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC
-
+                lossR *= warm_up
                 lossR.backward()
                 optimizerE.step()
 
