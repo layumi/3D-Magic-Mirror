@@ -281,22 +281,22 @@ class TextureEncoder(nn.Module):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
 
-        block1 = Conv2dBlock(nc, nf//2, nk, stride=2, pad=2, norm='bn')
-        block2 = Conv2dBlock(nf//2, nf, nk, stride=2, pad=2, norm='bn')
-        block3 = Conv2dBlock(nf, nf * 2, nk, stride=2, pad=2, norm='bn')
-        block4 = Conv2dBlock(nf * 2, nf * 4, nk, stride=2, pad=2, norm='bn')
-        block5 = Conv2dBlock(nf * 4, nf * 8, nk, stride=2, pad=2, norm='bn')
+        block1 = Conv2dBlock(nc, nf//2, nk, 2, 2, norm='bn')
+        block2 = Conv2dBlock(nf//2, nf, nk, 2, 2, norm='bn')
+        block3 = Conv2dBlock(nf, nf * 2, nk, 2, 2, norm='bn')
+        block4 = Conv2dBlock(nf * 2, nf * 4, nk, 2, 2, norm='bn')
+        block5 = Conv2dBlock(nf * 4, nf * 8, nk, 2, 2, norm='bn')
 
-        avgpool = [nn.AdaptiveAvgPool2d(1)]
+        avgpool = nn.AdaptiveAvgPool2d(1)
 
-        linear1 = Conv2dBlock(nf * 8, nf * 16, 1, stride=1, pad=0, norm='bn')
-        linear2 = Conv2dBlock(nf * 16, nf * 8, 1, stride=1, pad=0, norm='bn')
+        linear1 = Conv2dBlock(nf * 8, nf * 16, 1, 1, 0, norm='bn')
+        linear2 = Conv2dBlock(nf * 16, nf * 8, 1, 1, 0, norm='bn')
 
         #################################################
-        all_blocks = block1 + block2 + block3 + block4 + block5 + avgpool
+        all_blocks = [block1, block2, block3, block4, block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
 
-        all_blocks = linear1 + linear2
+        all_blocks = [linear1, linear2]
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
@@ -344,9 +344,9 @@ class TextureEncoder(nn.Module):
         batch_size = x.shape[0]
         x = self.encoder1(x)
         x = x.view(batch_size, -1, 1, 1)
-        x = self.encoder2(x)
-        uv_sampler = self.texture_flow(x).permute(0, 2, 3, 1)
-        textures = F.grid_sample(img, uv_sampler)
+        x = self.encoder2(x) # 32x256x1x1
+        uv_sampler = self.texture_flow(x).permute(0, 2, 3, 1) # 32 x4x4x2
+        textures = F.grid_sample(img, uv_sampler) # 32 x 3 x4x4
 
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
@@ -379,10 +379,12 @@ class ResBlock(nn.Module):
 
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim ,output_dim, kernel_size, stride,
-                 padding=0, norm='none', activation='relu', padding_mode='zero', dilation=1, fp16 = False):
+                 padding=0, norm='none', activation='relu', padding_mode='zeros', dilation=1, fp16 = False):
         super(Conv2dBlock, self).__init__()
         self.use_bias = True
 
+        # initialize convolution
+        self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, padding=padding, padding_mode=padding_mode, dilation=dilation, bias=self.use_bias)
         # initialize normalization
         norm_dim = output_dim
         if norm == 'bn':
@@ -414,8 +416,6 @@ class Conv2dBlock(nn.Module):
         else:
             assert 0, "Unsupported activation: {}".format(activation)
 
-        # initialize convolution
-        self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, padding_mode=padding_mode, dilation=dilation, bias=self.use_bias)
 
     def forward(self, x):
         x = self.conv(x)
