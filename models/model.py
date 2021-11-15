@@ -76,7 +76,7 @@ class CameraEncoder(nn.Module):
         self.linear3 = nn.Linear(1024, 4)
 
         #################################################
-        all_blocks = block1 + block2 + block3 + block4 + block5 + avgpool
+        all_blocks = [block1, block2, block3, block4, block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
 
         all_blocks = linear1 + linear2
@@ -150,7 +150,7 @@ class ShapeEncoder(nn.Module):
         self.linear3 = nn.Linear(1024, self.num_vertices * 3)
 
         #################################################
-        all_blocks = block1 + block2 + block3 + block4 + block5 + avgpool
+        all_blocks = [block1, block2, block3, block4, block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
 
         all_blocks = linear1 + linear2
