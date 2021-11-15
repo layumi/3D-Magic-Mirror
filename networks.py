@@ -393,7 +393,7 @@ class AttributeEncoder(nn.Module):
         azimuths, elevations, distances = cameras # 32, 32, 32
 
         # vertex
-        delta_vertices = self.shape_enc(input_img) # 32, 642, 3
+        delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
         vertices = self.vertices_init[None].to(device) + delta_vertices
 
         # textures

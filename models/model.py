@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from torchvision import models
 import math
 
 def normalize_batch(batch):
@@ -67,13 +68,13 @@ class CameraEncoder(nn.Module):
         block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)
         block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
         block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
-        block5 = Conv2dBlock(256, 512, nk, stride=2, padding=2)
+        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=2)
 
-        avgpool = [nn.AdaptiveAvgPool2d(1)]
+        avgpool = nn.AdaptiveAvgPool2d(1)
 
-        linear1 = self.linearblock(512, 1024)
-        linear2 = self.linearblock(1024, 1024)
-        self.linear3 = nn.Linear(1024, 4)
+        linear1 = self.linearblock(128, 64)
+        linear2 = self.linearblock(64, 32)
+        self.linear3 = nn.Linear(32, 4)
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
@@ -98,7 +99,7 @@ class CameraEncoder(nn.Module):
         block2 = [
             nn.Linear(indim, outdim),
             nn.BatchNorm1d(outdim),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         ]
         return block2
 
@@ -138,19 +139,23 @@ class ShapeEncoder(nn.Module):
         self.num_vertices = num_vertices
 
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=2)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
-        block5 = Conv2dBlock(256, 512, nk, stride=2, padding=2)
+        #block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)        
+        #block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
+        #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
+        #block5 = Conv2dBlock(256, 512, nk, stride=2, padding=2)
+        block2 = [ResBlock_half(32), ResBlock(64)]
+        block3 = [ResBlock_half(64), ResBlock(128)]
+        block4 = [ResBlock_half(128), ResBlock(256)]
+        block5 = [ResBlock_half(256), ResBlock(512)]
 
-        avgpool = [nn.AdaptiveAvgPool2d(1)]
+        avgpool = nn.AdaptiveAvgPool2d(1)
 
-        linear1 = self.linearblock(512, 1024)
-        linear2 = self.linearblock(1024, 1024)
+        linear1 = self.linearblock(512, 512)
+        linear2 = self.linearblock(512, 1024)
         self.linear3 = nn.Linear(1024, self.num_vertices * 3)
 
         #################################################
-        all_blocks = [block1, block2, block3, block4, block5, avgpool]
+        all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
 
         all_blocks = linear1 + linear2
@@ -171,7 +176,7 @@ class ShapeEncoder(nn.Module):
         block2 = [
             nn.Linear(indim, outdim),
             nn.BatchNorm1d(outdim),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         ]
         return block2
 
@@ -200,13 +205,13 @@ class LightEncoder(nn.Module):
         block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)
         block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
         block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
-        block5 = Conv2dBlock(256, 512, nk, stride=2, padding=2)
+        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=2)
 
-        avgpool = [nn.AdaptiveAvgPool2d(1)]
+        avgpool = nn.AdaptiveAvgPool2d(1)
 
-        linear1 = self.linearblock(512, 1024)
-        linear2 = self.linearblock(1024, 1024)
-        self.linear3 = nn.Linear(1024, 9)
+        linear1 = self.linearblock(128, 32)
+        linear2 = self.linearblock(32, 32)
+        self.linear3 = nn.Linear(32, 9)
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
@@ -230,7 +235,7 @@ class LightEncoder(nn.Module):
         block2 = [
             nn.Linear(indim, outdim),
             nn.BatchNorm1d(outdim),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         ]
         return block2
 
@@ -266,11 +271,13 @@ class TextureEncoder(nn.Module):
         avgpool = nn.AdaptiveAvgPool2d(1)
 
         linear1 = Conv2dBlock(nf * 8, nf * 16, 1, 1, 0, norm='bn')
-        linear2 = Conv2dBlock(nf * 16, nf * 8, 1, 1, 0, norm='bn')
+        linear2 = Conv2dBlock(nf * 16, nf * 8, 1, 1, 0, norm='bn', activation = 'none')
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
+        #model_ft = Resnet50_4C()
+        #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
 
         all_blocks = [linear1, linear2]
         self.encoder2 = nn.Sequential(*all_blocks)
@@ -283,31 +290,32 @@ class TextureEncoder(nn.Module):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.normal_(m.weight, mean=0, std=0.001)
 
-        # Free some memory
-        del all_blocks, block1, block2, block3, block4, block5, linear1, linear2
-
         self.texture_flow = nn.Sequential(
             # input is Z, going into a convolution
             nn.Upsample(scale_factor=4),
-            Conv2dBlock(nf * 8, nf * 8, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
             # state size. (nf*8) x 8 x 8
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 8, nf * 8, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf * 4, nf * 2, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
             # state size. (nf*4) x 16 x 16
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf * 2, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf*2) x 32 x 32
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 4, nf * 2, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            #ResBlock(nf, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 64 x 64
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 2, nf * 2, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            #ResBlock(nf, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 128 x 128
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 2, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf, nf//2, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 256 x 256
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf, 2, 3, 1, 1, padding_mode='reflect'),
+            nn.Conv2d(nf//2, 2, 3, 1, 1, padding_mode='reflect'),
             nn.Tanh()
         )
 
@@ -324,14 +332,34 @@ class TextureEncoder(nn.Module):
         textures = torch.cat([textures, textures_flip], dim=2)
         return textures
 
+class Resnet50_4C(nn.Module):
+    def __init__(self):
+        super(Resnet50_4C, self).__init__()
+        model = models.resnet50(pretrained=True)
+        weight = model.conv1.weight.clone()
+        model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
+        model.conv1.weight.data[:, :3] = weight
+        model.conv1.weight.data[:, 3] = model.conv1.weight[:, 0]
+        self.model = model
+    def forward(self, x):
+        x = self.model.conv1(x)
+        x = self.model.bn1(x)
+        x = self.model.relu(x)
+        x = self.model.maxpool(x)
+        x = self.model.layer1(x)
+        x = self.model.layer2(x)
+        x = self.model.layer3(x)
+        x = self.model.layer4(x)
+        return x 
+
 class ResBlock(nn.Module):
-    def __init__(self, dim, norm='bn', activation='relu', padding_mode='zero', res_type='basic'):
+    def __init__(self, dim, norm='bn', activation='relu', padding_mode='zeros', res_type='basic'):
         super(ResBlock, self).__init__()
 
         model = []
         if res_type=='basic':
-            model += [Conv2dBlock(dim ,dim, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
-            model += [Conv2dBlock(dim ,dim, 3, 1, 1, norm=norm, activation='none', padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim ,dim//2, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim//2 ,dim, 3, 1, 1, norm=norm, activation='none', padding_mode=padding_mode)]
         elif res_type=='slim':
             dim_half = dim//2
             model += [Conv2dBlock(dim ,dim_half, 1, 1, 0, norm='in', activation=activation, padding_mode=padding_mode)]
@@ -347,6 +375,31 @@ class ResBlock(nn.Module):
         residual = x
         out = self.model(x)
         out += residual
+        return out
+
+class ResBlock_half(nn.Module):
+    def __init__(self, dim, norm='bn', activation='relu', padding_mode='zeros', res_type='basic'):
+        super(ResBlock_half, self).__init__()
+
+        model = []
+        if res_type=='basic':
+            model += [Conv2dBlock(dim, dim, 3, 2, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation='none', padding_mode=padding_mode)]
+        elif res_type=='slim':
+            dim_half = dim//2
+            model += [Conv2dBlock(dim ,dim_half, 1, 1, 0, norm='in', activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim, 1, 1, 0, norm='in', activation='none', padding_mode=padding_mode)]
+        else:
+            ('unkown block type')
+        self.res_type = res_type
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        residual = nn.functional.avg_pool2d(x, kernel_size=3, stride=2, padding=1)
+        out = self.model(x)
+        out = torch.cat([out,residual], dim=1)
         return out
 
 class Conv2dBlock(nn.Module):
