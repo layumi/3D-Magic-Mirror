@@ -371,10 +371,10 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices, vertices_init, azi_scope, elev_range, dist_range, nc, nf, nk):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5):
         super(AttributeEncoder, self).__init__()
-        self.num_vertices = num_vertices
-        self.vertices_init = vertices_init
+        self.num_vertices = num_vertices # 642
+        self.vertices_init = vertices_init # (1, V, 3) in [-1,1]
 
         self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range)
         self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices)
@@ -389,22 +389,22 @@ class AttributeEncoder(nn.Module):
         input_img = x
 
         # cameras
-        cameras = self.camera_enc(input_img)
-        azimuths, elevations, distances = cameras
+        cameras = self.camera_enc(input_img) 
+        azimuths, elevations, distances = cameras # 32, 32, 32
 
         # vertex
-        delta_vertices = self.shape_enc(input_img)
+        delta_vertices = self.shape_enc(input_img) # 32, 642, 3
         vertices = self.vertices_init[None].to(device) + delta_vertices
 
         # textures
-        textures = self.texture_enc(input_img)
-        lights = self.light_enc(input_img)
+        textures = self.texture_enc(input_img) # 32x3x512x256
+        lights = self.light_enc(input_img) # 32x9
 
         # image feat
         with torch.no_grad():
             self.feat_enc.eval()
-            img_feats = self.feat_enc(input_img)
-
+            img_feats = self.feat_enc(input_img) # 32x256x32x32
+        
         # others
         attributes = {
         'azimuths': azimuths,

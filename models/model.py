@@ -281,16 +281,16 @@ class TextureEncoder(nn.Module):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
 
-        block1 = self.convblock(nc, nf//2, nk, stride=2, pad=2)
-        block2 = self.convblock(nf//2, nf, nk, stride=2, pad=2)
-        block3 = self.convblock(nf, nf * 2, nk, stride=2, pad=2)
-        block4 = self.convblock(nf * 2, nf * 4, nk, stride=2, pad=2)
-        block5 = self.convblock(nf * 4, nf * 8, nk, stride=2, pad=2)
+        block1 = Conv2dBlock(nc, nf//2, nk, stride=2, pad=2, norm='bn')
+        block2 = Conv2dBlock(nf//2, nf, nk, stride=2, pad=2, norm='bn')
+        block3 = Conv2dBlock(nf, nf * 2, nk, stride=2, pad=2, norm='bn')
+        block4 = Conv2dBlock(nf * 2, nf * 4, nk, stride=2, pad=2, norm='bn')
+        block5 = Conv2dBlock(nf * 4, nf * 8, nk, stride=2, pad=2, norm='bn')
 
         avgpool = [nn.AdaptiveAvgPool2d(1)]
 
-        linear1 = self.convblock(nf * 8, nf * 16, 1, stride=1, pad=0)
-        linear2 = self.convblock(nf * 16, nf * 8, 1, stride=1, pad=0)
+        linear1 = Conv2dBlock(nf * 8, nf * 16, 1, stride=1, pad=0, norm='bn')
+        linear2 = Conv2dBlock(nf * 16, nf * 8, 1, stride=1, pad=0, norm='bn')
 
         #################################################
         all_blocks = block1 + block2 + block3 + block4 + block5 + avgpool
@@ -313,35 +313,22 @@ class TextureEncoder(nn.Module):
         self.texture_flow = nn.Sequential(
             # input is Z, going into a convolution
             nn.Upsample(scale_factor=4),
-            nn.Conv2d(nf * 8, nf * 8, 3, 1, 1),
-            nn.BatchNorm2d(nf * 8),
-            nn.ReLU(True),
-
+            Conv2dBlock(nf * 8, nf * 8, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf*8) x 8 x 8
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf * 8, nf * 8, 3, 1, 1, padding_mode='reflect'),
-            nn.BatchNorm2d(nf * 8),
-            nn.ReLU(True),
+            Conv2dBlock(nf * 8, nf * 8, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf*4) x 16 x 16
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf * 8, nf * 4, 3, 1, 1, padding_mode='reflect'),
-            nn.BatchNorm2d(nf * 4),
-            nn.ReLU(True),
+            Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf*2) x 32 x 32
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf * 4, nf * 2, 3, 1, 1, padding_mode='reflect'),
-            nn.BatchNorm2d(nf * 2),
-            nn.ReLU(True),
+            Conv2dBlock(nf * 4, nf * 2, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 64 x 64
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf * 2, nf * 2, 3, 1, 1, padding_mode='reflect'),
-            nn.BatchNorm2d(nf * 2),
-            nn.ReLU(True),
+            Conv2dBlock(nf * 2, nf * 2, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 128 x 128
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf * 2, nf, 3, 1, 1, padding_mode='reflect'),
-            nn.BatchNorm2d(nf),
-            nn.ReLU(True),
+            Conv2dBlock(nf * 2, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 256 x 256
             nn.Upsample(scale_factor=2),
             nn.Conv2d(nf, 2, 3, 1, 1, padding_mode='reflect'),
@@ -351,22 +338,6 @@ class TextureEncoder(nn.Module):
             # nn.Conv2d(nf, 2, 5, 1, 2, padding_mode='reflect'),
             nn.Tanh()
         )
-
-    def convblock(self, indim, outdim, ker, stride, pad):
-        block2 = [
-            nn.Conv2d(indim, outdim, ker, stride, pad),
-            nn.BatchNorm2d(outdim),
-            nn.ReLU()
-        ]
-        return block2
-
-    def linearblock(self, indim, outdim):
-        block2 = [
-            nn.Linear(indim, outdim),
-            nn.BatchNorm1d(outdim),
-            nn.ReLU()
-        ]
-        return block2
 
     def forward(self, x):
         img = x[:, :3]
@@ -381,6 +352,105 @@ class TextureEncoder(nn.Module):
         textures = torch.cat([textures, textures_flip], dim=2)
         return textures
 
+class ResBlock(nn.Module):
+    def __init__(self, dim, norm, activation='relu', padding_mode='zero', res_type='basic'):
+        super(ResBlock, self).__init__()
+
+        model = []
+        if res_type=='basic':
+            model += [Conv2dBlock(dim ,dim, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim ,dim, 3, 1, 1, norm=norm, activation='none', padding_mode=padding_mode)]
+        elif res_type=='slim':
+            dim_half = dim//2
+            model += [Conv2dBlock(dim ,dim_half, 1, 1, 0, norm='in', activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim, 1, 1, 0, norm='in', activation='none', padding_mode=padding_mode)]
+        else:
+            ('unkown block type')
+        self.res_type = res_type
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        residual = x
+        out = self.model(x)
+        out += residual
+        return out
+
+class Conv2dBlock(nn.Module):
+    def __init__(self, input_dim ,output_dim, kernel_size, stride,
+                 padding=0, norm='none', activation='relu', padding_mode='zero', dilation=1, fp16 = False):
+        super(Conv2dBlock, self).__init__()
+        self.use_bias = True
+
+        # initialize normalization
+        norm_dim = output_dim
+        if norm == 'bn':
+            self.norm = nn.BatchNorm2d(norm_dim)
+        elif norm == 'in':
+            self.norm = nn.InstanceNorm2d(norm_dim)
+        elif norm == 'ln':
+            self.norm = LayerNorm(norm_dim, fp16 = fp16)
+        elif norm == 'adain':
+            self.norm = AdaptiveInstanceNorm2d(norm_dim)
+        elif norm == 'none' or norm == 'sn':
+            self.norm = None
+        else:
+            assert 0, "Unsupported normalization: {}".format(norm)
+
+        # initialize activation
+        if activation == 'relu':
+            self.activation = nn.ReLU(inplace=True)
+        elif activation == 'lrelu':
+            self.activation = nn.LeakyReLU(0.2, inplace=True)
+        elif activation == 'prelu':
+            self.activation = nn.PReLU()
+        elif activation == 'selu':
+            self.activation = nn.SELU(inplace=True)
+        elif activation == 'tanh':
+            self.activation = nn.Tanh()
+        elif activation == 'none':
+            self.activation = None
+        else:
+            assert 0, "Unsupported activation: {}".format(activation)
+
+        # initialize convolution
+        self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, padding_mode=padding_mode, dilation=dilation, bias=self.use_bias)
+
+    def forward(self, x):
+        x = self.conv(x)
+        if self.norm:
+            x = self.norm(x)
+        if self.activation:
+            x = self.activation(x)
+        return x
+
+class LayerNorm(nn.Module):
+    def __init__(self, num_features, eps=1e-5, affine=True, fp16=False):
+        super(LayerNorm, self).__init__()
+        self.num_features = num_features
+        self.affine = affine
+        self.eps = eps
+        self.fp16 = fp16
+        if self.affine:
+            self.gamma = nn.Parameter(torch.Tensor(num_features).uniform_())
+            self.beta = nn.Parameter(torch.zeros(num_features))
+    def forward(self, x):
+        shape = [-1] + [1] * (x.dim() - 1)
+        if x.type() == 'torch.cuda.HalfTensor': # For Safety
+            mean = x.view(-1).float().mean().view(*shape)
+            std = x.view(-1).float().std().view(*shape)
+            mean = mean.half()
+            std = std.half()
+        else:
+            mean = x.view(x.size(0), -1).mean(1).view(*shape)
+            std = x.view(x.size(0), -1).std(1).view(*shape)
+
+        x = (x - mean) / (std + self.eps)
+        if self.affine:
+            shape = [1, -1] + [1] * (x.dim() - 2)
+            x = x * self.gamma.view(*shape) + self.beta.view(*shape)
+        return x
 
 # class FeatEncoder(nn.Module):
 #     """
