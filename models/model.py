@@ -64,11 +64,11 @@ class CameraEncoder(nn.Module):
         self.dist_min = float(dist_range[0])
         self.dist_max = float(dist_range[1])
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=2)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
-        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=2)
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
+        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2)
+        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
+        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
+        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
 
         avgpool = nn.AdaptiveAvgPool2d(1)
 
@@ -138,11 +138,11 @@ class ShapeEncoder(nn.Module):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=2)
-        #block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)        
-        #block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
-        #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
-        #block5 = Conv2dBlock(256, 512, nk, stride=2, padding=2)
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
+        #block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2)        
+        #block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
+        #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
+        #block5 = Conv2dBlock(256, 512, nk, stride=2, padding=nk//2)
         block2 = [ResBlock_half(32), ResBlock(64)]
         block3 = [ResBlock_half(64), ResBlock(128)]
         block4 = [ResBlock_half(128), ResBlock(256)]
@@ -201,11 +201,11 @@ class LightEncoder(nn.Module):
     def __init__(self, nc, nk):
         super(LightEncoder, self).__init__()
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=2)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=2)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=2)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=2)
-        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=2)
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
+        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2)
+        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
+        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
+        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
 
         avgpool = nn.AdaptiveAvgPool2d(1)
 
