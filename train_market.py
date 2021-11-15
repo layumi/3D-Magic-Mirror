@@ -108,12 +108,12 @@ if __name__ == '__main__':
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize)
+    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = 2) #for market
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf)
+                            nc=4, nk=opt.nk, nf=opt.nf, ratio=2) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
@@ -239,6 +239,7 @@ if __name__ == '__main__':
 
                 # interpolated 3D attributes render images, and update Ai
                 Xir, Ai = diffRender.render(**Ai)
+                print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
                 Aire = netE(Xir.detach().clone())
                 # render again to update predicted 3D Aire 

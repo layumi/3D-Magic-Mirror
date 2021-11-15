@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from torchvision import models
+from models.utils import weights_init, weights_init_classifier
 import math
 
 def normalize_batch(batch):
@@ -10,6 +11,28 @@ def normalize_batch(batch):
     mean = batch.new_tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
     std = batch.new_tensor([0.229, 0.224, 0.225]).view(-1, 1, 1)
     return (batch - mean) / std
+
+######################################################################
+class MMPool(nn.Module):
+    # MMPool zhedong zheng
+    def __init__(self, dim = 1, p=0., eps=1e-6):
+        super(MMPool,  self).__init__()
+        self.p = nn.Parameter(torch.ones(dim)*p, requires_grad = True) #initial p
+        self.eps = eps
+        self.dim = dim
+    def forward(self, x):
+        return self.mmpool(x, p=self.p, eps=self.eps)
+
+    def mmpool(self, x, p, eps):
+        s = x.shape
+        x_max = torch.nn.functional.adaptive_max_pool2d(x, output_size=(1,1))
+        x_avg = torch.nn.functional.adaptive_avg_pool2d(x, output_size=(1,1))
+        w = torch.sigmoid(self.p)
+        x = x_max*w + x_avg*(1-w)
+        return x
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(' + 'p=' + '{:.4f}'.format(self.p.data.tolist()[0]) + ', ' + 'eps=' + str(self.eps) + ',' + 'dim='+str(self.dim)+')'
 
 
 # VGG architecter, used for the perceptual loss using a pretrained VGG network
@@ -70,7 +93,8 @@ class CameraEncoder(nn.Module):
         block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
         block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
 
-        avgpool = nn.AdaptiveAvgPool2d(1)
+        #avgpool = nn.AdaptiveAvgPool2d(1)
+        avgpool = MMPool()
 
         linear1 = self.linearblock(128, 64)
         linear2 = self.linearblock(64, 32)
@@ -84,12 +108,9 @@ class CameraEncoder(nn.Module):
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
-        for m in self.modules():
-            if isinstance(m, nn.ConvTranspose2d) \
-            or isinstance(m, nn.Linear) \
-            or isinstance(object, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)
-                nn.init.normal_(m.weight, mean=0, std=0.001)
+        self.encoder1.apply(weights_init)
+        self.encoder2.apply(weights_init)
+        self.linear3.apply(weights_init_classifier)
 
         # Free some memory
         del all_blocks, block1, block2, block3, \
@@ -144,11 +165,12 @@ class ShapeEncoder(nn.Module):
         #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
         #block5 = Conv2dBlock(256, 512, nk, stride=2, padding=nk//2)
         block2 = [ResBlock_half(32), ResBlock(64)]
-        block3 = [ResBlock_half(64), ResBlock(128)]
-        block4 = [ResBlock_half(128), ResBlock(256)]
+        block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]
+        block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)]
         block5 = [ResBlock_half(256), ResBlock(512)]
 
-        avgpool = nn.AdaptiveAvgPool2d(1)
+        #avgpool = nn.AdaptiveAvgPool2d(1)
+        avgpool = MMPool()
 
         linear1 = self.linearblock(512, 512)
         linear2 = self.linearblock(512, 1024)
@@ -162,12 +184,9 @@ class ShapeEncoder(nn.Module):
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
-        for m in self.modules():
-            if isinstance(m, nn.ConvTranspose2d) \
-            or isinstance(m, nn.Linear) \
-            or isinstance(object, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)
-                nn.init.normal_(m.weight, mean=0, std=0.001)
+        self.encoder1.apply(weights_init)
+        self.encoder2.apply(weights_init)
+        self.linear3.apply(weights_init_classifier)
 
         # Free some memory
         del all_blocks, block1, block2, block3, linear1, linear2
@@ -207,7 +226,8 @@ class LightEncoder(nn.Module):
         block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
         block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
 
-        avgpool = nn.AdaptiveAvgPool2d(1)
+        #avgpool = nn.AdaptiveAvgPool2d(1)
+        avgpool = MMPool()
 
         linear1 = self.linearblock(128, 32)
         linear2 = self.linearblock(32, 32)
@@ -221,12 +241,9 @@ class LightEncoder(nn.Module):
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
-        for m in self.modules():
-            if isinstance(m, nn.ConvTranspose2d) \
-            or isinstance(m, nn.Linear) \
-            or isinstance(object, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)
-                nn.init.normal_(m.weight, mean=0, std=0.001)
+        self.encoder1.apply(weights_init)
+        self.encoder2.apply(weights_init)
+        self.linear3.apply(weights_init_classifier)
 
         # Free some memory
         del all_blocks, block1, block2, block3, linear1, linear2
@@ -258,23 +275,27 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1 ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
 
-        block1 = Conv2dBlock(nc, nf//2, nk, 2, 2, norm='bn')
-        block2 = Conv2dBlock(nf//2, nf, nk, 2, 2, norm='bn')
-        block3 = Conv2dBlock(nf, nf * 2, nk, 2, 2, norm='bn')
-        block4 = Conv2dBlock(nf * 2, nf * 4, nk, 2, 2, norm='bn')
-        block5 = Conv2dBlock(nf * 4, nf * 8, nk, 2, 2, norm='bn')
+        block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn')
+        #block2 = Conv2dBlock(nf//2, nf, nk, 2, 2, norm='bn')
+        #block3 = Conv2dBlock(nf, nf * 2, nk, 2, 2, norm='bn')
+        #block4 = Conv2dBlock(nf * 2, nf * 4, nk, 2, 2, norm='bn')
+        #block5 = Conv2dBlock(nf * 4, nf * 8, nk, 2, 2, norm='bn')
+        block2 = [ResBlock_half(32), ResBlock(64)]
+        block3 = [ResBlock_half(64), ResBlock(128)]
+        block4 = [ResBlock_half(128), ResBlock(256)]
+        block5 = [ResBlock_half(256), ResBlock(512)]
+        #avgpool = nn.AdaptiveAvgPool2d(1)
+        avgpool = MMPool()
 
-        avgpool = nn.AdaptiveAvgPool2d(1)
-
-        linear1 = Conv2dBlock(nf * 8, nf * 16, 1, 1, 0, norm='bn')
-        linear2 = Conv2dBlock(nf * 16, nf * 8, 1, 1, 0, norm='bn', activation = 'none')
+        linear1 = Conv2dBlock(512, nf * 8, 1, 1, 0, norm='bn')
+        linear2 = Conv2dBlock(nf * 8, nf * 8, 1, 1, 0, norm='bn', activation = 'none')
 
         #################################################
-        all_blocks = [block1, block2, block3, block4, block5, avgpool]
+        all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
         #model_ft = Resnet50_4C()
         #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
@@ -282,17 +303,9 @@ class TextureEncoder(nn.Module):
         all_blocks = [linear1, linear2]
         self.encoder2 = nn.Sequential(*all_blocks)
 
-        # Initialize with Xavier Glorot
-        for m in self.modules():
-            if isinstance(m, nn.ConvTranspose2d) \
-            or isinstance(m, nn.Linear) \
-            or isinstance(object, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)
-                nn.init.normal_(m.weight, mean=0, std=0.001)
-
         self.texture_flow = nn.Sequential(
             # input is Z, going into a convolution
-            nn.Upsample(scale_factor=4),
+            nn.Upsample(scale_factor=(4*ratio, 4) ),
             Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='reflect'),
             #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
             # state size. (nf*8) x 8 x 8
@@ -319,15 +332,20 @@ class TextureEncoder(nn.Module):
             nn.Tanh()
         )
 
+        # Initialize with Xavier Glorot
+        self.encoder1.apply(weights_init)
+        self.encoder2.apply(weights_init)
+        self.texture_flow.apply(weights_init)
+        self.texture_flow[-2].apply(weights_init_classifier)
+
     def forward(self, x):
         img = x[:, :3]
         batch_size = x.shape[0]
         x = self.encoder1(x)
         x = x.view(batch_size, -1, 1, 1)
         x = self.encoder2(x) # 32x256x1x1
-        uv_sampler = self.texture_flow(x).permute(0, 2, 3, 1) # 32 x4x4x2
-        textures = F.grid_sample(img, uv_sampler) # 32 x 3 x4x4
-
+        uv_sampler = self.texture_flow(x).permute(0, 2, 3, 1) # 32 x128x128x2
+        textures = F.grid_sample(img, uv_sampler, align_corners=True) # 32 x 3 x128x128
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
         return textures
@@ -477,48 +495,3 @@ class LayerNorm(nn.Module):
             x = x * self.gamma.view(*shape) + self.beta.view(*shape)
         return x
 
-# class FeatEncoder(nn.Module):
-#     """
-#     output 3 levels of features using a FPN structure
-#     """
-#     def __init__(self, nc, nf):
-#         super(FeatEncoder, self).__init__()
-
-#         self.conv0 = nn.Sequential(
-#                         ConvBnReLU(nc, nf, 3, 1, 1),
-#                         ConvBnReLU(nf, nf, 3, 1, 1))
-
-#         self.conv1 = nn.Sequential(
-#                         ConvBnReLU(nf, 2*nf, 5, 2, 2),
-#                         ConvBnReLU(2*nf, 2*nf, 3, 1, 1))
-
-#         self.conv2 = nn.Sequential( 
-#                         ConvBnReLU(2*nf, 4*nf, 5, 2, 2),
-#                         ConvBnReLU(4*nf, 4*nf, 3, 1, 1))
-
-#         self.toplayer = nn.Conv2d(4*nf, 4*nf, 1)
-#         self.lat1 = nn.Conv2d(2*nf, 4*nf, 1)
-#         self.lat0 = nn.Conv2d(nf, 4*nf, 1)
-
-#         # to reduce channel size of the outputs from FPN
-#         self.smooth1 = nn.Conv2d(4*nf, 2*nf, 3, padding=1)
-#         self.smooth0 = nn.Conv2d(4*nf, nf, 3, padding=1)
-        
-
-#     def _upsample_add(self, x, y):
-#         return F.interpolate(x, scale_factor=2, 
-#                              mode="bilinear", align_corners=True) + y
-
-#     def forward(self, x):
-#         # x: (B, 3, H, W)
-#         conv0 = self.conv0(x) # (B, 8, H, W)
-#         conv1 = self.conv1(conv0) # (B, 16, H//2, W//2)
-#         conv2 = self.conv2(conv1) # (B, 32, H//4, W//4)
-#         feat2 = self.toplayer(conv2) # (B, 32, H//4, W//4)
-#         feat1 = self._upsample_add(feat2, self.lat1(conv1)) # (B, 32, H//2, W//2)
-#         feat0 = self._upsample_add(feat1, self.lat0(conv0)) # (B, 32, H, W)
-
-#         # reduce output channels
-#         feat1 = self.smooth1(feat1) # (B, 16, H//2, W//2)
-#         feat0 = self.smooth0(feat0) # (B, 8, H, W)
-#         return feat0

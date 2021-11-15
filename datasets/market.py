@@ -76,28 +76,28 @@ class MarketDataset(data.Dataset):
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 seg = seg.transpose(Image.FLIP_LEFT_RIGHT)
 
-            h = random.randint(int(0.90 * H), int(0.99 * H))
-            w = random.randint(int(0.90 * W), int(0.99 * W))
-            left = random.randint(0, W-w)
-            upper = random.randint(0, H-h)
-            right = random.randint(w - left, W)
-            lower = random.randint(h - upper, H)
-            img = img.crop((left, upper, right, lower))
-            seg = seg.crop((left, upper, right, lower))
+            #h = random.randint(int(0.90 * H), int(0.99 * H))
+            #w = random.randint(int(0.90 * W), int(0.99 * W))
+            #left = random.randint(0, W-w)
+            #upper = random.randint(0, H-h)
+            #right = random.randint(w - left, W)
+            #lower = random.randint(h - upper, H)
+            #img = img.crop((left, upper, right, lower))
+            #seg = seg.crop((left, upper, right, lower))
 
-        # make a square 512x512
-        W, H = img.size
-        desired_size = max(W, H)
-        delta_w = desired_size - W
-        delta_h = desired_size - H
-        padding = (delta_w//2, delta_h//2, delta_w-(delta_w//2), delta_h-(delta_h//2))
+        ###### make a square 512x512
+        #W, H = img.size
+        #desired_size = max(W, H)
+        #delta_w = desired_size - W
+        #delta_h = desired_size - H
+        #padding = (delta_w//2, delta_h//2, delta_w-(delta_w//2), delta_h-(delta_h//2))
 
-        img = ImageOps.expand(img, padding)
-        seg = ImageOps.expand(seg, padding)
+        #img = ImageOps.expand(img, padding)
+        #seg = ImageOps.expand(seg, padding)
 
-        # resize 128x128 (the effective part is 128x64)
-        img = img.resize((target_height, target_width))
-        seg = seg.resize((target_height, target_width))
+        # resize 128x64 (the effective part is 128x64)
+        img = img.resize((target_height, target_width*2))
+        seg = seg.resize((target_height, target_width*2))
         seg = seg.point(lambda p: p > 160 and 255)
 
         #edge = seg.filter(ImageFilter.FIND_EDGES)

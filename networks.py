@@ -9,6 +9,7 @@ from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
+from models.utils import weights_init, weights_init_classifier
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
 
@@ -134,11 +135,13 @@ def deep_copy(att, index=None, detach=False):
 
 
 class DiffRender(object):
-    def __init__(self, mesh, image_size):
+    def __init__(self, mesh, image_size, ratio=1):
         self.image_size = image_size
+        self.ratio = ratio
         # camera projection matrix
         camera_fovy = np.arctan(1.0 / 2.5) * 2
-        self.cam_proj = generate_perspective_projection(camera_fovy, ratio=image_size/image_size)
+        # here ratio=width/height
+        self.cam_proj = generate_perspective_projection(camera_fovy, ratio=1/ratio)
 
         # https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/dibr_tutorial.ipynb
         # get vertices_init
@@ -246,7 +249,7 @@ class DiffRender(object):
         ]
 
         image_features, soft_mask, face_idx = dibr_rasterization(
-            self.image_size, self.image_size, face_vertices_camera[:, :, :, -1],
+            self.ratio*self.image_size, self.image_size, face_vertices_camera[:, :, :, -1],
             face_vertices_image, face_attributes, face_normals[:, :, -1])
 
         # image_features is a tuple in composed of the interpolated attributes of face_attributes
@@ -371,14 +374,14 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init # (1, V, 3) in [-1,1]
 
         self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range)
         self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices)
-        self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices)
+        self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, ratio = ratio)
         self.light_enc = LightEncoder(nc=nc, nk=nk)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.feat_enc = VGG19()
@@ -418,21 +421,3 @@ class AttributeEncoder(nn.Module):
         }
         return attributes
 
-# custom weights initialization called on netE and netD
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in') # For old pytorch, you may use kaiming_normal.
-    elif classname.find('Linear') != -1:
-        init.kaiming_normal_(m.weight.data, a=0, mode='fan_out')
-    elif classname.find('BatchNorm') != -1:
-        init.normal_(m.weight.data, 1.0, 0.02)
-    if hasattr(m, 'bias') and m.bias is not None:
-        init.constant_(m.bias.data, 0.0)
-
-def weights_init_classifier(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        init.normal_(m.weight.data, std=0.1)
-    if hasattr(m, 'bias') and m.bias is not None:
-        init.constant_(m.bias.data, 0.0)

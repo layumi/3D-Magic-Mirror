@@ -141,6 +141,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
     return gradient_penalty
 
 
+
 # def calc_fid():
 #     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
 #         Xa = Variable(data['data']['images']).cuda()
