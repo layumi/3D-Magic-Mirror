@@ -328,7 +328,7 @@ class TextureEncoder(nn.Module):
             Conv2dBlock(nf, nf//2, 3, 1, 1, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 256 x 256
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf//2, 2, 3, 1, 1, norm='none', padding_mode='reflect', activation = 'none'),
+            nn.Conv2d(nf//2, 2, 3, 1, 1, padding_mode='reflect'),
             nn.Tanh()
         )
 
@@ -336,7 +336,7 @@ class TextureEncoder(nn.Module):
         self.encoder1.apply(weights_init)
         self.encoder2.apply(weights_init)
         self.texture_flow.apply(weights_init)
-        self.texture_flow[-2].apply(weights_init_classifier)
+        #self.texture_flow[-2].apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
