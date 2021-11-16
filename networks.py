@@ -8,7 +8,8 @@ import math
 from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
-from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
+#from models.model import TextureEncoder
+from models.model_res import TextureEncoder, VGG19, CameraEncoder, ShapeEncoder, LightEncoder
 from models.utils import weights_init, weights_init_classifier
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
