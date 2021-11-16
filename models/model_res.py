@@ -280,10 +280,10 @@ class TextureEncoder(nn.Module):
         self.num_vertices = num_vertices
 
         block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn')
-        #block2 = Conv2dBlock(nf//2, nf, nk, 2, 2, norm='bn')
-        #block3 = Conv2dBlock(nf, nf * 2, nk, 2, 2, norm='bn')
-        #block4 = Conv2dBlock(nf * 2, nf * 4, nk, 2, 2, norm='bn')
-        #block5 = Conv2dBlock(nf * 4, nf * 8, nk, 2, 2, norm='bn')
+        #block2 = [Conv2dBlock(32, nf, nk, 2, 2, norm='bn')]
+        #block3 = [Conv2dBlock(nf, nf * 2, nk, 2, 2, norm='bn')]
+        #block4 = [Conv2dBlock(nf * 2, nf * 4, nk, 2, 2, norm='bn')]
+        #block5 = [Conv2dBlock(nf * 4, 512, nk, 2, 2, norm='bn')]
         block2 = [ResBlock_half(32), ResBlock(64)]
         block3 = [ResBlock_half(64), ResBlock(128)]
         block4 = [ResBlock_half(128), ResBlock(256)]
@@ -306,18 +306,18 @@ class TextureEncoder(nn.Module):
         self.texture_flow = nn.Sequential(
             # input is Z, going into a convolution
             nn.Upsample(scale_factor=(4*ratio, 4) ),
-            Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='zeros'),
             #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
             # state size. (nf*8) x 8 x 8
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 4, nf * 2, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf * 4, nf * 2, 3, 1, 1, norm='bn', padding_mode='zeros'),
             #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
             # state size. (nf*4) x 16 x 16
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 2, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf * 2, nf, 3, 1, 1, norm='bn', padding_mode='zeros'),
             # state size. (nf*2) x 32 x 32
             nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
+            Conv2dBlock(nf, nf, 3, 1, 1, norm='bn', padding_mode='zeros'),
             #ResBlock(nf, norm='bn', padding_mode='reflect'),
             # state size. (nf) x 64 x 64
             nn.Upsample(scale_factor=2),
@@ -336,7 +336,7 @@ class TextureEncoder(nn.Module):
         self.encoder1.apply(weights_init)
         self.encoder2.apply(weights_init)
         self.texture_flow.apply(weights_init)
-        #self.texture_flow[-2].apply(weights_init_classifier)
+        self.texture_flow[-2].apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
@@ -345,7 +345,8 @@ class TextureEncoder(nn.Module):
         x = x.view(batch_size, -1, 1, 1)
         x = self.encoder2(x) # 32x256x1x1
         uv_sampler = self.texture_flow(x).permute(0, 2, 3, 1) # 32 x256x256x2
-        textures = F.grid_sample(img, uv_sampler, align_corners=True) # 32 x 3 x128x128
+        textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
+
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
         return textures
