@@ -136,8 +136,9 @@ def deep_copy(att, index=None, detach=False):
 
 
 class DiffRender(object):
-    def __init__(self, mesh, image_size, ratio=1):
+    def __init__(self, mesh, image_size, ratio=1, image_weight=0.1):
         self.image_size = image_size
+        self.image_weight = image_weight
         self.ratio = ratio
         # camera projection matrix
         camera_fovy = np.arctan(1.0 / 2.5) * 2
@@ -291,7 +292,7 @@ class DiffRender(object):
         return loss_cam, loss_shape, loss_texture, loss_light
 
     def recon_data(self, pred_data, gt_data):
-        image_weight = 0.1
+        image_weight = self.image_weight
         mask_weight = 1.
 
         pred_img = pred_data[:, :3]

@@ -63,6 +63,7 @@ parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
+parser.add_argument('--image_weight', type=float, default=0.1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="0~30", help='elevation for mkt -15 ~ 15')
@@ -106,7 +107,7 @@ if __name__ == '__main__':
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize)
+    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, image_weight=opt.image_weight)
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
