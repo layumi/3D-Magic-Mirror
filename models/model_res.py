@@ -279,72 +279,69 @@ class TextureEncoder(nn.Module):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
 
-        block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn')
-        #block2 = [Conv2dBlock(32, nf, nk, 2, 2, norm='bn')]
-        #block3 = [Conv2dBlock(nf, nf * 2, nk, 2, 2, norm='bn')]
-        #block4 = [Conv2dBlock(nf * 2, nf * 4, nk, 2, 2, norm='bn')]
-        #block5 = [Conv2dBlock(nf * 4, 512, nk, 2, 2, norm='bn')]
-        block2 = [ResBlock_half(32), ResBlock(64)]
-        block3 = [ResBlock_half(64), ResBlock(128)]
-        block4 = [ResBlock_half(128), ResBlock(256)]
-        block5 = [ResBlock_half(256), ResBlock(512)]
-        #avgpool = nn.AdaptiveAvgPool2d(1)
-        avgpool = MMPool()
-
-        linear1 = Conv2dBlock(512, nf * 8, 1, 1, 0, norm='bn')
-        linear2 = Conv2dBlock(nf * 8, nf * 8, 1, 1, 0, norm='bn', activation = 'none')
+        self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn') # 256 -> 128*128*32
+        self.block2 = nn.Sequential(*[ResBlock_half(32), ResBlock(64)]) # 128 -> 64*64*64
+        self.block3 = nn.Sequential(*[ResBlock_half(64), ResBlock(128)]) # 64->32*32*128
+        self.block4 = nn.Sequential(*[ResBlock_half(128), ResBlock(256)]) # 32 -> 16*16*256
+        self.block5 = nn.Sequential(*[ResBlock_half(256), ResBlock(512)]) # 16-> 8*8*512
+        #avgpool = MMPool()
 
         #################################################
-        all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
-        self.encoder1 = nn.Sequential(*all_blocks)
         #model_ft = Resnet50_4C()
         #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
 
-        all_blocks = [linear1, linear2]
-        self.encoder2 = nn.Sequential(*all_blocks)
+        # 8*8*512
+        up1 = [Conv2dBlock(512, 256, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(256), nn.Upsample(scale_factor=2)]
+        # 16*16*256 + 16*16*256 = 16*16*512
+        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(128), nn.Upsample(scale_factor=2)]
+        # 32*32*128 + 32*32*128 =  32*32*256
+        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(64), nn.Upsample(scale_factor=2)]
+        # 64*64*64 + 64*64*64 = 64*64*128 
+        up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(64), nn.Upsample(scale_factor=2)]
+        # 128*128*64
+        up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(32), nn.Upsample(scale_factor=2)]
+        # 256*256
+        up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='bn', padding_mode='zeros'), nn.Tanh()]
 
-        self.texture_flow = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.Upsample(scale_factor=(4*ratio, 4) ),
-            Conv2dBlock(nf * 8, nf * 4, 3, 1, 1, norm='bn', padding_mode='zeros'),
-            #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
-            # state size. (nf*8) x 8 x 8
-            nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 4, nf * 2, 3, 1, 1, norm='bn', padding_mode='zeros'),
-            #ResBlock(nf * 8, norm='bn', padding_mode='reflect'),
-            # state size. (nf*4) x 16 x 16
-            nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf * 2, nf, 3, 1, 1, norm='bn', padding_mode='zeros'),
-            # state size. (nf*2) x 32 x 32
-            nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf, nf, 3, 1, 1, norm='bn', padding_mode='zeros'),
-            #ResBlock(nf, norm='bn', padding_mode='reflect'),
-            # state size. (nf) x 64 x 64
-            nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf, nf, 3, 1, 1, norm='bn', padding_mode='reflect'),
-            #ResBlock(nf, norm='bn', padding_mode='reflect'),
-            # state size. (nf) x 128 x 128
-            nn.Upsample(scale_factor=2),
-            Conv2dBlock(nf, nf//2, 3, 1, 1, norm='bn', padding_mode='reflect'),
-            # state size. (nf) x 256 x 256
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(nf//2, 2, 3, 1, 1, padding_mode='reflect'),
-            nn.Tanh()
-        )
+        self.up1 = nn.Sequential(*up1)
+        self.up2 = nn.Sequential(*up2)
+        self.up3 = nn.Sequential(*up3)
+        self.up4 = nn.Sequential(*up4)
+        self.up5 = nn.Sequential(*up5)
+        self.up6 = nn.Sequential(*up6)
 
         # Initialize with Xavier Glorot
-        self.encoder1.apply(weights_init)
-        self.encoder2.apply(weights_init)
-        self.texture_flow.apply(weights_init)
-        self.texture_flow[-2].apply(weights_init_classifier)
+        self.block1.apply(weights_init)
+        self.block2.apply(weights_init)
+        self.block3.apply(weights_init)
+        self.block4.apply(weights_init)
+        self.block5.apply(weights_init)
+        self.up1.apply(weights_init)
+        self.up2.apply(weights_init)
+        self.up3.apply(weights_init)
+        self.up4.apply(weights_init)
+        self.up5.apply(weights_init)
+        self.up6.apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
         batch_size = x.shape[0]
-        x = self.encoder1(x)
-        x = x.view(batch_size, -1, 1, 1)
-        x = self.encoder2(x) # 32x256x1x1
-        uv_sampler = self.texture_flow(x).permute(0, 2, 3, 1) # 32 x256x256x2
+        # down
+        x1 = self.block1(x)
+        x2 = self.block2(x1)
+        x3 = self.block3(x2)
+        x4 = self.block4(x3)
+        x5 = self.block5(x4)
+        # up 
+        up1 = self.up1(x5)
+        up2 = self.up2(torch.cat((up1,x4),dim=1))
+        up3 = self.up3(torch.cat((up2,x3),dim=1))
+        up4 = self.up4(torch.cat((up3,x2),dim=1))
+        up5 = self.up5(up4)
+        texture_flow = self.up6(up5)
+        # clear
+        del x1,x2,x3,x4,x5, up1,up2,up3,up4,up5
+        uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
 
         textures_flip = textures.flip([2])
