@@ -301,7 +301,11 @@ class TextureEncoder(nn.Module):
         # 128*128*64
         up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(32), nn.Upsample(scale_factor=2)]
         # 256*256
-        up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='bn', padding_mode='zeros'), nn.Tanh()]
+        up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
+
+        self.makeup = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='bn', padding_mode='zeros'),
+                                      ResBlock(32), ResBlock(32),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros')])
 
         self.up1 = nn.Sequential(*up1)
         self.up2 = nn.Sequential(*up2)
@@ -322,6 +326,8 @@ class TextureEncoder(nn.Module):
         self.up4.apply(weights_init)
         self.up5.apply(weights_init)
         self.up6.apply(weights_init_classifier)
+        self.makeup.apply(weights_init)
+        self.makeup[-1].apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
@@ -343,6 +349,9 @@ class TextureEncoder(nn.Module):
         del x1,x2,x3,x4,x5, up1,up2,up3,up4,up5
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
+
+        # zzd: Here we need a network to make up the hole via reasonable guessing.
+        textures = textures + self.makeup(textures)
 
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
