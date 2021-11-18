@@ -353,7 +353,7 @@ class TextureEncoder(nn.Module):
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
 
         # zzd: Here we need a network to make up the hole via reasonable guessing.
-        if self.makeup
+        if self.makeup:
             textures = self.make(textures)
 
         textures_flip = textures.flip([2])
