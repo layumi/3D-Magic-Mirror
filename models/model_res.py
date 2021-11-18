@@ -275,10 +275,10 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1 ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=False ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
-
+        self.makeup = makeup
         self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn') # 256 -> 128*128*32
         self.block2 = nn.Sequential(*[ResBlock_half(32), ResBlock(64)]) # 128 -> 64*64*64
         self.block3 = nn.Sequential(*[ResBlock_half(64), ResBlock(128)]) # 64->32*32*128
@@ -303,9 +303,11 @@ class TextureEncoder(nn.Module):
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
 
-        self.makeup = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='bn', padding_mode='zeros'),
-                                      ResBlock(32), ResBlock(32),
-                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros')])
+        if self.makeup:
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='zeros'),
+                                      ResBlock(32, norm='in'), ResBlock(32, norm='in'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      nn.Sigmoid()])
 
         self.up1 = nn.Sequential(*up1)
         self.up2 = nn.Sequential(*up2)
@@ -326,8 +328,8 @@ class TextureEncoder(nn.Module):
         self.up4.apply(weights_init)
         self.up5.apply(weights_init)
         self.up6.apply(weights_init_classifier)
-        self.makeup.apply(weights_init)
-        self.makeup[-1].apply(weights_init_classifier)
+        self.make.apply(weights_init)
+        self.make[-2].apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
@@ -351,7 +353,8 @@ class TextureEncoder(nn.Module):
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
 
         # zzd: Here we need a network to make up the hole via reasonable guessing.
-        textures = textures + self.makeup(textures)
+        if self.makeup
+            textures = self.make(textures)
 
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
@@ -378,7 +381,7 @@ class Resnet50_4C(nn.Module):
         return x 
 
 class ResBlock(nn.Module):
-    def __init__(self, dim, norm='bn', activation='relu', padding_mode='zeros', res_type='basic'):
+    def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
         super(ResBlock, self).__init__()
 
         model = []
@@ -403,7 +406,7 @@ class ResBlock(nn.Module):
         return out
 
 class ResBlock_half(nn.Module):
-    def __init__(self, dim, norm='bn', activation='relu', padding_mode='zeros', res_type='basic'):
+    def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
         super(ResBlock_half, self).__init__()
 
         model = []
@@ -429,7 +432,7 @@ class ResBlock_half(nn.Module):
 
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim ,output_dim, kernel_size, stride,
-                 padding=0, norm='none', activation='relu', padding_mode='zeros', dilation=1, fp16 = False):
+                 padding=0, norm='none', activation='lrelu', padding_mode='zeros', dilation=1, fp16 = False):
         super(Conv2dBlock, self).__init__()
         self.use_bias = True
 

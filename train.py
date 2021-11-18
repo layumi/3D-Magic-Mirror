@@ -57,6 +57,7 @@ parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
+parser.add_argument('--makeup', action='store_true', default=False, help='whether makeup texture')
 parser.add_argument('--beta', action='store_true', default=False, help='using beta distribution instead of uniform.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
@@ -112,7 +113,7 @@ if __name__ == '__main__':
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf)
+                            nc=4, nk=opt.nk, nf=opt.nf, makeup=opt.makeup)
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
