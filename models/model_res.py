@@ -328,8 +328,9 @@ class TextureEncoder(nn.Module):
         self.up4.apply(weights_init)
         self.up5.apply(weights_init)
         self.up6.apply(weights_init_classifier)
-        self.make.apply(weights_init)
-        self.make[-2].apply(weights_init_classifier)
+        if self.makeup:
+            self.make.apply(weights_init)
+            self.make[-2].apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
