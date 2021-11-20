@@ -309,8 +309,11 @@ if __name__ == '__main__':
                 Fi = Aire['img_feats']
                 Ve = Ae['visiable_faces']
                 Vi = Aire['visiable_faces']
-                lossR_LC = opt.lambda_lc * (netL(Fe, Le, Ve).mean() + netL(Fi, Li, Vi).mean())
-                
+                if opt.lambda_lc>0:
+                    lossR_LC = opt.lambda_lc * (netL(Fe, Le, Ve).mean() + netL(Fi, Li, Vi).mean())
+                else:
+                    lossR_LC = 0.0
+
                 # overall loss
                 lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC
 
