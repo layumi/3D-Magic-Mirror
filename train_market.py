@@ -58,7 +58,7 @@ parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
-parser.add_argument('--makeup', action='store_true', default=False, help='whether makeup texture')
+parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
 parser.add_argument('--beta', action='store_true', default=False, help='using beta distribution instead of uniform.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
@@ -205,7 +205,7 @@ if __name__ == '__main__':
                 batch_size = Xa.shape[0]
 
                 # encode real
-                Ae = netE(Xa)
+                Ae = netE(Xa, need_feats=(opt.lambda_lc>0))
                 Xer, Ae = diffRender.render(**Ae)
 
                 rand_a = torch.randperm(batch_size)
@@ -246,7 +246,7 @@ if __name__ == '__main__':
                 Xir, Ai = diffRender.render(**Ai)
                 print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
-                Aire = netE(Xir.detach().clone())
+                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
                 # render again to update predicted 3D Aire 
                 _, Aire = diffRender.render(**Aire)
 
@@ -307,17 +307,19 @@ if __name__ == '__main__':
 
                 # symmetry
                 if opt.lambda_sym>0:
-                    Ae_fliplr = netE(fliplr(Xa))
+                    Ae_fliplr = netE(fliplr(Xa), need_feats=False)
                     l_text = torch.pow(Ae_fliplr['textures'] - Ae['textures'], 2).mean()
                     lossR_sym = opt.lambda_sym * l_text
+                else:
+                    lossR_sym = 0.0
                 # landmark consistency
-                Le = Ae['faces_image']
-                Li = Aire['faces_image']
-                Fe = Ae['img_feats']
-                Fi = Aire['img_feats']
-                Ve = Ae['visiable_faces']
-                Vi = Aire['visiable_faces']
                 if opt.lambda_lc>0:
+                    Le = Ae['faces_image']
+                    Li = Aire['faces_image']
+                    Fe = Ae['img_feats']
+                    Fi = Aire['img_feats']
+                    Ve = Ae['visiable_faces']
+                    Vi = Aire['visiable_faces']
                     lossR_LC = opt.lambda_lc * (netL(Fe, Le, Ve).mean() + netL(Fi, Li, Vi).mean())
                 else:
                     lossR_LC = 0.0

@@ -387,11 +387,11 @@ class AttributeEncoder(nn.Module):
         self.light_enc = LightEncoder(nc=nc, nk=nk)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.feat_enc = VGG19()
+        self.feat_enc.eval()
 
-    def forward(self, x):
-        device = x.device
-        batch_size = x.shape[0]
-        input_img = x
+    def forward(self, input_img, need_feats=True):
+        device = input_img.device
+        batch_size = input_img.shape[0]
 
         # cameras
         cameras = self.camera_enc(input_img) 
@@ -406,10 +406,11 @@ class AttributeEncoder(nn.Module):
         lights = self.light_enc(input_img) # 32x9
 
         # image feat
-        with torch.no_grad():
-            self.feat_enc.eval()
-            img_feats = self.feat_enc(input_img) # 32x256x32x32
-        
+        if need_feats:
+            with torch.no_grad():
+                img_feats = self.feat_enc(input_img) # 32x256x32x32
+        else:
+            img_feats = None
         # others
         attributes = {
         'azimuths': azimuths,

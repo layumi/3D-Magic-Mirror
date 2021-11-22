@@ -275,7 +275,7 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=False ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0 ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
@@ -303,11 +303,27 @@ class TextureEncoder(nn.Module):
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
 
-        if self.makeup:
+        if self.makeup==1:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='zeros'),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       nn.Sigmoid()])
+        elif self.makeup==2:
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='bn', padding_mode='zeros'),
+                                      ResBlock(32, norm='bn'), ResBlock(32, norm='bn'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      nn.Sigmoid()])
+        elif self.makeup==3:
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='ln', padding_mode='zeros'),
+                                      ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      nn.Sigmoid()])
+        elif self.makeup==4:
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='none', padding_mode='zeros'),
+                                      ResBlock(32, norm='none'), ResBlock(32, norm='none'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      nn.Sigmoid()])
+
 
         self.up1 = nn.Sequential(*up1)
         self.up2 = nn.Sequential(*up2)
