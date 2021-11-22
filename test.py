@@ -32,6 +32,8 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 # import from folder
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
+from datasets.market import MarketDataset
+from datasets.atr import ATRDataset
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
@@ -66,6 +68,7 @@ parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
 parser.add_argument('--image_weight', type=float, default=0.1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
+parser.add_argument('--threshold', type=float, default=0.36, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="0~30", help='elevation for mkt -15 ~ 15')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
@@ -99,6 +102,11 @@ opt.nk = config['nk']
 opt.nf = config['nf']
 opt.niter = config['niter']
 opt.makeup = config['makeup']
+opt.azi_scope = config['azi_scope']
+opt.elev_range = config['elev_range']
+opt.dist_range = config['dist_range']
+if 'threshold' in config:
+    opt.threshold = config['threshold']
 
 if torch.cuda.is_available():
     cudnn.benchmark = True
@@ -211,7 +219,7 @@ if __name__ == '__main__':
             Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
             Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
 
-            Ai90['azimuths'] = 90.0 
+            Ai90['azimuths'] += 90.0
 
             Xir, Ai = diffRender.render(**Ai)
             Xir2, Ai2 = diffRender.render(**Ai2)
@@ -241,7 +249,9 @@ if __name__ == '__main__':
                 output_Xa.save(ori_path, 'JPEG', quality=100)
     print('Distance max: {}\nmin: {}\navg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists)))
     print('Elevations max: {}\nmin: {}\navg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations)))
-    #fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 32, True)
-    #print('Test recon fid: %0.2f' % fid_recon ) 
-    #fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
-    #print('Test rotation fid: %0.2f' %  fid_inter)
+    fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 32, True)
+    print('Test side fid: %0.2f' % fid_90 ) 
+    fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 32, True)
+    print('Test recon fid: %0.2f' % fid_recon ) 
+    fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
+    print('Test rotation fid: %0.2f' %  fid_inter)
