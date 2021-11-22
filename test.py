@@ -115,14 +115,17 @@ if "MKT" in opt.name:
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold)
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold)
     print('Market-1501')
+    ratio = 2
 elif "ATR" in opt.name:
     train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True)
     test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False)
     print('ATR-human')
+    ratio = 1
 else:
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
     test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
     print('CUB')
+    ratio = 1
 
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
@@ -139,7 +142,7 @@ if __name__ == '__main__':
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, image_weight=opt.image_weight)
+    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = ratio, image_weight=opt.image_weight)
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
