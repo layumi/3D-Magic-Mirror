@@ -175,10 +175,12 @@ if __name__ == '__main__':
     ori_dir = os.path.join(opt.outf, 'fid/ori')
     rec_dir = os.path.join(opt.outf, 'fid/rec')
     inter_dir = os.path.join(opt.outf, 'fid/inter')
+    inter90_dir = os.path.join(opt.outf, 'fid/inter90')
     ckpt_dir = os.path.join(opt.outf, 'ckpts')
     os.makedirs(ori_dir, exist_ok=True)
     os.makedirs(rec_dir, exist_ok=True)
     os.makedirs(inter_dir, exist_ok=True)
+    os.makedirs(inter90_dir, exist_ok=True)
     os.makedirs(ckpt_dir, exist_ok=True)
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
@@ -454,12 +456,15 @@ if __name__ == '__main__':
 
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
+                    Ai90 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai2['azimuths'] = Ai['azimuths'] + 90.0
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
+                    Ai90['azimuths'] += 90.0
 
                     Xir, Ai = diffRender.render(**Ai)
                     Xir2, Ai2 = diffRender.render(**Ai2)
+                    Xir90, Ai90 = diffRender.render(**Ai90)
 
                     for i in range(len(paths)):
                         path = paths[i]
@@ -476,6 +481,10 @@ if __name__ == '__main__':
                         output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
                         output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
+                        inter90_path = os.path.join(inter90_dir, image_name)
+                        output_Xir90 = to_pil_image(Xir90[i, :3].detach().cpu())
+                        output_Xir90.save(inter90_path, 'JPEG', quality=100)
+
                         ori_path = os.path.join(ori_dir, image_name)
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                         output_Xa.save(ori_path, 'JPEG', quality=100)
@@ -486,7 +495,11 @@ if __name__ == '__main__':
             fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
             print('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
+            fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 32, True)
+            print('Epoch %03d Test rotat90 fid: %0.2f' % (epoch, fid_90))
+            summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
             with open(output_txt, 'a') as fp:
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
+                fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
             netE.train()
