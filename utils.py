@@ -7,6 +7,12 @@ import numpy as np
 import torch.autograd as autograd
 from torch.autograd import Variable
 
+def fliplr(img):
+    '''flip horizontal'''
+    inv_idx = torch.arange(img.size(3)-1,-1,-1).long().cuda()  # N x C x H x W
+    img_flip = img.index_select(3,inv_idx)
+    return img_flip
+
 class Timer:
     def __init__(self, msg):
         self.msg = msg

@@ -33,7 +33,7 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
-from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
@@ -64,6 +64,7 @@ parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter'
 parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
+parser.add_argument('--lambda_sym', type=float, default=0.0, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
 parser.add_argument('--image_weight', type=float, default=0.1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
@@ -198,7 +199,7 @@ if __name__ == '__main__':
                 # (1) Update D network
                 ###########################
                 optimizerD.zero_grad()
-                Xa = Variable(data['data']['images']).cuda()
+                Xa = Variable(data['data']['images']).cuda().detach()
 
                 #Ea = Variable(data['data']['edge']).cuda()
                 batch_size = Xa.shape[0]
@@ -304,6 +305,11 @@ if __name__ == '__main__':
                 loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
 
+                # symmetry
+                if opt.lambda_sym>0:
+                    Ae_fliplr = netE(fliplr(Xa))
+                    l_text = torch.pow(Ae_fliplr['textures'] - Ae['textures'], 2).mean()
+                    lossR_sym = opt.lambda_sym * l_text
                 # landmark consistency
                 Le = Ae['faces_image']
                 Li = Aire['faces_image']
@@ -317,7 +323,7 @@ if __name__ == '__main__':
                     lossR_LC = 0.0
 
                 # overall loss
-                lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC
+                lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC + lossR_sym
 
                 lossR *= warm_up
                 lossR.backward()
@@ -327,11 +333,11 @@ if __name__ == '__main__':
                 print('[%d/%d][%d/%d]\n'
                 'LossD: %.4f lossD_real: %.4f lossD_fake: %.4f lossD_gp: %.4f\n'
                 'lossR: %.4f lossR_fake: %.4f lossR_reg: %.4f lossR_data: %.4f '
-                'lossR_IC: %.4f \n'
+                'lossR_IC: %.4f lossR_sym: %.4f \n'
                     % (epoch, opt.niter, iter, len(train_dataloader),
                         lossD, lossD_real, lossD_fake, lossD_gp,
                         lossR, lossR_fake, lossR_reg, lossR_data,
-                        lossR_IC
+                        lossR_IC, lossR_sym
                         )
                 )
         schedulerD.step()
