@@ -103,8 +103,18 @@ opt.makeup = config['makeup']
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
-train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
-test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
+if "MKT" in opt.name:
+    train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold)
+    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold)
+    print('Market-1501')
+elif "ATR" in opt.name:
+    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True)
+    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False)
+    print('ATR-human')
+else:
+    train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
+    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
+    print('CUB')
 
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
@@ -169,10 +179,12 @@ if __name__ == '__main__':
     ori_dir = os.path.join(opt.outf, 'fid/ori')
     rec_dir = os.path.join(opt.outf, 'fid/rec')
     inter_dir = os.path.join(opt.outf, 'fid/inter')
+    inter90_dir = os.path.join(opt.outf, 'fid/inter90')
     ckpt_dir = os.path.join(opt.outf, 'ckpts')
     os.makedirs(ori_dir, exist_ok=True)
     os.makedirs(rec_dir, exist_ok=True)
     os.makedirs(inter_dir, exist_ok=True)
+    os.makedirs(inter90_dir, exist_ok=True)
     os.makedirs(ckpt_dir, exist_ok=True)
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
@@ -194,12 +206,16 @@ if __name__ == '__main__':
 
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)
+            Ai90 = deep_copy(Ae)
             Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
             Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
             Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
 
+            Ai90['azimuths'] = 90.0 
+
             Xir, Ai = diffRender.render(**Ai)
             Xir2, Ai2 = diffRender.render(**Ai2)
+            Xir90, Ai90 = diffRender.render(**Ai90)
                     
             for i in range(len(paths)):
                 path = paths[i]
@@ -215,6 +231,10 @@ if __name__ == '__main__':
                 inter_path2 = os.path.join(inter_dir, '2+'+image_name)
                 output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
                 output_Xir2.save(inter_path2, 'JPEG', quality=100)
+
+                inter90_path = os.path.join(inter90_dir, image_name)
+                output_Xir90 = to_pil_image(Xir90[i, :3].detach().cpu())
+                output_Xir90.save(inter90_path, 'JPEG', quality=100)
 
                 ori_path = os.path.join(ori_dir, image_name)
                 output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
