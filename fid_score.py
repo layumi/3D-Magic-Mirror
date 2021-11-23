@@ -73,7 +73,7 @@ def imread(filename):
 
 
 def get_activations(files, model, batch_size=50, dims=2048,
-                    cuda=False, verbose=False):
+                    cuda=True, verbose=False):
     """Calculates the activations of the pool_3 layer for all images.
 
     Params:

@@ -209,15 +209,15 @@ if __name__ == '__main__':
                 Ae = netE(Xa, need_feats=(opt.lambda_lc>0))
                 Xer, Ae = diffRender.render(**Ae)
 
-                rand_a = torch.randperm(batch_size)
-                rand_b = torch.randperm(batch_size)
-                Aa = deep_copy(Ae, rand_a)
-                Ab = deep_copy(Ae, rand_b)
-
                 # hard
                 if opt.hard:
                     Ai90 = deep_copy(Ae)
                     Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(60, 120).cuda()
+
+                rand_a = torch.randperm(batch_size)
+                rand_b = torch.randperm(batch_size)
+                Aa = deep_copy(Ae, rand_a)
+                Ab = deep_copy(Ae, rand_b)
                 Ai = {}
 
                 # linearly interpolate 3D attributes
@@ -506,13 +506,13 @@ if __name__ == '__main__':
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                         output_Xa.save(ori_path, 'JPEG', quality=100)
 
-            fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 32, True)
+            fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
             print('Epoch %03d Test recon fid: %0.2f' % (epoch, fid_recon) ) 
             summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch)
-            fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
+            fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
             print('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
-            fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 32, True)
+            fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
             print('Epoch %03d Test rotat90 fid: %0.2f' % (epoch, fid_90))
             summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
             with open(output_txt, 'a') as fp:
