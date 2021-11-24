@@ -59,7 +59,7 @@ parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
 parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
-parser.add_argument('--beta', action='store_true', default=False, help='using beta distribution instead of uniform.')
+parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
 parser.add_argument('--hard', action='store_true', default=False, help='using Xir90 instead of Xer.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
@@ -72,6 +72,7 @@ parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
+parser.add_argument('--hard_range', type=int, default=60, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
 opt = parser.parse_args()
@@ -187,14 +188,16 @@ if __name__ == '__main__':
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
-    init_beta = 0.2
     warm_up = 0.1 # We start from the 0.1*lrRate
-    warm_iteration = len(train_dataloader)*opt.warm_epoch # first 5 epoch
+    warm_up_ic = 0.1 # We start from the 0.1*lrRate for ic loss
+    warm_iteration = len(train_dataloader)*opt.warm_epoch # first 20 epoch
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
         for iter, data in enumerate(train_dataloader):
-            if epoch<opt.warm_epoch:
+            if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
+            if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
+                warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
@@ -212,7 +215,7 @@ if __name__ == '__main__':
                 # hard
                 if opt.hard:
                     Ai90 = deep_copy(Ae)
-                    Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(60, 120).cuda()
+                    Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
 
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
@@ -223,13 +226,8 @@ if __name__ == '__main__':
                 # linearly interpolate 3D attributes
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
-                    if opt.beta:
-                        beta = min(1.0, init_beta + 0.8*epoch/40)
-                        alpha_camera = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).cuda()
-                        Ai['azimuths'] = torch.FloatTensor( (np.random.beta(beta, beta, batch_size)-0.5) *opt.azi_scope ).cuda() 
-                    else:
-                        alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                        Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                    Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
                     Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
 
@@ -239,7 +237,11 @@ if __name__ == '__main__':
                     Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
 
                     # texture interpolation
-                    alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                    if opt.beta>0:
+                        beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
+                        alpha_texture = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).view(batch_size, 1, 1, 1).cuda()
+                    else:
+                        alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['textures'] = alpha_texture * Aa['textures'] + (1.0 - alpha_texture) * Ab['textures']
 
                     # light interpolation
@@ -310,9 +312,12 @@ if __name__ == '__main__':
                 # lossR_flip = 0.002 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai))
                 lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
 
-                # interpolated cycle consistency
-                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
-                lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
+                # interpolated cycle consistency. IC need warmup
+                if epoch>=opt.warm_epoch: # Ai is not good at the begining.
+                    loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
+                    lossR_IC = warm_up_ic*opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
+                else:
+                    lossR_IC = 0.0
 
                 # symmetry
                 if opt.lambda_sym>0:
