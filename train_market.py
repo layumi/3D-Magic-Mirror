@@ -198,6 +198,7 @@ if __name__ == '__main__':
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
             if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
                 warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
+            print(warm_up, warm_up_ic)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
