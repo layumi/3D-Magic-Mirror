@@ -196,9 +196,9 @@ if __name__ == '__main__':
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
-            if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
-                warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
-            print(warm_up, warm_up_ic)
+            #if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
+            #    warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
+            #print(warm_up, warm_up_ic)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
@@ -314,11 +314,11 @@ if __name__ == '__main__':
                 lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
 
                 # interpolated cycle consistency. IC need warmup
-                if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                    loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
-                    lossR_IC = warm_up_ic*opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
-                else:
-                    lossR_IC = 0.0
+                #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
+                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
+                lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
+                #else:
+                #    lossR_IC = 0.0
 
                 # symmetry
                 if opt.lambda_sym>0:
