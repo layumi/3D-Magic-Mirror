@@ -34,7 +34,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
@@ -207,6 +207,8 @@ if __name__ == '__main__':
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
         paths = data['data']['path']
+
+        #Xa = fliplr(Xa)
         with torch.no_grad():
             Ae = netE(Xa)
             Xer, Ae = diffRender.render(**Ae)

@@ -214,7 +214,7 @@ class DiffRender(object):
         self.edge2faces = edge2faces
         self.vertices_laplacian_matrix = vertices_laplacian_matrix
 
-    def render(self, **attributes):
+    def render(self, no_mask=True, **attributes):
         azimuths = attributes['azimuths']
         elevations = attributes['elevations']
         distances = attributes['distances']
@@ -260,9 +260,11 @@ class DiffRender(object):
 
         texcolor = texture_mapping(texcoord, textures, mode='bilinear')
         coef = spherical_harmonic_lighting(imnormal, lights)
-        image = texcolor * texmask * coef.unsqueeze(-1) + torch.ones_like(texcolor) * (1 - texmask)
-        image = torch.clamp(image, 0, 1)
-        render_img = image
+        if no_mask:
+            image = texcolor * coef.unsqueeze(-1)
+        else:
+            image = texcolor * texmask * coef.unsqueeze(-1) + torch.ones_like(texcolor) * (1 - texmask)
+        render_img = torch.clamp(image, 0, 1)
         
         render_silhouttes = soft_mask[..., None]
         rgbs = torch.cat([render_img, render_silhouttes], axis=-1).permute(0, 3, 1, 2)
@@ -291,7 +293,7 @@ class DiffRender(object):
         loss_light = 0.1  * torch.pow(pred_att['lights'] - target_att['lights'], 2).mean()
         return loss_cam, loss_shape, loss_texture, loss_light
 
-    def recon_data(self, pred_data, gt_data):
+    def recon_data(self, pred_data, gt_data, no_mask=False):
         image_weight = self.image_weight
         mask_weight = 1.
 
@@ -299,6 +301,10 @@ class DiffRender(object):
         pred_mask = pred_data[:, 3]
         gt_img = gt_data[:, :3]
         gt_mask = gt_data[:, 3]
+        if no_mask:
+            #print(gt_img.shape, gt_mask.shape)
+            gt_img = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
+            pred_img = pred_img * pred_mask.unsqueeze(1) + torch.ones_like(pred_img) * (1 - pred_mask.unsqueeze(1))
         loss_image = torch.mean(torch.abs(pred_img - gt_img))
         loss_mask = kal.metrics.render.mask_iou(pred_mask, gt_mask)
 

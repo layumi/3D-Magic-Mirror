@@ -28,9 +28,10 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.36, bg=False):
         super(MarketDataset, self).__init__()
         self.root = root
+        self.bg = bg
         self.im_list = []
         if train:
             old_im_list = glob.glob(os.path.join(self.root, 'train_all', '*/*.png'))
@@ -107,9 +108,11 @@ class MarketDataset(data.Dataset):
 
         img = torchvision.transforms.functional.to_tensor(img)
         seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
-        
-        img = img * seg + torch.ones_like(img) * (1 - seg)
-        rgbs = torch.cat([img, seg], dim=0)
+        if self.bg:
+            rgb = img
+        else:
+            rgb = img * seg + torch.ones_like(img) * (1 - seg)
+        rgbs = torch.cat([rgb, seg], dim=0)
 
         data= {'images': rgbs, 'path': img_path, 'label': label} #,
               # 'edge': edge}

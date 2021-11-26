@@ -89,10 +89,10 @@ class CUBDataset(data.Dataset):
         img = torchvision.transforms.functional.to_tensor(img)
         seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
         
-        img = img * seg + torch.ones_like(img) * (1 - seg)
-        rgbs = torch.cat([img, seg], dim=0)
+        rgb = img * seg + torch.ones_like(img) * (1 - seg)
+        rgbs = torch.cat([rgb, seg], dim=0)
 
-        data= {'images': rgbs, 'path': img_path, 'label': label} #,
+        data= {'images': rgbs, 'path': img_path, 'label': label, 'rgb': img} #,
               # 'edge': edge}
 
         return {'data': data}
