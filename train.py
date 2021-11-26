@@ -216,6 +216,7 @@ if __name__ == '__main__':
                 if opt.hard:
                     Ai90 = deep_copy(Ae)
                     Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    Ai90['azimuths'] = Ai90['azimuths'].detach()
 
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
@@ -313,11 +314,11 @@ if __name__ == '__main__':
                 lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
 
                 # interpolated cycle consistency. IC need warmup
-                if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                    loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
-                    lossR_IC = warm_up_ic*opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
-                else:
-                    lossR_IC = 0.0
+                #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
+                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
+                lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
+                #else:
+                #    lossR_IC = 0.0
 
                 # symmetry
                 if opt.lambda_sym>0:
