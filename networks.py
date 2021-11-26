@@ -214,7 +214,7 @@ class DiffRender(object):
         self.edge2faces = edge2faces
         self.vertices_laplacian_matrix = vertices_laplacian_matrix
 
-    def render(self, no_mask=True, **attributes):
+    def render(self, no_mask=False, **attributes):
         azimuths = attributes['azimuths']
         elevations = attributes['elevations']
         distances = attributes['distances']
