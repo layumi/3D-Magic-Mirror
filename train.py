@@ -39,7 +39,7 @@ from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, Textu
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', default='baseline', help='folder to output images and model checkpoints')
+parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
 parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
@@ -58,6 +58,7 @@ parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
+parser.add_argument('--bg', action='store_true', default=False, help='use background')
 parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
 parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
 parser.add_argument('--hard', action='store_true', default=False, help='using Xir90 instead of Xer.')
@@ -65,13 +66,13 @@ parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter'
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
-parser.add_argument('--lambda_sym', type=float, default=0.0, help='parameter')
+parser.add_argument('--lambda_sym', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0, help='parameter')
 parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
-parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
+parser.add_argument('--threshold', type=float, default=0.36, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
-parser.add_argument('--elev_range', type=str, default="0~30", help='~ elevantion')
+parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
 parser.add_argument('--hard_range', type=int, default=60, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
@@ -113,12 +114,12 @@ if __name__ == '__main__':
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize,  image_weight=opt.image_weight) #for market
+    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = 1, image_weight=opt.image_weight) #for market
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf, ratio=2, makeup=opt.makeup) # height = 2 * width
+                            nc=4, nk=opt.nk, nf=opt.nf, ratio=1, makeup=opt.makeup, bg = opt.bg) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
@@ -196,34 +197,33 @@ if __name__ == '__main__':
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
-            if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
-                warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
+            #if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
+            #    warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
+            #print(warm_up, warm_up_ic)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
                 ###########################
                 optimizerD.zero_grad()
                 Xa = Variable(data['data']['images']).cuda().detach()
-
                 #Ea = Variable(data['data']['edge']).cuda()
                 batch_size = Xa.shape[0]
 
                 # encode real
                 Ae = netE(Xa, need_feats=(opt.lambda_lc>0))
-                Xer, Ae = diffRender.render(**Ae)
+                Xer, Ae = diffRender.render(**Ae, no_mask = opt.bg)
 
                 # hard
                 if opt.hard:
                     Ai90 = deep_copy(Ae)
-                    Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
-                    Ai90['azimuths'] = Ai90['azimuths'].detach()
-
+                    #Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    #Ai90['azimuths'] = Ai90['azimuths'].detach()
+                    Ai90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
                 Aa = deep_copy(Ae, rand_a)
                 Ab = deep_copy(Ae, rand_b)
                 Ai = {}
-
                 # linearly interpolate 3D attributes
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
@@ -244,7 +244,10 @@ if __name__ == '__main__':
                     else:
                         alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['textures'] = alpha_texture * Aa['textures'] + (1.0 - alpha_texture) * Ab['textures']
-
+                    if opt.bg:
+                        Ai['bg'] = alpha_texture * Aa['bg'] + (1.0 - alpha_texture) * Ab['bg']
+                    else: 
+                        Ai['bg'] = None
                     # light interpolation
                     alpha_light = torch.empty((batch_size, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['lights'] = alpha_light * Aa['lights'] + (1.0 - alpha_light) * Ab['lights']
@@ -252,16 +255,16 @@ if __name__ == '__main__':
                     Ai = Ae
 
                 # interpolated 3D attributes render images, and update Ai
-                Xir, Ai = diffRender.render(**Ai)
+                Xir, Ai = diffRender.render(**Ai, no_mask = opt.bg)
                 if opt.hard:
-                    Xir90, Ai90 = diffRender.render(**Ai90)
+                    Xir90, Ai90 = diffRender.render(**Ai90, no_mask = opt.bg)
                 else:
                     Xir90 = Xer
                 print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
                 Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
                 # re nder again to update predicted 3D Aire 
-                _, Aire = diffRender.render(**Aire)
+                _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
                 outs0 = netD(Xa.requires_grad_()) # real
@@ -306,7 +309,7 @@ if __name__ == '__main__':
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
 
-                lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa)
+                lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
 
                 # mesh regularization
                 lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
@@ -359,6 +362,7 @@ if __name__ == '__main__':
                 )
         schedulerD.step()
         schedulerE.step()
+
 
         if epoch % 10 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
@@ -509,6 +513,10 @@ if __name__ == '__main__':
                         output_Xir90.save(inter90_path, 'JPEG', quality=100)
 
                         ori_path = os.path.join(ori_dir, image_name)
+                        if opt.bg:
+                            gt_img = Xa[:, :3]
+                            gt_mask = Xa[:, 3]
+                            Xa[:, :3] = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                         output_Xa.save(ori_path, 'JPEG', quality=100)
 

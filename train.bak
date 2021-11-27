@@ -32,7 +32,8 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 # import from folder
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
-from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from datasets.market import MarketDataset
+from utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
@@ -57,17 +58,21 @@ parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
-parser.add_argument('--makeup', action='store_true', default=False, help='whether makeup texture')
-parser.add_argument('--beta', action='store_true', default=False, help='using beta distribution instead of uniform.')
+parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
+parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
+parser.add_argument('--hard', action='store_true', default=False, help='using Xir90 instead of Xer.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
-parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
+parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
-parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
-parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
-parser.add_argument('--image_weight', type=float, default=0.1, help='parameter')
+parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
+parser.add_argument('--lambda_sym', type=float, default=0.0, help='parameter')
+parser.add_argument('--lambda_lc', type=float, default=0, help='parameter')
+parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
+parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
-parser.add_argument('--elev_range', type=str, default="0~30", help='elevation for mkt -15 ~ 15')
+parser.add_argument('--elev_range', type=str, default="0~30", help='~ elevantion')
+parser.add_argument('--hard_range', type=int, default=60, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
 opt = parser.parse_args()
@@ -98,7 +103,7 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
                                          prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=False, pin_memory=True,
+                                         shuffle=False, pin_memory=True, 
                                          num_workers=int(opt.workers), prefetch_factor=2)
 
 
@@ -108,12 +113,12 @@ if __name__ == '__main__':
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, image_weight=opt.image_weight)
+    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize,  image_weight=opt.image_weight) #for market
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf, makeup=opt.makeup)
+                            nc=4, nk=opt.nk, nf=opt.nf, ratio=2, makeup=opt.makeup) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
@@ -173,35 +178,45 @@ if __name__ == '__main__':
     ori_dir = os.path.join(opt.outf, 'fid/ori')
     rec_dir = os.path.join(opt.outf, 'fid/rec')
     inter_dir = os.path.join(opt.outf, 'fid/inter')
+    inter90_dir = os.path.join(opt.outf, 'fid/inter90')
     ckpt_dir = os.path.join(opt.outf, 'ckpts')
     os.makedirs(ori_dir, exist_ok=True)
     os.makedirs(rec_dir, exist_ok=True)
     os.makedirs(inter_dir, exist_ok=True)
+    os.makedirs(inter90_dir, exist_ok=True)
     os.makedirs(ckpt_dir, exist_ok=True)
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
-    init_beta = 0.2
     warm_up = 0.1 # We start from the 0.1*lrRate
-    warm_iteration = len(train_dataloader)*opt.warm_epoch # first 5 epoch
+    warm_up_ic = 0.1 # We start from the 0.1*lrRate for ic loss
+    warm_iteration = len(train_dataloader)*opt.warm_epoch # first 20 epoch
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
         for iter, data in enumerate(train_dataloader):
-            if epoch<opt.warm_epoch:
+            if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
+            if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
+                warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
                 ###########################
                 optimizerD.zero_grad()
-                Xa = Variable(data['data']['images']).cuda()
+                Xa = Variable(data['data']['images']).cuda().detach()
 
                 #Ea = Variable(data['data']['edge']).cuda()
                 batch_size = Xa.shape[0]
 
                 # encode real
-                Ae = netE(Xa)
+                Ae = netE(Xa, need_feats=(opt.lambda_lc>0))
                 Xer, Ae = diffRender.render(**Ae)
+
+                # hard
+                if opt.hard:
+                    Ai90 = deep_copy(Ae)
+                    Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    Ai90['azimuths'] = Ai90['azimuths'].detach()
 
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
@@ -212,13 +227,8 @@ if __name__ == '__main__':
                 # linearly interpolate 3D attributes
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
-                    if opt.beta:
-                        beta = min(1.0, init_beta + 0.8*epoch/40)
-                        alpha_camera = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).cuda()
-                        Ai['azimuths'] = torch.FloatTensor( (np.random.beta(beta, beta, batch_size)-0.5) *opt.azi_scope ).cuda() 
-                    else:
-                        alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                        Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                    Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
                     Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
 
@@ -228,7 +238,11 @@ if __name__ == '__main__':
                     Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
 
                     # texture interpolation
-                    alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                    if opt.beta>0:
+                        beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
+                        alpha_texture = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).view(batch_size, 1, 1, 1).cuda()
+                    else:
+                        alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['textures'] = alpha_texture * Aa['textures'] + (1.0 - alpha_texture) * Ab['textures']
 
                     # light interpolation
@@ -239,15 +253,19 @@ if __name__ == '__main__':
 
                 # interpolated 3D attributes render images, and update Ai
                 Xir, Ai = diffRender.render(**Ai)
+                if opt.hard:
+                    Xir90, Ai90 = diffRender.render(**Ai90)
+                else:
+                    Xir90 = Xer
+                print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
-                Aire = netE(Xir.detach().clone())
-                # render again to update predicted 3D Aire 
+                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
+                # re nder again to update predicted 3D Aire 
                 _, Aire = diffRender.render(**Aire)
 
                 # discriminate loss
                 outs0 = netD(Xa.requires_grad_()) # real
-                #outs0 = netD(Xa.detach().clone()) # real
-                outs1 = netD(Xer.detach().clone()) # fake - recon?
+                outs1 = netD(Xir90.detach().clone()) # fake - recon?
                 outs2 = netD(Xir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
                 if opt.gan_type == 'wgan':
@@ -255,7 +273,7 @@ if __name__ == '__main__':
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
                     lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
 
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer.data) + \
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xir90.data) + \
                                             compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
                     if opt.reg > 0:
                         reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Xa).mean()
@@ -266,7 +284,7 @@ if __name__ == '__main__':
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         if opt.reg > 0:
                             reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xer.data) + \
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xir90.data) + \
                                             compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD  += reg 
@@ -281,39 +299,48 @@ if __name__ == '__main__':
                 # GAN loss
                 lossR_fake = 0
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Xer).mean() - netD(Xir).mean()) / 2.0
+                    lossR_fake = opt.lambda_gan * (-netD(Xir90).mean() - netD(Xir).mean()) / 2.0
                 elif opt.gan_type == 'lsgan':
-                    outs1 = netD(Xer) # fake - recon?
+                    outs1 = netD(Xir90) # fake - recon?
                     outs2 = netD(Xir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
 
-                # Self-Reconstruction
-                lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa.detach())
+                lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa)
 
                 # mesh regularization
                 lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
                 # lossR_flip = 0.002 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai))
                 lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
 
-                # interpolated cycle consistency
+                # interpolated cycle consistency. IC need warmup
+                #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
                 loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
+                #else:
+                #    lossR_IC = 0.0
 
+                # symmetry
+                if opt.lambda_sym>0:
+                    Ae_fliplr = netE(fliplr(Xa), need_feats=False)
+                    l_text = torch.pow(Ae_fliplr['textures'] - Ae['textures'], 2).mean()
+                    lossR_sym = opt.lambda_sym * l_text
+                else:
+                    lossR_sym = 0.0
                 # landmark consistency
-                Le = Ae['faces_image']
-                Li = Aire['faces_image']
-                Fe = Ae['img_feats']
-                Fi = Aire['img_feats']
-                Ve = Ae['visiable_faces']
-                Vi = Aire['visiable_faces']
                 if opt.lambda_lc>0:
+                    Le = Ae['faces_image']
+                    Li = Aire['faces_image']
+                    Fe = Ae['img_feats']
+                    Fi = Aire['img_feats']
+                    Ve = Ae['visiable_faces']
+                    Vi = Aire['visiable_faces']
                     lossR_LC = opt.lambda_lc * (netL(Fe, Le, Ve).mean() + netL(Fi, Li, Vi).mean())
                 else:
                     lossR_LC = 0.0
 
                 # overall loss
-                lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC
+                lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC + lossR_sym
 
                 lossR *= warm_up
                 lossR.backward()
@@ -323,11 +350,11 @@ if __name__ == '__main__':
                 print('[%d/%d][%d/%d]\n'
                 'LossD: %.4f lossD_real: %.4f lossD_fake: %.4f lossD_gp: %.4f\n'
                 'lossR: %.4f lossR_fake: %.4f lossR_reg: %.4f lossR_data: %.4f '
-                'lossR_IC: %.4f \n'
+                'lossR_IC: %.4f lossR_sym: %.4f \n'
                     % (epoch, opt.niter, iter, len(train_dataloader),
                         lossD, lossD_real, lossD_fake, lossD_gp,
                         lossR, lossR_fake, lossR_reg, lossR_data,
-                        lossR_IC
+                        lossR_IC, lossR_sym
                         )
                 )
         schedulerD.step()
@@ -440,7 +467,7 @@ if __name__ == '__main__':
             }
             torch.save(state_dict, latest_name)
 
-        if epoch % 20 == 0 : #and epoch > 0:
+        if epoch % 20 == 0: # and epoch > 0:
             netE.eval()
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
                 Xa = Variable(data['data']['images']).cuda()
@@ -452,13 +479,16 @@ if __name__ == '__main__':
 
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
+                    Ai90 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-                    Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
+                    Ai2['azimuths'] = Ai['azimuths'] + 90.0
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
+                    Ai90['azimuths'] += 90.0
 
                     Xir, Ai = diffRender.render(**Ai)
                     Xir2, Ai2 = diffRender.render(**Ai2)
-                    
+                    Xir90, Ai90 = diffRender.render(**Ai90)
+
                     for i in range(len(paths)):
                         path = paths[i]
                         image_name = os.path.basename(path)
@@ -474,16 +504,25 @@ if __name__ == '__main__':
                         output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
                         output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
+                        inter90_path = os.path.join(inter90_dir, image_name)
+                        output_Xir90 = to_pil_image(Xir90[i, :3].detach().cpu())
+                        output_Xir90.save(inter90_path, 'JPEG', quality=100)
+
                         ori_path = os.path.join(ori_dir, image_name)
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                         output_Xa.save(ori_path, 'JPEG', quality=100)
-            fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 32, True)
+
+            fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
             print('Epoch %03d Test recon fid: %0.2f' % (epoch, fid_recon) ) 
             summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch)
-            fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 32, True)
+            fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
             print('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
+            fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
+            print('Epoch %03d Test rotat90 fid: %0.2f' % (epoch, fid_90))
+            summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
             with open(output_txt, 'a') as fp:
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
+                fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
             netE.train()

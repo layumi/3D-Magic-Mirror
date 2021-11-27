@@ -128,6 +128,9 @@ def deep_copy(att, index=None, detach=False):
     for key, value in att.items():
         copy_keys = ['azimuths', 'bg', 'elevations', 'distances', 'vertices', 'delta_vertices', 'textures', 'lights']
         if key in copy_keys:
+            if value is None:
+                copy_att[key] = None
+                continue
             if detach:
                 copy_att[key] = value[index].clone().detach()
             else:
@@ -429,7 +432,7 @@ class AttributeEncoder(nn.Module):
             with torch.no_grad():
                 img_feats = self.feat_enc(input_img) # 32x256x32x32
         else:
-            img_feats = None
+            img_feats = None #
         # others
         attributes = {
         'azimuths': azimuths,
