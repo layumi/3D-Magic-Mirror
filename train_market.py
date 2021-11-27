@@ -360,6 +360,7 @@ if __name__ == '__main__':
         schedulerD.step()
         schedulerE.step()
 
+
         if epoch % 10 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
             summary_writer.add_scalar('Train/lossD', lossD, epoch)
@@ -509,6 +510,10 @@ if __name__ == '__main__':
                         output_Xir90.save(inter90_path, 'JPEG', quality=100)
 
                         ori_path = os.path.join(ori_dir, image_name)
+                        if opt.bg:
+                            gt_img = Xa[:, :3]
+                            gt_mask = Xa[:, 3]
+                            Xa[:, :3] = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
                         output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                         output_Xa.save(ori_path, 'JPEG', quality=100)
 
