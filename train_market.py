@@ -119,7 +119,7 @@ if __name__ == '__main__':
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf, ratio=2, makeup=opt.makeup) # height = 2 * width
+                            nc=4, nk=opt.nk, nf=opt.nf, ratio=2, makeup=opt.makeup, bg = opt.bg) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)

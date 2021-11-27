@@ -9,7 +9,7 @@ from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 #from models.model import TextureEncoder
-from models.model_res import VGG19, TextureEncoder, CameraEncoder, ShapeEncoder, LightEncoder
+from models.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEncoder, ShapeEncoder, LightEncoder
 from models.utils import weights_init, weights_init_classifier
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
@@ -218,6 +218,8 @@ class DiffRender(object):
         azimuths = attributes['azimuths']
         elevations = attributes['elevations']
         distances = attributes['distances']
+        if no_mask:
+            bg = attributes['bg']
         batch_size = azimuths.shape[0]
         device = azimuths.device
         cam_proj = self.cam_proj.to(device)
@@ -261,7 +263,8 @@ class DiffRender(object):
         texcolor = texture_mapping(texcoord, textures, mode='bilinear')
         coef = spherical_harmonic_lighting(imnormal, lights)
         if no_mask:
-            image = texcolor * coef.unsqueeze(-1)
+            image = texcolor * texmask +  bg * (1 - texmask)
+            image *= coef.unsqueeze(-1)
         else:
             image = texcolor * texmask * coef.unsqueeze(-1) + torch.ones_like(texcolor) * (1 - texmask)
         render_img = torch.clamp(image, 0, 1)
@@ -391,6 +394,7 @@ class AttributeEncoder(nn.Module):
         self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices)
         self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, ratio = ratio, makeup = makeup)
         self.light_enc = LightEncoder(nc=nc, nk=nk)
+        self.bg_enc = BackgroundEncoder(nc=nc)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.feat_enc = VGG19()
         self.feat_enc.eval()
@@ -411,6 +415,9 @@ class AttributeEncoder(nn.Module):
         textures = self.texture_enc(input_img) # 32x3x512x256
         lights = self.light_enc(input_img) # 32x9
 
+        # background
+        bg = self.bg_enc(input_img)
+
         # image feat
         if need_feats:
             with torch.no_grad():
@@ -426,7 +433,8 @@ class AttributeEncoder(nn.Module):
         'delta_vertices': delta_vertices,
         'textures': textures,
         'lights': lights,
-        'img_feats': img_feats
+        'img_feats': img_feats,
+        'bg': bg
         }
         return attributes
 

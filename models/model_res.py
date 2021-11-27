@@ -72,6 +72,25 @@ class VGG19(torch.nn.Module):
         # out = torch.cat(out, dim=1)
         return h_relu3
 
+class BackgroundEncoder(nn.Module):
+    def __init__(self, nc): # input.shape == output.shape rgb 3 channel
+        super(BackgroundEncoder, self).__init__()
+        all_blocks = [Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2),
+                  ResBlock(32，norm='none'), 
+                  ResBlock(32，norm='none'), 
+                  ResBlock(32，norm='none'), 
+                  ResBlock(32，norm='none'), 
+                  Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                  nn.Sigmoid()]
+        self.encoder = nn.Sequential(*all_blocks)
+        self.encoder.apply(weights_init)
+        self.encoder[-2].apply(weights_init_classifier)
+
+    def forward(self, x):
+        img = x[:, :3]
+        mask = x[:, 3].unsqueeze(1)
+        bg = img * (1-mask)
+        return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
     def __init__(self, nc, nk, azi_scope, elev_range, dist_range):
