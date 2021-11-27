@@ -216,8 +216,9 @@ if __name__ == '__main__':
                 # hard
                 if opt.hard:
                     Ai90 = deep_copy(Ae)
-                    Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
-                    Ai90['azimuths'] = Ai90['azimuths'].detach()
+                    #Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    #Ai90['azimuths'] = Ai90['azimuths'].detach()
+                    Ai90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
                 Aa = deep_copy(Ae, rand_a)
