@@ -224,7 +224,6 @@ if __name__ == '__main__':
                 Aa = deep_copy(Ae, rand_a)
                 Ab = deep_copy(Ae, rand_b)
                 Ai = {}
-
                 # linearly interpolate 3D attributes
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
@@ -245,7 +244,8 @@ if __name__ == '__main__':
                     else:
                         alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['textures'] = alpha_texture * Aa['textures'] + (1.0 - alpha_texture) * Ab['textures']
-
+                    if opt.bg:
+                        Ai['bg'] = alpha_texture * Aa['bg'] + (1.0 - alpha_texture) * Ab['bg']
                     # light interpolation
                     alpha_light = torch.empty((batch_size, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['lights'] = alpha_light * Aa['lights'] + (1.0 - alpha_light) * Ab['lights']

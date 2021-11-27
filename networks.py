@@ -126,7 +126,7 @@ def deep_copy(att, index=None, detach=False):
 
     copy_att = {}
     for key, value in att.items():
-        copy_keys = ['azimuths', 'elevations', 'distances', 'vertices', 'delta_vertices', 'textures', 'lights']
+        copy_keys = ['azimuths', 'bg', 'elevations', 'distances', 'vertices', 'delta_vertices', 'textures', 'lights']
         if key in copy_keys:
             if detach:
                 copy_att[key] = value[index].clone().detach()
@@ -218,8 +218,7 @@ class DiffRender(object):
         azimuths = attributes['azimuths']
         elevations = attributes['elevations']
         distances = attributes['distances']
-        if no_mask:
-            bg = attributes['bg']
+        bg = attributes['bg']
         batch_size = azimuths.shape[0]
         device = azimuths.device
         cam_proj = self.cam_proj.to(device)
@@ -263,6 +262,8 @@ class DiffRender(object):
         texcolor = texture_mapping(texcoord, textures, mode='bilinear')
         coef = spherical_harmonic_lighting(imnormal, lights)
         if no_mask:
+            bg= bg.permute(0, 2, 3, 1)
+            #print(texcolor.shape, texmask.shape, bg.shape)
             image = texcolor * texmask +  bg * (1 - texmask)
             image *= coef.unsqueeze(-1)
         else:
@@ -385,7 +386,7 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init # (1, V, 3) in [-1,1]
@@ -394,7 +395,9 @@ class AttributeEncoder(nn.Module):
         self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices)
         self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, ratio = ratio, makeup = makeup)
         self.light_enc = LightEncoder(nc=nc, nk=nk)
-        self.bg_enc = BackgroundEncoder(nc=nc)
+        self.bg = bg
+        if self.bg:
+            self.bg_enc = BackgroundEncoder(nc=nc)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.feat_enc = VGG19()
         self.feat_enc.eval()
@@ -416,7 +419,10 @@ class AttributeEncoder(nn.Module):
         lights = self.light_enc(input_img) # 32x9
 
         # background
-        bg = self.bg_enc(input_img)
+        if self.bg:
+            background = self.bg_enc(input_img)
+        else:
+            background = None
 
         # image feat
         if need_feats:
@@ -434,7 +440,7 @@ class AttributeEncoder(nn.Module):
         'textures': textures,
         'lights': lights,
         'img_feats': img_feats,
-        'bg': bg
+        'bg': background,
         }
         return attributes
 
