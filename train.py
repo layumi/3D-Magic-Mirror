@@ -61,7 +61,7 @@ parser.add_argument('--resume', action='store_true', default=False, help='whethe
 parser.add_argument('--bg', action='store_true', default=False, help='use background')
 parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
 parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
-parser.add_argument('--hard', action='store_true', default=False, help='using Xir90 instead of Xer.')
+parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
@@ -215,10 +215,8 @@ if __name__ == '__main__':
 
                 # hard
                 if opt.hard:
-                    Ai90 = deep_copy(Ae)
-                    #Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
-                    #Ai90['azimuths'] = Ai90['azimuths'].detach()
-                    Ai90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    Ae90 = deep_copy(Ae)
+                    Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
                 Aa = deep_copy(Ae, rand_a)
@@ -257,9 +255,9 @@ if __name__ == '__main__':
                 # interpolated 3D attributes render images, and update Ai
                 Xir, Ai = diffRender.render(**Ai, no_mask = opt.bg)
                 if opt.hard:
-                    Xir90, Ai90 = diffRender.render(**Ai90, no_mask = opt.bg)
+                    Xer90, Ae90 = diffRender.render(**Ae90, no_mask = opt.bg)
                 else:
-                    Xir90 = Xer
+                    Xer90 = Xer
                 print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
                 Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
@@ -268,7 +266,7 @@ if __name__ == '__main__':
 
                 # discriminate loss
                 outs0 = netD(Xa.requires_grad_()) # real
-                outs1 = netD(Xir90.detach().clone()) # fake - recon?
+                outs1 = netD(Xer90.detach().clone()) # fake - recon?
                 outs2 = netD(Xir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
                 if opt.gan_type == 'wgan':
@@ -276,7 +274,7 @@ if __name__ == '__main__':
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
                     lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
 
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xir90.data) + \
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer90.data) + \
                                             compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
                     if opt.reg > 0:
                         reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Xa).mean()
@@ -287,7 +285,7 @@ if __name__ == '__main__':
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         if opt.reg > 0:
                             reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xir90.data) + \
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xer90.data) + \
                                             compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD  += reg 
@@ -302,9 +300,9 @@ if __name__ == '__main__':
                 # GAN loss
                 lossR_fake = 0
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Xir90).mean() - netD(Xir).mean()) / 2.0
+                    lossR_fake = opt.lambda_gan * (-netD(Xer90).mean() - netD(Xir).mean()) / 2.0
                 elif opt.gan_type == 'lsgan':
-                    outs1 = netD(Xir90) # fake - recon?
+                    outs1 = netD(Xer90) # fake - recon?
                     outs2 = netD(Xir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
@@ -483,15 +481,15 @@ if __name__ == '__main__':
 
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
-                    Ai90 = deep_copy(Ae)
+                    Ae90 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai2['azimuths'] = Ai['azimuths'] + 90.0
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
-                    Ai90['azimuths'] += 90.0
+                    Ae90['azimuths'] += 90.0
 
                     Xir, Ai = diffRender.render(**Ai)
                     Xir2, Ai2 = diffRender.render(**Ai2)
-                    Xir90, Ai90 = diffRender.render(**Ai90)
+                    Xer90, Ae90 = diffRender.render(**Ae90)
 
                     for i in range(len(paths)):
                         path = paths[i]
@@ -509,8 +507,8 @@ if __name__ == '__main__':
                         output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
                         inter90_path = os.path.join(inter90_dir, image_name)
-                        output_Xir90 = to_pil_image(Xir90[i, :3].detach().cpu())
-                        output_Xir90.save(inter90_path, 'JPEG', quality=100)
+                        output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
+                        output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
                         ori_path = os.path.join(ori_dir, image_name)
                         if opt.bg:
