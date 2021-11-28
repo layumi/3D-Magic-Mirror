@@ -75,11 +75,11 @@ class VGG19(torch.nn.Module):
 class BackgroundEncoder(nn.Module):
     def __init__(self, nc): # input.shape == output.shape rgb 3 channel
         super(BackgroundEncoder, self).__init__()
-        all_blocks = [Conv2dBlock(3, 32, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+        all_blocks = [Conv2dBlock(3, 32, 3, 2, 1, norm='none', activation='none', padding_mode='zeros'),
                   ResBlock(32, norm='none'), 
                   ResBlock(32, norm='none'), 
                   ResBlock(32, norm='none'), 
-                  ResBlock(32, norm='none'), 
+                  nn.Upsample(scale_factor=2),
                   Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                   nn.Sigmoid()]
         self.encoder = nn.Sequential(*all_blocks)

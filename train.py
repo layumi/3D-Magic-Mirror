@@ -33,14 +33,14 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
-from utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
+parser.add_argument('--dataroot', default='../Market/hq/seg', help='path to dataset root dir')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
@@ -134,9 +134,9 @@ if __name__ == '__main__':
 
     # netD: Discriminator rgb+seg
     if opt.gan_type == 'wgan':
-        netD = Discriminator(nc=4, nf=32)
+        netD = Discriminator(nc=3, nf=32)
     elif opt.gan_type == 'lsgan':
-        netD = MS_Discriminator(nc=4, nf=32)
+        netD = MS_Discriminator(nc=3, nf=32)
     else:
         print('unknow gan type. Only lsgan or wgan is accepted.')
 
@@ -230,21 +230,22 @@ if __name__ == '__main__':
                     Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
                     Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
 
-                    # shape interpolation
-                    alpha_shape = torch.empty((batch_size, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                    Ai['vertices'] = alpha_shape * Aa['vertices'] + (1-alpha_shape) * Ab['vertices']
-                    Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
-
-                    # texture interpolation
+                    # texture & shape interpolation
                     if opt.beta>0:
                         beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
-                        alpha_texture = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).view(batch_size, 1, 1, 1).cuda()
+                        alpha = torch.FloatTensor(np.random.beta(beta, beta, batch_size))
+                        alpha_texture = alpha.view(batch_size, 1, 1, 1).cuda()
+                        alpha_shape = alpha.view(batch_size, 1, 1 ).cuda()
                     else:
                         alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                        alpha_shape = torch.empty((batch_size, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+
+                    Ai['vertices'] = alpha_shape * Aa['vertices'] + (1-alpha_shape) * Ab['vertices']
+                    Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
                     Ai['textures'] = alpha_texture * Aa['textures'] + (1.0 - alpha_texture) * Ab['textures']
                     if opt.bg:
                         Ai['bg'] = alpha_texture * Aa['bg'] + (1.0 - alpha_texture) * Ab['bg']
-                    else: 
+                    else:
                         Ai['bg'] = None
                     # light interpolation
                     alpha_light = torch.empty((batch_size, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
@@ -265,28 +266,31 @@ if __name__ == '__main__':
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
-                outs0 = netD(Xa.requires_grad_()) # real
-                outs1 = netD(Xer90.detach().clone()) # fake - recon?
-                outs2 = netD(Xir.detach().clone()) # fake - inter?
+                Ma = mask(Xa)
+                Mer90 = mask(Xer90)
+                Mir = mask(Xir)
+                outs0 = netD(Ma.requires_grad_()) # real
+                outs1 = netD(Mer90.detach().clone()) # fake - recon?
+                outs2 = netD(Mir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
                 if opt.gan_type == 'wgan':
                     # WGAN-GP
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
                     lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
 
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xer90.data) + \
-                                            compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Ma.data, Mer90.data) + \
+                                            compute_gradient_penalty(netD, Ma.data, Mir.data)) / 2.0
                     if opt.reg > 0:
-                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Xa).mean()
+                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Ma).mean()
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
                         if opt.reg > 0:
-                            reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xer90.data) + \
-                                            compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
+                            reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Ma).mean()
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Ma.data, Mer90.data) + \
+                                            compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / 2.0 
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD  += reg 
                 lossD *= warm_up
@@ -300,10 +304,10 @@ if __name__ == '__main__':
                 # GAN loss
                 lossR_fake = 0
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Xer90).mean() - netD(Xir).mean()) / 2.0
+                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - netD(Mir).mean()) / 2.0
                 elif opt.gan_type == 'lsgan':
-                    outs1 = netD(Xer90) # fake - recon?
-                    outs2 = netD(Xir) # fake - inter?
+                    outs1 = netD(Mer90) # fake - recon?
+                    outs2 = netD(Mir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
 
