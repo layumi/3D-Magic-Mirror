@@ -39,8 +39,8 @@ from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, Textu
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='../Market/hq/seg', help='path to dataset root dir')
+parser.add_argument('--name', default='baseline', help='folder to output images and model checkpoints')
+parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
