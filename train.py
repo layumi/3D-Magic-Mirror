@@ -72,7 +72,7 @@ parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--threshold', type=float, default=0.36, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
-parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
+parser.add_argument('--elev_range', type=str, default="0~30", help='~ elevantion')
 parser.add_argument('--hard_range', type=int, default=60, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
@@ -96,8 +96,8 @@ with open('log/%s/opts.yaml'%opt.name,'w') as fp:
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
-train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
-test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
+train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
+test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
 
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,

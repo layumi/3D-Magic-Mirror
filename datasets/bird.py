@@ -22,9 +22,10 @@ def default_loader(path):
         return img.convert('RGB')
 
 class CUBDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, bg = False):
         super(CUBDataset, self).__init__()
         self.root = root
+        self.bg = bg
         if train:
             self.im_list = glob.glob(os.path.join(self.root, 'train', '*/*.jpg'))
             self.class_dir = glob.glob(os.path.join(self.root, 'train', '*'))
@@ -88,12 +89,14 @@ class CUBDataset(data.Dataset):
 
         img = torchvision.transforms.functional.to_tensor(img)
         seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
-        
-        rgb = img * seg + torch.ones_like(img) * (1 - seg)
+
+        if self.bg:
+            rgb = img
+        else:
+            rgb = img * seg + torch.ones_like(img) * (1 - seg)
         rgbs = torch.cat([rgb, seg], dim=0)
 
-        data= {'images': rgbs, 'path': img_path, 'label': label, 'rgb': img} #,
-              # 'edge': edge}
+        data= {'images': rgbs, 'path': img_path, 'label': label}        
 
         return {'data': data}
 
