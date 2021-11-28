@@ -7,6 +7,12 @@ import numpy as np
 import torch.autograd as autograd
 from torch.autograd import Variable
 
+def mask(gt_data):
+    gt_img = gt_data[:, :3]
+    gt_mask = gt_data[:, 3]
+    gt_img = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
+    return gt_img
+
 def fliplr(img):
     '''flip horizontal'''
     inv_idx = torch.arange(img.size(3)-1,-1,-1).long().cuda()  # N x C x H x W
