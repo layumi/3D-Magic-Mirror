@@ -257,9 +257,9 @@ if __name__ == '__main__':
                 # interpolated 3D attributes render images, and update Ai
                 Xir, Ai = diffRender.render(**Ai, no_mask = opt.bg)
                 if opt.hard:
-                    Xir90, Ai90 = diffRender.render(**Ai90, no_mask = opt.bg)
+                    Xer90, Ai90 = diffRender.render(**Ai90, no_mask = opt.bg)
                 else:
-                    Xir90 = Xer
+                    Xer90 = Xer
                 print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
                 Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
@@ -268,7 +268,7 @@ if __name__ == '__main__':
 
                 # discriminate loss
                 outs0 = netD(Xa.requires_grad_()) # real
-                outs1 = netD(Xir90.detach().clone()) # fake - recon?
+                outs1 = netD(Xer90.detach().clone()) # fake - recon?
                 outs2 = netD(Xir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
                 if opt.gan_type == 'wgan':

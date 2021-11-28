@@ -311,7 +311,7 @@ class DiffRender(object):
         if no_mask:
             #print(gt_img.shape, gt_mask.shape)
             gt_img = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
-            pred_img = pred_img * pred_mask.unsqueeze(1) + torch.ones_like(pred_img) * (1 - pred_mask.unsqueeze(1))
+            pred_img = pred_img * gt_mask.unsqueeze(1) + torch.ones_like(pred_img) * (1 - gt_mask.unsqueeze(1))
         loss_image = torch.mean(torch.abs(pred_img - gt_img))
         loss_mask = kal.metrics.render.mask_iou(pred_mask, gt_mask)
 
