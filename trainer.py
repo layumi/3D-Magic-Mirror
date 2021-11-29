@@ -34,94 +34,20 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
-torch.autograd.set_detect_anomaly(True)
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--name', default='ATR_baseline', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='../ATR/humanparsing/JPEGImages', help='path to dataset root dir')
-parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
-parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
-parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
-parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
-parser.add_argument('--imageSize', type=int, default=128, help='the height / width of the input image to network')
-parser.add_argument('--nk', type=int, default=5, help='size of kerner')
-parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
-parser.add_argument('--niter', type=int, default=500, help='number of epochs to train for')
-parser.add_argument('--lr', type=float, default=0.0001, help='leaning rate, default=0.0001')
-parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
-parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
-parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')
-parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
-parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
-parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
-parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
-parser.add_argument('--bg', action='store_true', default=False, help='use background')
-parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
-parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
-parser.add_argument('--hard', action='store_true', default=False, help='using Xir90 instead of Xer.')
-parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
-parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
-parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
-parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
-parser.add_argument('--lambda_sym', type=float, default=0.1, help='parameter')
-parser.add_argument('--lambda_lc', type=float, default=0, help='parameter')
-parser.add_argument('--image_weight', type=float, default=1, help='parameter')
-parser.add_argument('--reg', type=float, default=0.0, help='parameter')
-parser.add_argument('--threshold', type=float, default=0.36, help='parameter')
-parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
-parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
-parser.add_argument('--hard_range', type=int, default=60, help='~ range from x to 180-x. x<90')
-parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
-
-opt = parser.parse_args()
-opt.outf = './log/'+ opt.name
-print(opt)
-
-if not os.path.isdir(opt.outf):
-    os.mkdir(opt.outf)
-
-if opt.manualSeed is None:
-    opt.manualSeed = random.randint(1, 10000)
-print("Random Seed: ", opt.manualSeed)
-random.seed(opt.manualSeed)
-torch.manual_seed(opt.manualSeed)
-
-### save option
-with open('log/%s/opts.yaml'%opt.name,'w') as fp:
-    yaml.dump(vars(opt), fp, default_flow_style=False)
-
-if torch.cuda.is_available():
-    cudnn.benchmark = True
-
-train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
-
-
-torch.set_num_threads(int(opt.workers)*2)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
-                                         shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
-                                         prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
-test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=False, pin_memory=True, 
-                                         num_workers=int(opt.workers), prefetch_factor=2)
-
-
-
-if __name__ == '__main__':
+def trainer(opt, train_dataloader, test_dataloader):
     # differentiable renderer
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = 1, image_weight=opt.image_weight) #for market
+    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf, ratio=1, makeup=opt.makeup, bg = opt.bg) # height = 2 * width
+                            nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
@@ -136,9 +62,9 @@ if __name__ == '__main__':
 
     # netD: Discriminator rgb+seg
     if opt.gan_type == 'wgan':
-        netD = Discriminator(nc=4, nf=32)
+        netD = Discriminator(nc=3, nf=32)
     elif opt.gan_type == 'lsgan':
-        netD = MS_Discriminator(nc=4, nf=32)
+        netD = MS_Discriminator(nc=3, nf=32)
     else:
         print('unknow gan type. Only lsgan or wgan is accepted.')
 
@@ -217,10 +143,8 @@ if __name__ == '__main__':
 
                 # hard
                 if opt.hard:
-                    Ai90 = deep_copy(Ae)
-                    #Ai90['azimuths'] += torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
-                    #Ai90['azimuths'] = Ai90['azimuths'].detach()
-                    Ai90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    Ae90 = deep_copy(Ae)
+                    Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
                 Aa = deep_copy(Ae, rand_a)
@@ -234,17 +158,18 @@ if __name__ == '__main__':
                     Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
                     Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
 
-                    # shape interpolation
-                    alpha_shape = torch.empty((batch_size, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                    Ai['vertices'] = alpha_shape * Aa['vertices'] + (1-alpha_shape) * Ab['vertices']
-                    Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
-
-                    # texture interpolation
+                    # texture & shape interpolation
                     if opt.beta>0:
                         beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
-                        alpha_texture = torch.FloatTensor(np.random.beta(beta, beta, batch_size)).view(batch_size, 1, 1, 1).cuda()
+                        alpha = torch.FloatTensor(np.random.beta(beta, beta, batch_size))
+                        alpha_texture = alpha.view(batch_size, 1, 1, 1).cuda()
+                        alpha_shape = alpha.view(batch_size, 1, 1 ).cuda()
                     else:
                         alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                        alpha_shape = torch.empty((batch_size, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+
+                    Ai['vertices'] = alpha_shape * Aa['vertices'] + (1-alpha_shape) * Ab['vertices']
+                    Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
                     Ai['textures'] = alpha_texture * Aa['textures'] + (1.0 - alpha_texture) * Ab['textures']
                     if opt.bg:
                         Ai['bg'] = alpha_texture * Aa['bg'] + (1.0 - alpha_texture) * Ab['bg']
@@ -259,9 +184,9 @@ if __name__ == '__main__':
                 # interpolated 3D attributes render images, and update Ai
                 Xir, Ai = diffRender.render(**Ai, no_mask = opt.bg)
                 if opt.hard:
-                    Xir90, Ai90 = diffRender.render(**Ai90, no_mask = opt.bg)
+                    Xer90, Ae90 = diffRender.render(**Ae90, no_mask = opt.bg)
                 else:
-                    Xir90 = Xer
+                    Xer90 = Xer
                 print(Xa.shape, Xir.shape)
                 # predicted 3D attributes from above render images 
                 Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
@@ -269,28 +194,31 @@ if __name__ == '__main__':
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
-                outs0 = netD(Xa.requires_grad_()) # real
-                outs1 = netD(Xir90.detach().clone()) # fake - recon?
-                outs2 = netD(Xir.detach().clone()) # fake - inter?
+                Ma = mask(Xa)
+                Mer90 = mask(Xer90)
+                Mir = mask(Xir)
+                outs0 = netD(Ma.requires_grad_()) # real
+                outs1 = netD(Mer90.detach().clone()) # fake - recon?
+                outs2 = netD(Mir.detach().clone()) # fake - inter?
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
                 if opt.gan_type == 'wgan':
                     # WGAN-GP
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
-                    lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
+                    lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + opt.ganw*torch.mean(outs2)) / (1.0+opt.ganw)
 
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Xa.data, Xir90.data) + \
-                                            compute_gradient_penalty(netD, Xa.data, Xir.data)) / 2.0
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Ma.data, Mer90.data) + \
+                                        opt.ganw*compute_gradient_penalty(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     if opt.reg > 0:
-                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Xa).mean()
+                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Ma).mean()
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
-                        lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
+                        lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + opt.ganw*torch.mean((out2 - 0)**2)) /(1.0+opt.ganw)
                         if opt.reg > 0:
-                            reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Xa).mean()
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Xa.data, Xir90.data) + \
-                                            compute_gradient_penalty_list(netD, Xa.data, Xir.data)) / 2.0 
+                            reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Ma).mean()
+                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Ma.data, Mer90.data) + \
+                                    opt.ganw*compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD  += reg 
                 lossD *= warm_up
@@ -304,12 +232,12 @@ if __name__ == '__main__':
                 # GAN loss
                 lossR_fake = 0
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Xir90).mean() - netD(Xir).mean()) / 2.0
+                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - opt.ganw*netD(Mir).mean()) / (1.0+opt.ganw)
                 elif opt.gan_type == 'lsgan':
-                    outs1 = netD(Xir90) # fake - recon?
-                    outs2 = netD(Xir) # fake - inter?
+                    outs1 = netD(Mer90) # fake - recon?
+                    outs2 = netD(Mir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
-                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
+                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+opt.ganw)
 
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
 
@@ -320,15 +248,14 @@ if __name__ == '__main__':
 
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
+                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
-                #else:
-                #    lossR_IC = 0.0
 
                 # symmetry
                 if opt.lambda_sym>0:
                     Ae_fliplr = netE(fliplr(Xa), need_feats=False)
-                    l_text = torch.pow(Ae_fliplr['textures'] - Ae['textures'], 2).mean()
+                    # L2 loss will make the result vague
+                    l_text = torch.abs(Ae_fliplr['textures'] - Ae['textures']).mean()
                     lossR_sym = opt.lambda_sym * l_text
                 else:
                     lossR_sym = 0.0
@@ -485,15 +412,15 @@ if __name__ == '__main__':
 
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
-                    Ai90 = deep_copy(Ae)
+                    Ae90 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai2['azimuths'] = Ai['azimuths'] + 90.0
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
-                    Ai90['azimuths'] += 90.0
+                    Ae90['azimuths'] += 90.0
 
                     Xir, Ai = diffRender.render(**Ai)
                     Xir2, Ai2 = diffRender.render(**Ai2)
-                    Xir90, Ai90 = diffRender.render(**Ai90)
+                    Xer90, Ae90 = diffRender.render(**Ae90)
 
                     for i in range(len(paths)):
                         path = paths[i]
@@ -511,8 +438,8 @@ if __name__ == '__main__':
                         output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
                         inter90_path = os.path.join(inter90_dir, image_name)
-                        output_Xir90 = to_pil_image(Xir90[i, :3].detach().cpu())
-                        output_Xir90.save(inter90_path, 'JPEG', quality=100)
+                        output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
+                        output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
                         ori_path = os.path.join(ori_dir, image_name)
                         if opt.bg:
@@ -536,3 +463,5 @@ if __name__ == '__main__':
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
                 fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
             netE.train()
+
+
