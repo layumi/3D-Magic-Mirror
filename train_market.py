@@ -64,6 +64,7 @@ parser.add_argument('--beta', type=float, default=0, help='using beta distributi
 parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')
 parser.add_argument('--L1', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
+parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Since it is hard.')
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
@@ -277,21 +278,21 @@ if __name__ == '__main__':
                 if opt.gan_type == 'wgan':
                     # WGAN-GP
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
-                    lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + torch.mean(outs2)) / 2.0
+                    lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + opt.ganw*torch.mean(outs2)) / (1.0+opt.ganw)
 
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Ma.data, Mer90.data) + \
-                                            compute_gradient_penalty(netD, Ma.data, Mir.data)) / 2.0
+                                        opt.ganw*compute_gradient_penalty(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     if opt.reg > 0:
                         reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Ma).mean()
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
                     for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
-                        lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + torch.mean((out2 - 0)**2)) /2.0
+                        lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + opt.ganw*torch.mean((out2 - 0)**2)) /(1.0+opt.ganw)
                         if opt.reg > 0:
                             reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Ma).mean()
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Ma.data, Mer90.data) + \
-                                            compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / 2.0 
+                                    opt.ganw*compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD  += reg 
                 lossD *= warm_up
@@ -305,12 +306,12 @@ if __name__ == '__main__':
                 # GAN loss
                 lossR_fake = 0
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - netD(Mir).mean()) / 2.0
+                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - opt.ganw*netD(Mir).mean()) / (1.0+ganw)
                 elif opt.gan_type == 'lsgan':
                     outs1 = netD(Mer90) # fake - recon?
                     outs2 = netD(Mir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
-                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + torch.mean((out2 - 1)**2)) / 2.0
+                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+ganw)
 
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
 
