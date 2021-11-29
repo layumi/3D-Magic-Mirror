@@ -306,12 +306,12 @@ if __name__ == '__main__':
                 # GAN loss
                 lossR_fake = 0
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - opt.ganw*netD(Mir).mean()) / (1.0+ganw)
+                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - opt.ganw*netD(Mir).mean()) / (1.0+opt.ganw)
                 elif opt.gan_type == 'lsgan':
                     outs1 = netD(Mer90) # fake - recon?
                     outs2 = netD(Mir) # fake - inter?
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
-                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+ganw)
+                        lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+opt.ganw)
 
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
 
