@@ -62,6 +62,7 @@ parser.add_argument('--bg', action='store_true', default=False, help='use backgr
 parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
 parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
 parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')
+parser.add_argument('--L1', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
@@ -320,7 +321,7 @@ if __name__ == '__main__':
 
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True))
+                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
                 #else:
                 #    lossR_IC = 0.0
@@ -328,7 +329,7 @@ if __name__ == '__main__':
                 # symmetry
                 if opt.lambda_sym>0:
                     Ae_fliplr = netE(fliplr(Xa), need_feats=False)
-                    l_text = torch.pow(Ae_fliplr['textures'] - Ae['textures'], 2).mean()
+                    l_text = torch.abs(Ae_fliplr['textures'] - Ae['textures']).mean()
                     lossR_sym = opt.lambda_sym * l_text
                 else:
                     lossR_sym = 0.0
