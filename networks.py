@@ -281,7 +281,7 @@ class DiffRender(object):
         attributes['visiable_faces'] = face_normals[:, :, -1] > 0.1
         return rgbs, attributes
 
-    def recon_att(self, pred_att, target_att):
+    def recon_att(self, pred_att, target_att, L1 = False):
         def angle2xy(angle):
             angle = angle * math.pi / 180.0
             x = torch.cos(angle)
@@ -295,9 +295,14 @@ class DiffRender(object):
         loss_dist = torch.pow(pred_att['distances'] - target_att['distances'], 2).mean()
         loss_cam = loss_azim + loss_elev + loss_dist
 
-        loss_shape = torch.pow(pred_att['vertices'] - target_att['vertices'], 2).mean()
-        loss_texture = torch.pow(pred_att['textures'] - target_att['textures'], 2).mean()
-        loss_light = 0.1  * torch.pow(pred_att['lights'] - target_att['lights'], 2).mean()
+        if L1:
+            loss_shape = torch.abs(pred_att['vertices'] - target_att['vertices']).mean()
+            loss_texture = torch.abs(pred_att['textures'] - target_att['textures']).mean()
+            loss_light = 0.1  * torch.abs(pred_att['lights'] - target_att['lights']).mean()
+        else:
+            loss_shape = torch.pow(pred_att['vertices'] - target_att['vertices'], 2).mean()
+            loss_texture = torch.pow(pred_att['textures'] - target_att['textures'], 2).mean()
+            loss_light = 0.1  * torch.pow(pred_att['lights'] - target_att['lights'], 2).mean()
         return loss_cam, loss_shape, loss_texture, loss_light
 
     def recon_data(self, pred_data, gt_data, no_mask=False):
