@@ -296,10 +296,22 @@ class DiffRender(object):
         loss_cam = loss_azim + loss_elev + loss_dist
 
         if L1:
+            loss_azim = torch.abs(angle2xy(pred_att['azimuths']) -
+                     angle2xy(target_att['azimuths'])).mean()
+            loss_elev = torch.abs(angle2xy(pred_att['elevations']) -
+                     angle2xy(target_att['elevations'])).mean()
+            loss_dist = torch.abs(pred_att['distances'] - target_att['distances']).mean()
+            loss_cam = loss_azim + loss_elev + loss_dist
             loss_shape = torch.abs(pred_att['vertices'] - target_att['vertices']).mean()
             loss_texture = torch.abs(pred_att['textures'] - target_att['textures']).mean()
             loss_light = 0.1  * torch.abs(pred_att['lights'] - target_att['lights']).mean()
         else:
+            loss_azim = torch.pow(angle2xy(pred_att['azimuths']) -
+                     angle2xy(target_att['azimuths']), 2).mean()
+            loss_elev = torch.pow(angle2xy(pred_att['elevations']) -
+                     angle2xy(target_att['elevations']), 2).mean()
+            loss_dist = torch.pow(pred_att['distances'] - target_att['distances'], 2).mean()
+            loss_cam = loss_azim + loss_elev + loss_dist
             loss_shape = torch.pow(pred_att['vertices'] - target_att['vertices'], 2).mean()
             loss_texture = torch.pow(pred_att['textures'] - target_att['textures'], 2).mean()
             loss_light = 0.1  * torch.pow(pred_att['lights'] - target_att['lights'], 2).mean()
