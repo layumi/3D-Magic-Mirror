@@ -194,9 +194,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
-                Ma = mask(Xa)
-                Mer90 = mask(Xer90)
-                Mir = mask(Xir)
+                if opt.unmask:
+                    Ma = Xa[:,:3]
+                    Mer90 = Xer90[:,:3]
+                    Mir = Xir[:,:3]
+                else:
+                    Ma = mask(Xa)
+                    Mer90 = mask(Xer90)
+                    Mir = mask(Xir)
                 outs0 = netD(Ma.requires_grad_()) # real
                 outs1 = netD(Mer90.detach().clone()) # fake - recon?
                 outs2 = netD(Mir.detach().clone()) # fake - inter?
