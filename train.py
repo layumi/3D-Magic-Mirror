@@ -76,7 +76,7 @@ parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--threshold', type=float, default=0.36, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="0~30", help='~ elevantion')
-parser.add_argument('--hard_range', type=int, default=60, help='~ range from x to 180-x. x<90')
+parser.add_argument('--hard_range', type=int, default=0, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
 opt = parser.parse_args()

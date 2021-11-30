@@ -144,7 +144,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # hard
                 if opt.hard:
                     Ae90 = deep_copy(Ae)
-                    Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    #Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    rand = torch.empty((batch_size), dtype=torch.float32).uniform_(-1.0, 1.0).cuda()
+                    rand[rand<0] = -1.0
+                    rand[rand>=0] = 1.0
+                    Ae90['azimuths'] *= rand
+
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
                 Aa = deep_copy(Ae, rand_a)
@@ -264,6 +270,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     lossR_sym = opt.lambda_sym * l_text
                 else:
                     lossR_sym = 0.0
+
                 # landmark consistency
                 if opt.lambda_lc>0:
                     Le = Ae['faces_image']
