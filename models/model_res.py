@@ -80,7 +80,7 @@ class BackgroundEncoder(nn.Module):
                   ResBlock(32, norm='none'), 
                   ResBlock(32, norm='none'), 
                   nn.Upsample(scale_factor=2),
-                  nn.Dropout2d(droprate),
+                  nn.Dropout2d(droprate/2), #small drop for dense prediction
                   Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                   nn.Sigmoid()]
         self.encoder = nn.Sequential(*all_blocks)
@@ -320,7 +320,7 @@ class TextureEncoder(nn.Module):
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
         if droprate >0:
-            up6 = [nn.Dropout2d(droprate)] + up6
+            up6 = [nn.Dropout2d(droprate/2)] + up6 # small drop for dense prediction
 
         if self.makeup==1:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='zeros'),
