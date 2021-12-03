@@ -5,6 +5,7 @@ import torchvision
 from torchvision import models
 from models.utils import weights_init, weights_init_classifier
 import math
+import timm
 
 def normalize_batch(batch):
     # normalize using imagenet mean and std
@@ -198,7 +199,12 @@ class ShapeEncoder(nn.Module):
             avgpool = MMPool()
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
             in_dim = 2048
-
+        elif pretrain=='hr18':
+            avgpool = MMPool()
+            self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
+            in_dim = 2048
+        else: 
+            Print('unknown network')
         #################################################
         linear1 = self.linearblock(in_dim, 1024, relu = False)
         #linear2 = self.linearblock(512, 1024, relu = False)
@@ -422,6 +428,19 @@ class Resnet_4C(nn.Module):
         x = self.model.layer3(x)
         x = self.model.layer4(x)
         return x 
+
+class HRnet_4C(nn.Module):
+    def __init__(self):
+        super(HRnet_4C, self).__init__()
+        model = timm.create_model('hrnet_w18', pretrained=True)
+        weight = model.conv1.weight.clone()
+        model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
+        model.conv1.weight.data[:, :3] = weight
+        model.conv1.weight.data[:, 3] = model.conv1.weight[:, 0]
+        self.model = model
+    def forward(self, x):
+        x = self.model.forward_features(x)
+        return x
 
 class ResBlock(nn.Module):
     def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
