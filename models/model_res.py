@@ -115,15 +115,15 @@ class CameraEncoder(nn.Module):
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
 
-        linear1 = self.linearblock(128, 64)
-        linear2 = self.linearblock(64, 32)
+        linear1 = self.linearblock(128, 32, relu = False)
+        #linear2 = self.linearblock(32, 32, relu=False)
         self.linear3 = nn.Linear(32, 4)
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
 
-        all_blocks = linear1 + linear2
+        all_blocks = linear1 #+ linear2
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
@@ -132,15 +132,15 @@ class CameraEncoder(nn.Module):
         self.linear3.apply(weights_init_classifier)
 
         # Free some memory
-        del all_blocks, block1, block2, block3, \
-        linear1, linear2 \
+        del all_blocks, block1, block2, block3, linear1 
 
-    def linearblock(self, indim, outdim):
+    def linearblock(self, indim, outdim, relu=True):
         block2 = [
             nn.Linear(indim, outdim),
             nn.BatchNorm1d(outdim),
-            nn.ReLU(inplace=True)
         ]
+        if relu:
+            block2.append(nn.ReLU(inplace=True))
         return block2
 
     def atan2(self, y, x):
@@ -149,14 +149,10 @@ class CameraEncoder(nn.Module):
         return phi
 
     def forward(self, x):
-        batch_size = x.shape[0]
-        for layer in self.encoder1:
-            x = layer(x)
-
         bnum = x.shape[0]
+        x = self.encoder1(x)
         x = x.view(bnum, -1)
-        for layer in self.encoder2:
-            x = layer(x)
+        x = self.encoder2(x)
 
         camera_output = self.linear3(x)
 
@@ -174,63 +170,60 @@ class CameraEncoder(nn.Module):
 
 
 class ShapeEncoder(nn.Module):
-    def __init__(self, nc, nk, num_vertices):
+    def __init__(self, nc, nk, num_vertices, pretrain='none'):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
-        #block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2)        
-        #block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
-        #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
-        #block5 = Conv2dBlock(256, 512, nk, stride=2, padding=nk//2)
-        block2 = [ResBlock_half(32), ResBlock(64)]
-        block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]
-        block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)]
-        block5 = [ResBlock_half(256), ResBlock(512)]
+        if pretrain=='none':
+            block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
+            block2 = [ResBlock_half(32), ResBlock(64)]
+            block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]
+            block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)]
+            block5 = [ResBlock_half(256), ResBlock(512)]
 
-        #avgpool = nn.AdaptiveAvgPool2d(1)
-        avgpool = MMPool()
-
-        linear1 = self.linearblock(512, 512)
-        linear2 = self.linearblock(512, 1024)
-        self.linear3 = nn.Linear(1024, self.num_vertices * 3)
+            avgpool = MMPool()
+            all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
+            self.encoder1 = nn.Sequential(*all_blocks)
+            self.encoder1.apply(weights_init)
+            in_dim = 512
+        elif pretrain=='res18':
+            avgpool = MMPool()
+            self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
+            in_dim = 512
+        elif pretrain=='res50':
+            avgpool = MMPool()
+            self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
+            in_dim = 2048
 
         #################################################
-        all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
-        self.encoder1 = nn.Sequential(*all_blocks)
+        linear1 = self.linearblock(in_dim, 1024, relu = False)
+        #linear2 = self.linearblock(512, 1024, relu = False)
 
-        all_blocks = linear1 + linear2
+        all_blocks = linear1 
         self.encoder2 = nn.Sequential(*all_blocks)
-
-        # Initialize with Xavier Glorot
-        self.encoder1.apply(weights_init)
         self.encoder2.apply(weights_init)
+
+        #################################################
+        self.linear3 = nn.Linear(1024, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
 
-        # Free some memory
-        del all_blocks, block1, block2, block3, linear1, linear2
-
-    def linearblock(self, indim, outdim):
+    def linearblock(self, indim, outdim, relu=True):
         block2 = [
             nn.Linear(indim, outdim),
             nn.BatchNorm1d(outdim),
-            nn.ReLU(inplace=True)
         ]
+        if relu:
+            block2.append(nn.ReLU(inplace=True))
         return block2
 
     def forward(self, x):
-        batch_size = x.shape[0]
-        for layer in self.encoder1:
-            x = layer(x)
-
         bnum = x.shape[0]
+        x = self.encoder1(x)
         x = x.view(bnum, -1)
-        for layer in self.encoder2:
-            x = layer(x)
-
+        x = self.encoder2(x)
         x = self.linear3(x)
 
-        delta_vertices = x.view(batch_size, self.num_vertices, 3)
+        delta_vertices = x.view(bnum, self.num_vertices, 3)
         delta_vertices = torch.tanh(delta_vertices)
         return delta_vertices
 
@@ -248,15 +241,15 @@ class LightEncoder(nn.Module):
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
 
-        linear1 = self.linearblock(128, 32)
-        linear2 = self.linearblock(32, 32)
+        linear1 = self.linearblock(128, 32, relu=False)
+        #linear2 = self.linearblock(32, 32)
         self.linear3 = nn.Linear(32, 9)
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
         self.encoder1 = nn.Sequential(*all_blocks)
 
-        all_blocks = linear1 + linear2
+        all_blocks = linear1 #+ linear2
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
@@ -265,25 +258,22 @@ class LightEncoder(nn.Module):
         self.linear3.apply(weights_init_classifier)
 
         # Free some memory
-        del all_blocks, block1, block2, block3, linear1, linear2
+        del all_blocks, block1, block2, block3, linear1
 
-    def linearblock(self, indim, outdim):
+    def linearblock(self, indim, outdim, relu=True):
         block2 = [
             nn.Linear(indim, outdim),
             nn.BatchNorm1d(outdim),
-            nn.ReLU(inplace=True)
         ]
+        if relu:
+            block2.append(nn.ReLU(inplace=True))
         return block2
 
     def forward(self, x):
-        batch_size = x.shape[0]
-        for layer in self.encoder1:
-            x = layer(x)
-
         bnum = x.shape[0]
+        x = self.encoder1(x)
         x = x.view(bnum, -1)
-        for layer in self.encoder2:
-            x = layer(x)
+        x = self.encoder2(x)
         x = self.linear3(x)
 
         lightparam = torch.tanh(x)
@@ -396,14 +386,21 @@ class TextureEncoder(nn.Module):
         textures = torch.cat([textures, textures_flip], dim=2)
         return textures
 
-class Resnet50_4C(nn.Module):
-    def __init__(self):
-        super(Resnet50_4C, self).__init__()
-        model = models.resnet50(pretrained=True)
+class Resnet_4C(nn.Module):
+    def __init__(self, pretrain):
+        super(Resnet_4C, self).__init__()
+        if pretrain == 'res50':
+            model = models.resnet50(pretrained=True)
+        else:
+            model = models.resnet18(pretrained=True)
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
         model.conv1.weight.data[:, 3] = model.conv1.weight[:, 0]
+
+        model.layer4[0].downsample[0].stride = (1,1)
+        model.layer4[0].conv1.stride = (1,1)
+        model.layer4[0].conv2.stride = (1,1)
         self.model = model
     def forward(self, x):
         x = self.model.conv1(x)

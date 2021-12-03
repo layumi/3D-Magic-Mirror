@@ -35,7 +35,6 @@ from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
 from utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
-from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 def trainer(opt, train_dataloader, test_dataloader):
     # differentiable renderer
@@ -47,7 +46,8 @@ def trainer(opt, train_dataloader, test_dataloader):
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg) # height = 2 * width
+                            nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
+                            pretrain = opt.pretrain ) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)

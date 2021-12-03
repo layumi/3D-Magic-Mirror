@@ -98,7 +98,7 @@ class MarketDataset(data.Dataset):
 
         # resize 128x64 (the effective part is 128x64)
         img = img.resize((target_height, target_width*2))
-        seg = seg.resize((target_height, target_width*2))
+        seg = seg.resize((target_height, target_width*2), Image.NEAREST)
         seg = seg.point(lambda p: p > 160 and 255)
 
         #edge = seg.filter(ImageFilter.FIND_EDGES)
