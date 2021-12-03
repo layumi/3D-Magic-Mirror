@@ -406,18 +406,18 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none'):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none', droprate=0.0):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init # (1, V, 3) in [-1,1]
 
-        self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range)
-        self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices, pretrain = pretrain)
-        self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, ratio = ratio, makeup = makeup)
-        self.light_enc = LightEncoder(nc=nc, nk=nk)
+        self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range, droprate = droprate)
+        self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices, pretrain = pretrain, droprate = droprate)
+        self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, ratio = ratio, makeup = makeup, droprate = droprate)
+        self.light_enc = LightEncoder(nc=nc, nk=nk, droprate=droprate)
         self.bg = bg
         if self.bg:
-            self.bg_enc = BackgroundEncoder(nc=nc)
+            self.bg_enc = BackgroundEncoder(nc=nc, droprate = droprate)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.feat_enc = VGG19()
         self.feat_enc.eval()

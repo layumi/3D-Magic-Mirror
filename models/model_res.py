@@ -73,13 +73,14 @@ class VGG19(torch.nn.Module):
         return h_relu3
 
 class BackgroundEncoder(nn.Module):
-    def __init__(self, nc): # input.shape == output.shape rgb 3 channel
+    def __init__(self, nc, droprate=0.0): # input.shape == output.shape rgb 3 channel
         super(BackgroundEncoder, self).__init__()
         all_blocks = [Conv2dBlock(3, 32, 3, 2, 1, norm='none', activation='none', padding_mode='zeros'),
                   ResBlock(32, norm='none'), 
                   ResBlock(32, norm='none'), 
                   ResBlock(32, norm='none'), 
                   nn.Upsample(scale_factor=2),
+                  nn.Dropout2d(droprate),
                   Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                   nn.Sigmoid()]
         self.encoder = nn.Sequential(*all_blocks)
@@ -93,7 +94,7 @@ class BackgroundEncoder(nn.Module):
         return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
-    def __init__(self, nc, nk, azi_scope, elev_range, dist_range):
+    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0):
         super(CameraEncoder, self).__init__()
 
         self.azi_scope = float(azi_scope)
@@ -121,9 +122,12 @@ class CameraEncoder(nn.Module):
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
+
         self.encoder1 = nn.Sequential(*all_blocks)
 
         all_blocks = linear1 #+ linear2
+        if droprate>0:
+            all_blocks += [nn.Dropout(p=droprate)]
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
@@ -170,7 +174,7 @@ class CameraEncoder(nn.Module):
 
 
 class ShapeEncoder(nn.Module):
-    def __init__(self, nc, nk, num_vertices, pretrain='none'):
+    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
 
@@ -200,6 +204,8 @@ class ShapeEncoder(nn.Module):
         #linear2 = self.linearblock(512, 1024, relu = False)
 
         all_blocks = linear1 
+        if droprate>0:
+            all_blocks += [nn.Dropout(p=droprate)]
         self.encoder2 = nn.Sequential(*all_blocks)
         self.encoder2.apply(weights_init)
 
@@ -229,7 +235,7 @@ class ShapeEncoder(nn.Module):
 
 
 class LightEncoder(nn.Module):
-    def __init__(self, nc, nk):
+    def __init__(self, nc, nk, droprate = 0.0):
         super(LightEncoder, self).__init__()
 
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
@@ -250,6 +256,8 @@ class LightEncoder(nn.Module):
         self.encoder1 = nn.Sequential(*all_blocks)
 
         all_blocks = linear1 #+ linear2
+        if droprate>0:
+            all_blocks += [nn.Dropout(p=droprate)]
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
@@ -284,7 +292,7 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0 ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0 ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
@@ -311,6 +319,8 @@ class TextureEncoder(nn.Module):
         up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(32), nn.Upsample(scale_factor=2)]
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
+        if droprate >0:
+            up6 = [nn.Dropout2d(droprate)] + up6
 
         if self.makeup==1:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='zeros'),
