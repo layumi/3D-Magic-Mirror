@@ -29,6 +29,7 @@ You can also install the required packages seperately
     ```sh
     $ conda install libpng jpeg 
     $ conda install pytorch==1.9.0 torchvision=0.10.0 torchaudio cudatoolkit=10.2 -c pytorch
+    $ pip install pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py37_cu102_pyt190/download.html
     ```
 * Kaolin Library
     ```sh
