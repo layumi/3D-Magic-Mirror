@@ -75,6 +75,7 @@ py==1.10.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycodestyle==2.5.0
+pycocotools
 pyflakes==2.1.1
 Pygments==2.9.0
 pygame
@@ -106,7 +107,7 @@ trimesh==3.9.20
 typed-ast==1.4.3
 typing-extensions==3.10.0.0
 urllib3==1.26.5
-usd-core==20.11
+usd-core>=20.11
 vedo
 wcwidth==0.2.5
 webencodings==0.5.1
