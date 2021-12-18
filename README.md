@@ -21,7 +21,7 @@ $ conda activate smr
 You can also install the required packages seperately
 * Pytorch
     ```sh
-    $ conda install pytorch torchvision cudatoolkit=11.1 -c pytorch  
+    $ conda install pytorch=1.9 torchvision cudatoolkit=10.2 -c pytorch  
     $ conda install -c pytorch3d pytorch3d
     $ conda install tensorboard tensorboardx
     ```
