@@ -12,12 +12,11 @@ This is the source code of [Self-Supervised 3D Mesh Reconstruction From Single I
 
 ## Installation fast
 ```sh
-$ conda create --name myenv --file spec-file.txt
+$ conda create --name smr --file spec-file.txt
 ```
 
 #### Create Environment
 ```sh
-$ conda create --name smr python=3.7
 $ conda activate smr
 ```
 
