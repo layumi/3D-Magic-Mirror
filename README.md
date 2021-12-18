@@ -27,7 +27,6 @@ $ pip install -r requirements.txt
 You can also install the required packages seperately
 * Pytorch
     ```sh
-    $ conda install libpng jpeg 
     $ conda install pytorch==1.9.0 torchvision cudatoolkit=10.2 -c pytorch  
     $ conda install -c pytorch3d pytorch3d
     $ conda install tensorboard tensorboardx
