@@ -14,17 +14,11 @@ This is the source code of [Self-Supervised 3D Mesh Reconstruction From Single I
 ```sh
 $ conda create --name smr --file spec-file.txt
 $ conda activate smr
-$ pip install opencv-python
+$ pip install tensorboard tensorboardx
+$ pip install opencv-python imageio trimesh typing-extensions
+$ pip install timm prettytable h5py imgaug smplx munkres joblib pycocotools lap plotly pandas
+$ pip install ipywidgets keyboard transforms3d chumpy
 ```
-
-#### Install packages Seperately
-You can also install the required packages seperately
-* Pytorch
-    ```sh
-    $ conda install pytorch=1.9.0 torchvision cudatoolkit=10.2 -c pytorch  
-    $ conda install -c pytorch3d pytorch3d
-    $ conda install tensorboard tensorboardx
-    ```
 * Kaolin Library
     ```sh
     $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
