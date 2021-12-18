@@ -10,7 +10,11 @@ This is the source code of [Self-Supervised 3D Mesh Reconstruction From Single I
 - Python >= 3.6
 - CUDA >= 10.0.130 (with `nvcc` installed)
 
-## Installation
+## Installation fast
+```sh
+$ conda create --name myenv --file spec-file.txt
+```
+
 #### Create Environment
 ```sh
 $ conda create --name smr python=3.7
