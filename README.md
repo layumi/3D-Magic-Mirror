@@ -17,17 +17,11 @@ $ conda create --name smr python=3.7
 $ conda activate smr
 ```
 
-#### Install from requirements.txt
-You can directly install the requirements through:
-```sh
-$ pip install -r requirements.txt
-```
-
 #### Install packages Seperately
 You can also install the required packages seperately
 * Pytorch
     ```sh
-    $ conda install pytorch==1.9.0 torchvision cudatoolkit=10.2 -c pytorch  
+    $ conda install pytorch==1.9.0 torchvision=0.10.0 cudatoolkit=10.2 -c pytorch  
     $ conda install -c pytorch3d pytorch3d
     $ conda install tensorboard tensorboardx
     ```
