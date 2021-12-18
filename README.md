@@ -13,11 +13,8 @@ This is the source code of [Self-Supervised 3D Mesh Reconstruction From Single I
 ## Installation fast
 ```sh
 $ conda create --name smr --file spec-file.txt
-```
-
-#### Create Environment
-```sh
 $ conda activate smr
+$ pip install opencv-python
 ```
 
 #### Install packages Seperately
