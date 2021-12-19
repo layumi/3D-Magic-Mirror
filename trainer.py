@@ -37,8 +37,9 @@ from datasets.atr import ATRDataset
 from utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
-    # differentiable renderer
+    # differentiable renderer need uv and face_uvs_idx
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
+    print(template_file.uvs, template_file.face_uvs_idx)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
     diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
@@ -47,7 +48,7 @@ def trainer(opt, train_dataloader, test_dataloader):
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
-                            pretrain = opt.pretrain, droprate = opt.droprate ) # height = 2 * width
+                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp ) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)

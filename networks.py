@@ -13,7 +13,9 @@ from models.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEnc
 from models.utils import weights_init, weights_init_classifier
 from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
-
+import sys
+sys.path.append('./ROMP/romp/lib/')
+from ROMP.romp.predict.image_simple import Image_processor
 
 class MS_Discriminator(nn.Module):
     def __init__(self, nc = 4, nf = 32, use_bias = True):
@@ -406,7 +408,7 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none', droprate=0.0):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none', droprate=0.0, romp=False):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init # (1, V, 3) in [-1,1]
@@ -419,10 +421,12 @@ class AttributeEncoder(nn.Module):
         if self.bg:
             self.bg_enc = BackgroundEncoder(nc=nc, droprate = droprate)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
+        if self.romp:
+            self.romp_enc = Image_processor
         self.feat_enc = VGG19()
         self.feat_enc.eval()
 
-    def forward(self, input_img, need_feats=True):
+    def forward(self, input_img, need_feats=True, img_path = None):
         device = input_img.device
         batch_size = input_img.shape[0]
 
@@ -432,8 +436,10 @@ class AttributeEncoder(nn.Module):
 
         # vertex
         delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
-        vertices = self.vertices_init[None].to(device) + delta_vertices
-
+        if self.romp:
+            vertices = self.romp_enc.run(img_path).to(device) + delta_vertices # 32 x 6890 x 3
+        else:
+            vertices = self.vertices_init[None].to(device) + delta_vertices
         # textures
         textures = self.texture_enc(input_img) # 32x3x512x256
         lights = self.light_enc(input_img) # 32x9

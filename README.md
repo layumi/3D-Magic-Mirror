@@ -28,6 +28,11 @@ $ pip install ipywidgets keyboard transforms3d chumpy
 
 * Others: tqdm, trimesh, imageio, etc.
 
+
+``` Test Install
+$ python -m ROMP.romp.predict.image_simple
+```
+
 ## Training and Testing
 #### Training and Testing On the CUB-200-2011 (Bird) dataset
 

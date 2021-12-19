@@ -68,6 +68,7 @@ parser.add_argument('--beta', type=float, default=0, help='using beta distributi
 parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')
 parser.add_argument('--L1', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--unmask', action='store_true', default=False, help='using L1 for ic loss.')
+parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Since it is hard.')
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
