@@ -34,13 +34,12 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
-from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
+parser.add_argument('--configs_yml', default='configs/image.yml', help='folder to output images and model checkpoints')
 parser.add_argument('--dataroot', default='../Market/hq/seg', help='path to dataset root dir')
 parser.add_argument('--ratio', type=int, default=2, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')

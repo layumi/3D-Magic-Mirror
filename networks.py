@@ -9,9 +9,9 @@ from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 #from models.model import TextureEncoder
-from models.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEncoder, ShapeEncoder, LightEncoder
-from models.utils import weights_init, weights_init_classifier
-from utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
+from network.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEncoder, ShapeEncoder, LightEncoder
+from network.utils import weights_init, weights_init_classifier
+from smr_utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
 import sys
 sys.path.append('./ROMP/romp/lib/')
@@ -421,6 +421,7 @@ class AttributeEncoder(nn.Module):
         if self.bg:
             self.bg_enc = BackgroundEncoder(nc=nc, droprate = droprate)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
+        self.romp = romp
         if self.romp:
             self.romp_enc = Image_processor
         self.feat_enc = VGG19()

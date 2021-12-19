@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from torchvision import models
-from models.utils import weights_init, weights_init_classifier
+from .utils import weights_init, weights_init_classifier
 import math
 import timm
 
