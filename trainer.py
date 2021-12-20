@@ -195,19 +195,18 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Xer90, Ae90 = diffRender.render(**Ae90, no_mask = opt.bg)
                 else:
                     Xer90 = Xer
-                print(Xa.shape, Xir.shape)
                 # save img to a temporal dir
-                tmp_path = [] 
-                for i in range(len(img_path)):
-                    path = img_path[i]
-                    image_name = os.path.basename(path)
-                    inter_path = os.path.join(inter_dir, image_name)
-                    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                    output_Xir.save(inter_path, 'JPEG', quality=100)
+                #tmp_path = [] 
+                #for i in range(len(img_path)):
+                #    path = img_path[i]
+                #    image_name = os.path.basename(path)
+                #    inter_path = os.path.join(inter_dir, image_name)
+                #    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
+                #    output_Xir.save(inter_path, 'JPEG', quality=100)
                 # predicted 3D attributes from above render images 
-                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0), img_pth = tmp_path)
+                #Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0), img_pth = tmp_path)
                 # render again to update predicted 3D Aire 
-                _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
+                #_, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
                 if opt.unmask:
@@ -265,12 +264,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # mesh regularization
                 lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
                 # lossR_flip = 0.002 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai))
-                lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
+                #lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
+                lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai)) / 2.0
 
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
-                lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
+                #loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
+                lossR_IC = 0.0 #opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
 
                 # symmetry
                 if opt.lambda_sym>0:

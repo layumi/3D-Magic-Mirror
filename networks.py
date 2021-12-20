@@ -423,7 +423,7 @@ class AttributeEncoder(nn.Module):
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.romp = romp
         if self.romp:
-            self.romp_enc = Image_processor
+            self.romp_enc = Image_processor()
         self.feat_enc = VGG19()
         self.feat_enc.eval()
 
@@ -438,7 +438,9 @@ class AttributeEncoder(nn.Module):
         # vertex
         delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
         if self.romp:
-            vertices = self.romp_enc.run(img_pth).to(device) + delta_vertices # 32 x 6890 x 3
+            vertices = self.romp_enc.run(file_list=img_pth).to(device) 
+            print(vertices.shape, delta_vertices.shape)
+            vertices += delta_vertices # 32 x 6890 x 3
         else:
             vertices = self.vertices_init[None].to(device) + delta_vertices
         # textures
