@@ -427,7 +427,7 @@ class AttributeEncoder(nn.Module):
         self.feat_enc = VGG19()
         self.feat_enc.eval()
 
-    def forward(self, input_img, need_feats=True, img_path = None):
+    def forward(self, input_img, need_feats=True, img_pth = None):
         device = input_img.device
         batch_size = input_img.shape[0]
 
@@ -438,7 +438,7 @@ class AttributeEncoder(nn.Module):
         # vertex
         delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
         if self.romp:
-            vertices = self.romp_enc.run(img_path).to(device) + delta_vertices # 32 x 6890 x 3
+            vertices = self.romp_enc.run(img_pth).to(device) + delta_vertices # 32 x 6890 x 3
         else:
             vertices = self.vertices_init[None].to(device) + delta_vertices
         # textures

@@ -114,7 +114,7 @@ class MarketDataset(data.Dataset):
             rgb = img * seg + torch.ones_like(img) * (1 - seg)
         rgbs = torch.cat([rgb, seg], dim=0)
 
-        data= {'images': rgbs, 'path': img_path, 'label': label} #,
+        data= {'images': rgbs, 'path': img_path, 'label': label, 'rgb': rgb } #,
               # 'edge': edge}
 
         return {'data': data}

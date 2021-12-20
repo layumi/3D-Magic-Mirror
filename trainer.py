@@ -135,11 +135,12 @@ def trainer(opt, train_dataloader, test_dataloader):
                 ###########################
                 optimizerD.zero_grad()
                 Xa = Variable(data['data']['images']).cuda().detach()
+                img_path = data['data']['path']
                 #Ea = Variable(data['data']['edge']).cuda()
                 batch_size = Xa.shape[0]
 
                 # encode real
-                Ae = netE(Xa, need_feats=(opt.lambda_lc>0))
+                Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path)
                 Xer, Ae = diffRender.render(**Ae, no_mask = opt.bg)
 
                 # hard
@@ -195,9 +196,17 @@ def trainer(opt, train_dataloader, test_dataloader):
                 else:
                     Xer90 = Xer
                 print(Xa.shape, Xir.shape)
+                # save img to a temporal dir
+                tmp_path = [] 
+                for i in range(len(img_path)):
+                    path = img_path[i]
+                    image_name = os.path.basename(path)
+                    inter_path = os.path.join(inter_dir, image_name)
+                    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
+                    output_Xir.save(inter_path, 'JPEG', quality=100)
                 # predicted 3D attributes from above render images 
-                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0))
-                # re nder again to update predicted 3D Aire 
+                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0), img_pth = tmp_path)
+                # render again to update predicted 3D Aire 
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
@@ -265,7 +274,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # symmetry
                 if opt.lambda_sym>0:
-                    Ae_fliplr = netE(fliplr(Xa), need_feats=False)
+                    Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
                     # L2 loss will make the result vague
                     l_text = torch.abs(Ae_fliplr['textures'] - Ae['textures']).mean()
                     lossR_sym = opt.lambda_sym * l_text
