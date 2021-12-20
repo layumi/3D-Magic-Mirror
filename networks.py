@@ -437,7 +437,7 @@ class AttributeEncoder(nn.Module):
 
         # vertex
         delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
-        if self.romp:
+        if self.romp and img_path is not None:
             vertices = self.romp_enc.run(file_list=img_pth).to(device) 
             print(vertices.shape, delta_vertices.shape)
             vertices += delta_vertices # 32 x 6890 x 3
