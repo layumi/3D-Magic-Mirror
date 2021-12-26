@@ -28,7 +28,7 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.36, bg=False):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09, bg=False):
         super(MarketDataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -41,12 +41,12 @@ class MarketDataset(data.Dataset):
             self.class_dir = glob.glob(os.path.join(self.root, 'query', '*'))
 
         # threshold
-        #for index, name in enumerate(old_im_list):
-        #    precentage = float(name[-8:-4])
-        #    if precentage>threshold and precentage<0.81:
-        #        self.im_list.append(name)
-        #print(len(old_im_list),'After threshold:',len(self.im_list))
-        self.im_list = old_im_list
+        for index, name in enumerate(old_im_list):
+            precentage = float(name[-8:-4])
+            if precentage>threshold and precentage<0.64:
+                self.im_list.append(name)
+        print(len(old_im_list),'After threshold:',len(self.im_list))
+        #self.im_list = old_im_list
         self.transform = transform
         self.loader = loader
         self.seg_loader = seg_loader
@@ -68,7 +68,7 @@ class MarketDataset(data.Dataset):
         #img_path = seg_path.replace('seg', 'pytorch')
         img_path = seg_path.replace('seg_hmr', 'pytorch')
         # remove foreground precentage
-        #img_path = img_path[:-9] + '.png'
+        img_path = img_path[:-9] + '.png'
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path)
         W, H = img.size
