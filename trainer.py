@@ -147,7 +147,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                 if opt.hard:
                     Ae90 = deep_copy(Ae)
                     #Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-                    Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    if  random.random()>0.5:
+                        Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                    else:
+                        Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(0, 180).cuda()
                     rand = torch.empty((batch_size), dtype=torch.float32).uniform_(-1.0, 1.0).cuda()
                     rand[rand<0] = -1.0
                     rand[rand>=0] = 1.0
