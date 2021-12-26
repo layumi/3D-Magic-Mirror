@@ -13,9 +13,9 @@ from network.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEn
 from network.utils import weights_init, weights_init_classifier
 from smr_utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
-import sys
-sys.path.append('./ROMP/romp/lib/')
-from ROMP.romp.predict.image_simple import Image_processor
+#import sys
+#sys.path.append('./ROMP/romp/lib/')
+#from ROMP.romp.predict.image_simple import Image_processor
 
 class MS_Discriminator(nn.Module):
     def __init__(self, nc = 4, nf = 32, use_bias = True):
