@@ -12,6 +12,8 @@ import torch
 import torchvision
 import numpy as np
 import random
+#import open3d as o3d
+import kaolin as kal
 #import accimage # conda install -c conda-forge accimage
 
 def default_loader(path):
@@ -67,17 +69,20 @@ class MarketDataset(data.Dataset):
         # image and its flipped image
         #img_path = seg_path.replace('seg', 'pytorch')
         img_path = seg_path.replace('seg_hmr', 'pytorch')
+        obj_path = seg_path.replace('seg_hmr', 'bodymesh')
         # remove foreground precentage
         img_path = img_path[:-9] + '.png'
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path)
         W, H = img.size
-
+        obj_path = obj_path[:-9] + '.obj'
+        mesh =  kal.io.obj.import_mesh(obj_path)
+        obj = np.asarray(mesh.vertices, dtype=np.float32) # 6890*3
         if self.train:
             if random.uniform(0, 1) < 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 seg = seg.transpose(Image.FLIP_LEFT_RIGHT)
-
+                obj[:,0] *= -1
             #h = random.randint(int(0.90 * H), int(0.99 * H))
             #w = random.randint(int(0.90 * W), int(0.99 * W))
             #left = random.randint(0, W-w)
@@ -115,7 +120,7 @@ class MarketDataset(data.Dataset):
             rgb = img * seg + torch.ones_like(img) * (1 - seg)
         rgbs = torch.cat([rgb, seg], dim=0)
 
-        data= {'images': rgbs, 'path': img_path, 'label': label, 'rgb': rgb } #,
+        data= {'images': rgbs, 'path': img_path, 'label': label, 'rgb': rgb, 'obj': obj} #,
               # 'edge': edge}
 
         return {'data': data}

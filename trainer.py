@@ -28,7 +28,7 @@ from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 
-
+from pytorch3d.loss import chamfer_distance
 # import from folder
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
@@ -39,7 +39,7 @@ from smr_utils import mask, fliplr, camera_position_from_spherical_angles, gener
 def trainer(opt, train_dataloader, test_dataloader):
     # differentiable renderer need uv and face_uvs_idx
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
-    print(template_file.uvs, template_file.face_uvs_idx)
+    #print(template_file.uvs, template_file.face_uvs_idx)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
     diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
@@ -135,6 +135,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                 ###########################
                 optimizerD.zero_grad()
                 Xa = Variable(data['data']['images']).cuda().detach()
+                if opt.hmr>0.0:
+                    Va = Variable(data['data']['obj']).cuda().detach()
                 img_path = data['data']['path']
                 #Ea = Variable(data['data']['edge']).cuda()
                 batch_size = Xa.shape[0]
@@ -262,13 +264,18 @@ def trainer(opt, train_dataloader, test_dataloader):
                     for it, (out1, out2) in enumerate(zip(outs1, outs2)):
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+opt.ganw)
 
+                # Image Recon loss.
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
 
+                if opt.hmr > 0:
+                    #print(Ae['vertices'].sh, Va.shape)
+                    cham_dist, cham_normals = chamfer_distance(Ae['vertices'], Va)
+                    lossR_data = opt.hmr * cham_dist
                 # mesh regularization
                 lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
                 # lossR_flip = 0.002 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai))
-                #lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
-                lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai)) / 2.0
+                lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
+                #lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai)) / 2.0
 
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
