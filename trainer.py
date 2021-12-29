@@ -29,6 +29,7 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 
 from pytorch3d.loss import chamfer_distance
+#from chamferdist import ChamferDistance
 # import from folder
 from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
@@ -37,6 +38,7 @@ from datasets.atr import ATRDataset
 from smr_utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
+    #chamferDist = ChamferDistance()
     # differentiable renderer need uv and face_uvs_idx
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     #print(template_file.uvs, template_file.face_uvs_idx)
@@ -268,9 +270,9 @@ def trainer(opt, train_dataloader, test_dataloader):
                 lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
 
                 if opt.hmr > 0:
-                    #print(Ae['vertices'].sh, Va.shape)
+                    #print(Ae['vertices'].shape, Va.shape)
                     cham_dist, cham_normals = chamfer_distance(Ae['vertices'], Va)
-                    lossR_data = opt.hmr * cham_dist
+                    lossR_data += opt.hmr * cham_dist
                 # mesh regularization
                 lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
                 # lossR_flip = 0.002 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai))
