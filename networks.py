@@ -162,6 +162,7 @@ class DiffRender(object):
         # get face_uvs
         faces = mesh.faces
         uvs = mesh.uvs.unsqueeze(0)
+        self.uvs = uvs
         face_uvs_idx = mesh.face_uvs_idx
         face_uvs = kal.ops.mesh.index_vertices_by_faces(uvs, face_uvs_idx).detach()
         face_uvs.requires_grad = False

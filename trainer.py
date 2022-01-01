@@ -35,7 +35,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import save_mesh, mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
     #chamferDist = ChamferDistance()
@@ -392,6 +392,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             Ae = deep_copy(Ae, detach=True)
             vertices = Ae['vertices']
             faces = diffRender.faces
+            uvs = diffRender.uvs
             textures = Ae['textures']
             azimuths = Ae['azimuths']
             elevations = Ae['elevations']
@@ -402,9 +403,10 @@ def trainer(opt, train_dataloader, test_dataloader):
             texure_maps.save('%s/current_mesh_recon.png' % (opt.outf), 'PNG')
             texure_maps.save('%s/epoch_%03d_mesh_recon.png' % (opt.outf, epoch), 'PNG')
 
-            tri_mesh = trimesh.Trimesh(vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy())
-            tri_mesh.export('%s/current_mesh_recon.obj' % opt.outf)
-            tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
+            #tri_mesh = trimesh.Trimesh(vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy())
+            #tri_mesh.export('%s/current_mesh_recon.obj' % opt.outf)
+            #tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
+            save_mesh('%s/current_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
 
             rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation.gif' % epoch)
             writer = imageio.get_writer(rotate_path, mode='I')
