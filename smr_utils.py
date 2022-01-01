@@ -8,15 +8,15 @@ import torch.autograd as autograd
 from torch.autograd import Variable
 
 
-def save_mesh(obj_mesh_name, v, f, vt=None):
+def save_mesh(obj_mesh_name, v, faces, vt=None):
     with open(obj_mesh_name, 'w') as fp:
         for i in range(v.shape[0]):
-            fp.write( 'v %f %f %f\n' % ( v[i,0], v[i,1], v[i,2])
-        for f in faces: # Faces are 1-based, not 0-based in obj files
-            fp.write( 'f %d %d %d\n' %  (f[0], f[1], f[2]) )
+            fp.write( 'v %f %f %f\n' % ( v[i,0], v[i,1], v[i,2]))
         if not vt is None:
-            for vtt in vt:
-                fp.write( 'vt %f %f\n' %  (vtt[0], vtt[1]) )
+            for i in range(vt.shape[0]):
+                fp.write( 'vt %f %f\n' %  (vt[i,0], vt[i,1]) )
+        for f in faces:  # Faces are 1-based, not 0-based in obj files
+            fp.write( 'f %d %d %d\n' %  (f[0], f[1], f[2]) )
 
 def mask(gt_data):
     gt_img = gt_data[:, :3]
