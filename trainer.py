@@ -477,13 +477,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                         output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
                         output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
-                        ori_path = os.path.join(ori_dir, image_name)
-                        if opt.bg:
-                            gt_img = Xa[:, :3]
-                            gt_mask = Xa[:, 3]
-                            Xa[:, :3] = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
-                        output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
-                        output_Xa.save(ori_path, 'JPEG', quality=100)
+                        if epoch==0:
+                            ori_path = os.path.join(ori_dir, image_name)
+                            if opt.bg:
+                                gt_img = Xa[:, :3]
+                                gt_mask = Xa[:, 3]
+                                Xa[:, :3] = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
+                            output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
+                            output_Xa.save(ori_path, 'JPEG', quality=100)
 
             fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
             print('Epoch %03d Test recon fid: %0.2f' % (epoch, fid_recon) ) 
