@@ -16,18 +16,20 @@ def normalize_batch(batch):
 ######################################################################
 class MMPool(nn.Module):
     # MMPool zhedong zheng
-    def __init__(self, dim = 1, p=0., eps=1e-6):
+    def __init__(self, shape=(1,1), dim = 1, p=0., eps=1e-6):
         super(MMPool,  self).__init__()
         self.p = nn.Parameter(torch.ones(dim)*p, requires_grad = True) #initial p
         self.eps = eps
         self.dim = dim
-    def forward(self, x):
-        return self.mmpool(x, p=self.p, eps=self.eps)
+        self.shape = shape
 
-    def mmpool(self, x, p, eps):
+    def forward(self, x):
+        return self.mmpool(x, shape = self.shape,  p=self.p, eps=self.eps)
+
+    def mmpool(self, x, shape, p, eps):
         s = x.shape
-        x_max = torch.nn.functional.adaptive_max_pool2d(x, output_size=(1,1))
-        x_avg = torch.nn.functional.adaptive_avg_pool2d(x, output_size=(1,1))
+        x_max = torch.nn.functional.adaptive_max_pool2d(x, output_size=shape)
+        x_avg = torch.nn.functional.adaptive_avg_pool2d(x, output_size=shape)
         w = torch.sigmoid(self.p)
         x = x_max*w + x_avg*(1-w)
         return x
@@ -180,33 +182,37 @@ class ShapeEncoder(nn.Module):
         self.num_vertices = num_vertices
 
         if pretrain=='none':
-            block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
-            block2 = [ResBlock_half(32), ResBlock(64)]
-            block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]
-            block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)]
-            block5 = [ResBlock_half(256), ResBlock(512)]
+            block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)  #128 -> 64
+            block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32
+            block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]  #32 -> 16
+            block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)] #16 -> 8
+            block5 = [ResBlock_half(256), ResBlock(512)] #8->4
 
-            avgpool = MMPool()
+            #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
+            avgpool = MMPool((4,2))
             all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
             self.encoder1 = nn.Sequential(*all_blocks)
             self.encoder1.apply(weights_init)
-            in_dim = 512
+            in_dim = 512 * 8
         elif pretrain=='res18':
-            avgpool = MMPool()
+            #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
+            avgpool = MMPool((4,2))
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
-            in_dim = 512
+            in_dim = 512 * 8
         elif pretrain=='res50':
-            avgpool = MMPool()
+            #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
+            avgpool = MMPool((4,2))
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
-            in_dim = 2048
+            in_dim = 2048 * 8
         elif pretrain=='hr18':
-            avgpool = MMPool()
+            #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
+            avgpool = MMPool((4,2))
             self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
-            in_dim = 2048
+            in_dim = 2048 * 8
         else: 
             Print('unknown network')
         #################################################
-        linear1 = self.linearblock(in_dim, 1024, relu = False)
+        linear1 = self.linearblock(in_dim, 2048, relu = False)
         #linear2 = self.linearblock(512, 1024, relu = False)
 
         all_blocks = linear1 
@@ -216,7 +222,7 @@ class ShapeEncoder(nn.Module):
         self.encoder2.apply(weights_init)
 
         #################################################
-        self.linear3 = nn.Linear(1024, self.num_vertices * 3)
+        self.linear3 = nn.Linear(2048, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
@@ -231,7 +237,7 @@ class ShapeEncoder(nn.Module):
     def forward(self, x):
         bnum = x.shape[0]
         x = self.encoder1(x)
-        x = x.view(bnum, -1)
+        x = x.reshape(bnum, -1)
         x = self.encoder2(x)
         x = self.linear3(x)
 
