@@ -579,6 +579,78 @@ def trainer(opt, train_dataloader, test_dataloader):
                 output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
                 output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
+            # save files
+            num_images = Xa.shape[0]
+            textures = Ae['textures']
+
+            Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+            Xer = (Xer * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+            Xir = (Xir * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+
+            Xa = torch.tensor(Xa, dtype=torch.float32) / 255.0
+            Xa = Xa.permute(0, 3, 1, 2)
+            Xer = torch.tensor(Xer, dtype=torch.float32) / 255.0
+            Xer = Xer.permute(0, 3, 1, 2)
+            Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
+            Xir = Xir.permute(0, 3, 1, 2)
+
+            randperm_a = torch.randperm(batch_size)
+            randperm_b = torch.randperm(batch_size)
+
+            vutils.save_image(Xa[randperm_a, :3],
+                    '%s/swa_test_randperm_Xa.png' % (opt.outf), normalize=True)
+
+            vutils.save_image(Xa[randperm_b, :3],
+                    '%s/swa_test_randperm_Xb.png' % (opt.outf), normalize=True)
+
+            vutils.save_image(Xa[:, :3],
+                    '%s/swa_test_Xa.png' % (opt.outf), normalize=True)
+
+            vutils.save_image(Xer[:, :3].detach(),
+                    '%s/swa_test_Xer.png' % (opt.outf), normalize=True)
+
+            vutils.save_image(Xir[:, :3].detach(),
+                    '%s/swa_test_Xir.png' % (opt.outf), normalize=True)
+
+            vutils.save_image(textures.detach(),
+                    '%s/swa_test_textures.png' % (opt.outf), normalize=True)
+
+            #vutils.save_image(Ea.detach(),
+            #        '%s/current_edge.png' % (opt.outf), normalize=True)
+
+            Ae = deep_copy(Ae, detach=True)
+            vertices = Ae['vertices']
+            faces = diffRender.faces
+            uvs = diffRender.uvs
+            textures = Ae['textures']
+            azimuths = Ae['azimuths']
+            elevations = Ae['elevations']
+            distances = Ae['distances']
+            lights = Ae['lights']
+
+            texure_maps = to_pil_image(textures[0].detach().cpu())
+            texure_maps.save('%s/swa_test_mesh_recon.png' % (opt.outf), 'PNG')
+
+            #tri_mesh = trimesh.Trimesh(vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy())
+            #tri_mesh.export('%s/current_mesh_recon.obj' % opt.outf)
+            #tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
+            save_mesh('%s/swa_test_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+
+            rotate_path = os.path.join(opt.outf, 'swa_test_rotation.gif')
+            writer = imageio.get_writer(rotate_path, mode='I')
+            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10)))
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
+            for delta_azimuth in loop:
+                Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
+                predictions, _ = diffRender.render(**Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+
+
 
     fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
     print('SWA Test recon fid: %0.2f' % (fid_recon) )
