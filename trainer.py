@@ -108,6 +108,16 @@ def trainer(opt, train_dataloader, test_dataloader):
 
             optimizerD.load_state_dict(checkpoint['optimizerD'])
             optimizerE.load_state_dict(checkpoint['optimizerE'])
+
+            if opt.swa and start_epoch >= opt.swa_start:
+                try:
+                    swa_modelE.load_state_dict(checkpoint['swa_modelE'])
+                    swa_modelD.load_state_dict(checkpoint['swa_modelD'])
+                    swa_schedulerE.load_state_dict(checkpoint['swa_schedulerE'])
+                    swa_schedulerD.load_state_dict(checkpoint['swa_schedulerD'])
+                except:
+                    print("=> swa model not found")
+
             print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
         else:
@@ -447,8 +457,15 @@ def trainer(opt, train_dataloader, test_dataloader):
                 'netE': netE.state_dict(),
                 'netD': netD.state_dict(),
                 'optimizerE': optimizerE.state_dict(),
-                'optimizerD': optimizerD.state_dict(),
+                'optimizerD': optimizerD.state_dict()
             }
+            if epoch >= opt.swa_start:
+                state_dict.update({
+                    'swa_modelE': swa_modelE.state_dict(),
+                    'swa_modelD': swa_modelD.state_dict(),
+                    'swa_schedulerE': swa_schedulerE.state_dict(),
+                    'swa_schedulerD': swa_schedulerD.state_dict()
+                })
             torch.save(state_dict, latest_name)
 
         if epoch % 20 == 0: # and epoch > 0:
