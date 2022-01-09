@@ -86,13 +86,8 @@ def trainer(opt, train_dataloader, test_dataloader):
     schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)
     schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=0.01*opt.lr)
     if opt.swa:
-<<<<<<< HEAD
         swa_modelE = AveragedModel(netE)
         swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
-=======
-         swa_modelE = AveragedModel(netE)
-         swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
->>>>>>> bfff0858ca6f3ead056248b1ad85d15ce844abba
 
     # if resume is True, restore from latest_ckpt.path
     start_iter = 0
