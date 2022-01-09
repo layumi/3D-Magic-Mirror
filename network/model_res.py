@@ -153,6 +153,7 @@ class CameraEncoder(nn.Module):
     def atan2(self, y, x):
         r = torch.sqrt(x**2 + y**2 + 1e-12) + 1e-6
         phi = torch.sign(y) * torch.acos(x / r) * 180.0 / math.pi
+        # -180 ~ 180
         return phi
 
     def forward(self, x):

@@ -1,7 +1,7 @@
-file1 = open('template/sphere.obj', 'r')
+file1 = open('template/sphere2.obj', 'r')
 Lines = file1.readlines()
 
-with open('template/ellipsoid.obj', 'w') as fp:
+with open('template/ellipsoid2.obj', 'w') as fp:
     for line in Lines:
         info = line.split(' ')
         if info[0] == 'v':
