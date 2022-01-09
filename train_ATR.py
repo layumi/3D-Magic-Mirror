@@ -65,6 +65,7 @@ parser.add_argument('--makeup', type=int, default=0, help='whether makeup textur
 parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
 parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')
 parser.add_argument('--L1', action='store_true', default=False, help='using L1 for ic loss.')
+parser.add_argument('--coordconv', action='store_true', default=False, help='using coordconv for texture mapping.')
 parser.add_argument('--unmask', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Since it is hard.')

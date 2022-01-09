@@ -76,7 +76,7 @@ class VGG19(torch.nn.Module):
         return h_relu3
 
 class BackgroundEncoder(nn.Module):
-    def __init__(self, nc, droprate=0.0): # input.shape == output.shape rgb 3 channel
+    def __init__(self, nc, droprate=0.0, coordconv=False): # input.shape == output.shape rgb 3 channel
         super(BackgroundEncoder, self).__init__()
         all_blocks = [Conv2dBlock(3, 32, 3, 2, 1, norm='none', activation='none', padding_mode='zeros'),
                   ResBlock(32, norm='none'), 
@@ -97,7 +97,7 @@ class BackgroundEncoder(nn.Module):
         return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
-    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0):
+    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False):
         super(CameraEncoder, self).__init__()
 
         self.azi_scope = float(azi_scope)
@@ -110,11 +110,11 @@ class CameraEncoder(nn.Module):
         self.dist_min = float(dist_range[0])
         self.dist_max = float(dist_range[1])
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
-        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
@@ -178,12 +178,12 @@ class CameraEncoder(nn.Module):
 
 
 class ShapeEncoder(nn.Module):
-    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0):
+    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
 
         if pretrain=='none':
-            block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)  #128 -> 64
+            block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
             block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32
             block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]  #32 -> 16
             block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)] #16 -> 8
@@ -248,7 +248,7 @@ class ShapeEncoder(nn.Module):
 
 
 class LightEncoder(nn.Module):
-    def __init__(self, nc, nk, droprate = 0.0):
+    def __init__(self, nc, nk, droprate = 0.0, coordconv=False):
         super(LightEncoder, self).__init__()
 
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
@@ -305,7 +305,7 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0 ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
@@ -321,15 +321,15 @@ class TextureEncoder(nn.Module):
         #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
 
         # 8*8*512
-        up1 = [Conv2dBlock(512, 256, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(256), nn.Upsample(scale_factor=2)]
+        up1 = [Conv2dBlock(512, 256, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(256), nn.Upsample(scale_factor=2)]
         # 16*16*256 + 16*16*256 = 16*16*512
-        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(128), nn.Upsample(scale_factor=2)]
+        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(128), nn.Upsample(scale_factor=2)]
         # 32*32*128 + 32*32*128 =  32*32*256
-        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(64), nn.Upsample(scale_factor=2)]
+        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
         # 64*64*64 + 64*64*64 = 64*64*128 
-        up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(64), nn.Upsample(scale_factor=2)]
+        up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
         # 128*128*64
-        up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm='bn', padding_mode='zeros'), ResBlock(32), nn.Upsample(scale_factor=2)]
+        up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(32), nn.Upsample(scale_factor=2)]
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
         if droprate >0:
@@ -499,13 +499,54 @@ class ResBlock_half(nn.Module):
         out = torch.cat([out,residual], dim=1)
         return out
 
+class AddCoords(nn.Module):
+
+    def __init__(self, with_r=False):
+        super().__init__()
+        self.with_r = with_r
+
+    def forward(self, input_tensor):
+        """
+        Args:
+            input_tensor: shape(batch, channel, x_dim, y_dim)
+        """
+        batch_size, _, x_dim, y_dim = input_tensor.size()
+
+        xx_channel = torch.arange(x_dim).repeat(1, y_dim, 1)
+        yy_channel = torch.arange(y_dim).repeat(1, x_dim, 1).transpose(1, 2)
+
+        xx_channel = xx_channel.float() / (x_dim - 1)
+        yy_channel = yy_channel.float() / (y_dim - 1)
+
+        xx_channel = xx_channel * 2 - 1
+        yy_channel = yy_channel * 2 - 1
+
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+
+        ret = torch.cat([
+            input_tensor,
+            xx_channel.type_as(input_tensor),
+            yy_channel.type_as(input_tensor)], dim=1)
+
+        if self.with_r:
+            rr = torch.sqrt(torch.pow(xx_channel.type_as(input_tensor) - 0.5, 2) + torch.pow(yy_channel.type_as(input_tensor) - 0.5, 2))
+            ret = torch.cat([ret, rr], dim=1)
+
+        return ret
+
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim ,output_dim, kernel_size, stride,
-                 padding=0, norm='none', activation='lrelu', padding_mode='zeros', dilation=1, fp16 = False):
+                 padding=0, norm='none', activation='lrelu', padding_mode='zeros', dilation=1, fp16 = False, coordconv = False):
         super(Conv2dBlock, self).__init__()
         self.use_bias = True
 
         # initialize convolution
+        self.coordconv = coordconv
+        if self.coordconv:
+            input_dim = input_dim + 2
+            self.addcoords = AddCoords(with_r=False)
+
         self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, padding=padding, padding_mode=padding_mode, dilation=dilation, bias=self.use_bias)
         # initialize normalization
         norm_dim = output_dim
@@ -540,6 +581,8 @@ class Conv2dBlock(nn.Module):
 
 
     def forward(self, x):
+        if self.coordconv:
+            x = self.addcoords(x)
         x = self.conv(x)
         if self.norm:
             x = self.norm(x)

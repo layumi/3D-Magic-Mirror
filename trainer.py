@@ -53,7 +53,7 @@ def trainer(opt, train_dataloader, test_dataloader):
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
-                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp ) # height = 2 * width
+                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, coordconv=opt.coordconv ) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
@@ -85,10 +85,14 @@ def trainer(opt, train_dataloader, test_dataloader):
     # setup learning rate scheduler
     schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)
     schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=0.01*opt.lr)
-
     if opt.swa:
+<<<<<<< HEAD
         swa_modelE = AveragedModel(netE)
         swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
+=======
+         swa_modelE = AveragedModel(netE)
+         swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
+>>>>>>> bfff0858ca6f3ead056248b1ad85d15ce844abba
 
     # if resume is True, restore from latest_ckpt.path
     start_iter = 0
@@ -338,12 +342,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR_IC, lossR_sym
                         )
                 )
-        schedulerD.step()
         if epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()
-        else:
-            schedulerE.step()
+        schedulerD.step()
+        schedulerE.step()
 
 
         if epoch % 10 == 0:
