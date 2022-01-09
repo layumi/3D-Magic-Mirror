@@ -87,9 +87,7 @@ def trainer(opt, train_dataloader, test_dataloader):
     schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=0.01*opt.lr)
 
     if opt.swa:
-        swa_modelD = AveragedModel(netD)
         swa_modelE = AveragedModel(netE)
-        swa_schedulerD = SWALR(optimizerD, swa_lr=opt.swa_lr)
         swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
 
     # if resume is True, restore from latest_ckpt.path
@@ -112,9 +110,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             if opt.swa and start_epoch >= opt.swa_start:
                 try:
                     swa_modelE.load_state_dict(checkpoint['swa_modelE'])
-                    swa_modelD.load_state_dict(checkpoint['swa_modelD'])
                     swa_schedulerE.load_state_dict(checkpoint['swa_schedulerE'])
-                    swa_schedulerD.load_state_dict(checkpoint['swa_schedulerD'])
                 except:
                     print("=> swa model not found")
 
@@ -342,13 +338,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR_IC, lossR_sym
                         )
                 )
+        schedulerD.step()
         if epoch >= opt.swa_start:
-            swa_modelD.update_parameters(netD)
             swa_modelE.update_parameters(netE)
-            swa_schedulerD.step()
             swa_schedulerE.step()
         else:
-            schedulerD.step()
             schedulerE.step()
 
 
@@ -462,9 +456,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             if epoch >= opt.swa_start:
                 state_dict.update({
                     'swa_modelE': swa_modelE.state_dict(),
-                    'swa_modelD': swa_modelD.state_dict(),
                     'swa_schedulerE': swa_schedulerE.state_dict(),
-                    'swa_schedulerD': swa_schedulerD.state_dict()
                 })
             torch.save(state_dict, latest_name)
 
@@ -537,7 +529,6 @@ def trainer(opt, train_dataloader, test_dataloader):
 
     # Update bn statistics for the swa_model at the end
     torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
-    torch.optim.swa_utils.update_bn(train_dataloader, swa_modelD)
 
     netE.eval()
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
