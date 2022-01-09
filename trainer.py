@@ -50,7 +50,7 @@ def trainer(opt, train_dataloader, test_dataloader):
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
-                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp ) # height = 2 * width
+                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, coordconv=opt.coordconv ) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
