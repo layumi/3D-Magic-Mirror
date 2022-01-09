@@ -71,7 +71,7 @@ parser.add_argument('--unmask', action='store_true', default=False, help='using 
 parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
 parser.add_argument('--swa', action='store_true', default=False, help='using swa.')
 parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
-parser.add_argument('--swa_lr', type=float, default=0.0005, help='swa learning rate')
+parser.add_argument('--swa_lr', type=float, default=0.0003, help='swa learning rate')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
 parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Since it is hard.')
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')

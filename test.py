@@ -34,43 +34,60 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
-from models.model import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
+from smr_utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', default='baseline', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
+parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
+parser.add_argument('--configs_yml', default='configs/image.yml', help='folder to output images and model checkpoints')
+parser.add_argument('--dataroot', default='../Market/hq/seg_hmr', help='path to dataset root dir')
+parser.add_argument('--ratio', type=int, default=2, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
-parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
+parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
+parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
 parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
 parser.add_argument('--niter', type=int, default=500, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.0001, help='leaning rate, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--droprate', type=float, default=0.0, help='dropout in encoders. default=0.0')
 parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
 parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')
 parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
 parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
-parser.add_argument('--makeup', action='store_true', default=False, help='whether makeup texture')
-parser.add_argument('--beta', action='store_true', default=False, help='using beta distribution instead of uniform.')
+parser.add_argument('--bg', action='store_true', default=False, help='use background')
+parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
+parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
+parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')
+parser.add_argument('--L1', action='store_true', default=False, help='using L1 for ic loss.')
+parser.add_argument('--coordconv', action='store_true', default=False, help='using coordconv for texture mapping.')
+parser.add_argument('--unmask', action='store_true', default=False, help='using L1 for ic loss.')
+parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
+parser.add_argument('--swa', action='store_true', default=False, help='using swa.')
+parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
+parser.add_argument('--swa_lr', type=float, default=0.0003, help='swa learning rate')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
-parser.add_argument('--lambda_reg', type=float, default=1.0, help='parameter')
+parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Since it is hard.')
+parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
-parser.add_argument('--lambda_ic', type=float, default=0.1, help='parameter')
-parser.add_argument('--lambda_lc', type=float, default=0.001, help='parameter')
-parser.add_argument('--image_weight', type=float, default=0.1, help='parameter')
+parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
+parser.add_argument('--lambda_sym', type=float, default=0.1, help='parameter')
+parser.add_argument('--lambda_lc', type=float, default=0, help='parameter')
+parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
-parser.add_argument('--threshold', type=float, default=0.36, help='parameter')
+parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
+parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
-parser.add_argument('--elev_range', type=str, default="0~30", help='elevation for mkt -15 ~ 15')
+parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
+parser.add_argument('--hard_range', type=int, default=0, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 
 opt = parser.parse_args()
@@ -105,6 +122,7 @@ opt.makeup = config['makeup']
 opt.azi_scope = config['azi_scope']
 opt.elev_range = config['elev_range']
 opt.dist_range = config['dist_range']
+opt.bg = config['bg']
 if 'threshold' in config:
     opt.threshold = config['threshold']
 
@@ -147,7 +165,8 @@ if __name__ == '__main__':
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
-                            nc=4, nk=opt.nk, nf=opt.nf, makeup=opt.makeup)
+                            nc=4, nk=opt.nk, nf=opt.nf, makeup=opt.makeup, bg = opt.bg,
+                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, coordconv=opt.coordconv)
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
@@ -181,7 +200,7 @@ if __name__ == '__main__':
         checkpoint = torch.load(resume_path)
         start_epoch = checkpoint['epoch']
         start_iter = 0
-        netD.load_state_dict(checkpoint['netD'])
+        #netD.load_state_dict(checkpoint['netD'])
         netE.load_state_dict(checkpoint['netE'])
 
         print("=> loaded checkpoint '{}' (epoch {})"
@@ -208,9 +227,11 @@ if __name__ == '__main__':
         Xa = Variable(data['data']['images']).cuda()
         paths = data['data']['path']
 
-        #Xa = fliplr(Xa)
+        Xa = fliplr(Xa)
         with torch.no_grad():
             Ae = netE(Xa)
+            print(Ae['azimuths'])
+            break
             Xer, Ae = diffRender.render(**Ae)
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))

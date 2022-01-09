@@ -61,10 +61,11 @@ def trainer(opt, train_dataloader, test_dataloader):
 
     # netL: for Landmark Consistency
     # print(diffRender.num_faces) # 1280
-    netL = Landmark_Consistency(num_landmarks=diffRender.num_faces, dim_feat=256, num_samples=64)
-    if opt.multigpus:
-        netL = torch.nn.DataParallel(netL)
-    netL = netL.cuda()
+    if opt.lambda_lc>0:
+        netL = Landmark_Consistency(num_landmarks=diffRender.num_faces, dim_feat=256, num_samples=64)
+        if opt.multigpus:
+            netL = torch.nn.DataParallel(netL)
+        netL = netL.cuda()
 
     # netD: Discriminator rgb+seg
     if opt.gan_type == 'wgan':
@@ -80,7 +81,10 @@ def trainer(opt, train_dataloader, test_dataloader):
 
     # setup optimizer
     optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
-    optimizerE = optim.Adam(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
+    if opt.lambda_lc>0:
+        optimizerE = optim.Adam(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
+    else:
+        optimizerE = optim.Adam(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
 
     # setup learning rate scheduler
     schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)

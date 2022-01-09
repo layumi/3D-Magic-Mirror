@@ -251,8 +251,8 @@ class LightEncoder(nn.Module):
     def __init__(self, nc, nk, droprate = 0.0, coordconv=False):
         super(LightEncoder, self).__init__()
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2)
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, coordconv=coordconv)
         block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
         block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
         block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
@@ -336,24 +336,24 @@ class TextureEncoder(nn.Module):
             up6 = [nn.Dropout2d(droprate/2)] + up6 # small drop for dense prediction
 
         if self.makeup==1:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='zeros'),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='reflect', coordconv = coordconv),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
-                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==2:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='bn', padding_mode='zeros'),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='bn', padding_mode='reflect', coordconv = coordconv),
                                       ResBlock(32, norm='bn'), ResBlock(32, norm='bn'),
-                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==3:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='ln', padding_mode='zeros'),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='ln', padding_mode='reflect', coordconv = coordconv),
                                       ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
-                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==4:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='none', padding_mode='zeros'),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='none', padding_mode='reflect', coordconv = coordconv),
                                       ResBlock(32, norm='none'), ResBlock(32, norm='none'),
-                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
+                                      Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
 
 
@@ -400,13 +400,13 @@ class TextureEncoder(nn.Module):
         del x1,x2,x3,x4,x5, up1,up2,up3,up4,up5
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
+        textures_flip = textures.flip([2])
+        textures = torch.cat([textures, textures_flip], dim=2)
 
         # zzd: Here we need a network to make up the hole via reasonable guessing.
         if self.makeup:
             textures = self.make(textures)
 
-        textures_flip = textures.flip([2])
-        textures = torch.cat([textures, textures_flip], dim=2)
         return textures
 
 class Resnet_4C(nn.Module):
