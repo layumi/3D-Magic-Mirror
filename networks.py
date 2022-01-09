@@ -13,6 +13,7 @@ from network.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEn
 from network.utils import weights_init, weights_init_classifier
 from smr_utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
+from torch.autograd import Variable
 #import sys
 #sys.path.append('./ROMP/romp/lib/')
 #from ROMP.romp.predict.image_simple import Image_processor
@@ -430,6 +431,9 @@ class AttributeEncoder(nn.Module):
         self.feat_enc.eval()
 
     def forward(self, input_img, need_feats=True, img_pth = None):
+        if type(input_img) == dict: # for swa update_bn function
+            input_img = Variable( input_img['data']['images']).cuda().detach()
+
         device = input_img.device
         batch_size = input_img.shape[0]
 
