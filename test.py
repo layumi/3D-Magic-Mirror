@@ -230,8 +230,7 @@ if __name__ == '__main__':
         Xa = fliplr(Xa)
         with torch.no_grad():
             Ae = netE(Xa)
-            print(Ae['azimuths'])
-            break
+            #print(Ae['azimuths']+90)
             Xer, Ae = diffRender.render(**Ae)
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
@@ -250,7 +249,11 @@ if __name__ == '__main__':
             Xir, Ai = diffRender.render(**Ai)
             Xir2, Ai2 = diffRender.render(**Ai2)
             Xir90, Ai90 = diffRender.render(**Ai90)
-                    
+            ###
+            #Ai90_recon = netE(Xir90) 
+            #print(Ai90_recon['azimuths'])
+            #break
+                   
             for i in range(len(paths)):
                 path = paths[i]
                 image_name = os.path.basename(path)

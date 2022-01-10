@@ -293,13 +293,6 @@ class DiffRender(object):
             y = torch.sin(angle)
             return torch.stack([x, y], 1)
 
-        loss_azim = torch.pow(angle2xy(pred_att['azimuths']) -
-                     angle2xy(target_att['azimuths']), 2).mean()
-        loss_elev = torch.pow(angle2xy(pred_att['elevations']) -
-                     angle2xy(target_att['elevations']), 2).mean()
-        loss_dist = torch.pow(pred_att['distances'] - target_att['distances'], 2).mean()
-        loss_cam = loss_azim + loss_elev + loss_dist
-
         if L1:
             loss_azim = torch.abs(angle2xy(pred_att['azimuths']) -
                      angle2xy(target_att['azimuths'])).mean()
