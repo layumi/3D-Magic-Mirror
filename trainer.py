@@ -341,7 +341,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR_IC, lossR_sym
                         )
                 )
-        if epoch >= opt.swa_start:
+        if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()
         schedulerD.step()
