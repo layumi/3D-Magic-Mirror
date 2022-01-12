@@ -143,12 +143,11 @@ def trainer(opt, train_dataloader, test_dataloader):
     warm_iteration = len(train_dataloader)*opt.warm_epoch # first 20 epoch
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
+
+        mean_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
-            #if epoch>=opt.warm_epoch and epoch<2*opt.warm_epoch: #20~39
-            #    warm_up_ic = min(1.0, warm_up_ic + 0.9 / warm_iteration)
-            #print(warm_up, warm_up_ic)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
@@ -272,6 +271,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 ############################
                 # (2) Update G network
+                # fix netE.shape to update 
                 ###########################
                 optimizerE.zero_grad()
                 # GAN loss
@@ -341,6 +341,18 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR_IC, lossR_sym
                         )
                 )
+
+                # -5 ~ 5 or -175~175 and mIoU > 0.64:
+                # encode real
+                if  epoch>=0: #opt.warm_epoch:
+                    #good_index =  torch.logical_or( torch.abs(Ae['azimuths'])<5 , torch.abs(Ae['azimuths'])>175)
+                    good_index =  torch.abs(Ae['azimuths'])<5 
+                    delta_vertices = Ae['delta_vertices']
+                    mean_delta_vertices = 0.9*mean_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
+
+        ## update template 
+        netE.vertices_init += mean_delta_vertices
+
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()
@@ -428,6 +440,8 @@ def trainer(opt, train_dataloader, test_dataloader):
             #tri_mesh.export('%s/current_mesh_recon.obj' % opt.outf)
             #tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
             save_mesh('%s/current_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+            #save_mesh('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch), vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+            save_mesh('%s/epoch_%03d_template.obj' % (opt.outf, epoch), netE.vertices_init.clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
 
             rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation.gif' % epoch)
             writer = imageio.get_writer(rotate_path, mode='I')
