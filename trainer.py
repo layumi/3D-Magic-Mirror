@@ -344,14 +344,15 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # -5 ~ 5 or -175~175 and mIoU > 0.64:
                 # encode real
-                if  epoch>=0: #opt.warm_epoch:
-                    #good_index =  torch.logical_or( torch.abs(Ae['azimuths'])<5 , torch.abs(Ae['azimuths'])>175)
-                    good_index =  torch.abs(Ae['azimuths'])<5 
-                    delta_vertices = Ae['delta_vertices']
-                    mean_delta_vertices = 0.9*mean_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
-
+                if  epoch>=opt.warm_epoch:
+                    good_index =  torch.logical_or( torch.abs(Ae['azimuths'])<10 , torch.abs(Ae['azimuths'])>170)
+                    #good_index =  torch.abs(Ae['azimuths'])<5 
+                    if sum(good_index)>=8:
+                        delta_vertices = Ae['delta_vertices']
+                        mean_delta_vertices = 0.9*mean_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
+                    print(mean_delta_vertices[0:4,:])
         ## update template 
-        netE.vertices_init += mean_delta_vertices
+        netE.vertices_init += 0.01 * mean_delta_vertices
 
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
@@ -441,7 +442,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             #tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
             save_mesh('%s/current_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
             #save_mesh('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch), vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
-            save_mesh('%s/epoch_%03d_template.obj' % (opt.outf, epoch), netE.vertices_init.clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+            save_mesh('%s/epoch_%03d_template.obj' % (opt.outf, epoch), netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
 
             rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation.gif' % epoch)
             writer = imageio.get_writer(rotate_path, mode='I')
