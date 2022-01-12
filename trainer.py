@@ -587,15 +587,6 @@ def trainer(opt, train_dataloader, test_dataloader):
             Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
             Xir = Xir.permute(0, 3, 1, 2)
 
-            randperm_a = torch.randperm(batch_size)
-            randperm_b = torch.randperm(batch_size)
-
-            vutils.save_image(Xa[randperm_a, :3],
-                    '%s/swa_test_randperm_Xa.png' % (opt.outf), normalize=True)
-
-            vutils.save_image(Xa[randperm_b, :3],
-                    '%s/swa_test_randperm_Xb.png' % (opt.outf), normalize=True)
-
             vutils.save_image(Xa[:, :3],
                     '%s/swa_test_Xa.png' % (opt.outf), normalize=True)
 
