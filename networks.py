@@ -407,7 +407,7 @@ class AttributeEncoder(nn.Module):
     def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none', droprate=0.0, romp=False, coordconv=False):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
-        self.vertices_init = vertices_init # (1, V, 3) in [-1,1]
+        self.vertices_init = vertices_init[None].cuda() # (1, V, 3) in [-1,1]
 
         self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range, droprate = droprate, coordconv=coordconv)
         self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices, pretrain = pretrain, droprate = droprate, coordconv=coordconv)
@@ -441,7 +441,7 @@ class AttributeEncoder(nn.Module):
             print(vertices.shape, delta_vertices.shape)
             vertices += delta_vertices # 32 x 6890 x 3
         else:
-            vertices = self.vertices_init[None].to(device) + delta_vertices
+            vertices = self.vertices_init + delta_vertices
         # textures
         textures = self.texture_enc(input_img) # 32x3x512x256
         lights = self.light_enc(input_img) # 32x9
