@@ -41,7 +41,7 @@ parser.add_argument('--name', default='baseline', help='folder to output images 
 parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to dataset root dir')
 parser.add_argument('--ratio', type=int, default=1, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
-parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
+parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
 parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)

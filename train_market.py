@@ -70,6 +70,7 @@ parser.add_argument('--coordconv', action='store_true', default=False, help='usi
 parser.add_argument('--unmask', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
 parser.add_argument('--swa', action='store_true', default=False, help='using swa.')
+parser.add_argument('--em', action='store_true', default=False, help='upate template.')
 parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
 parser.add_argument('--swa_lr', type=float, default=0.0003, help='swa learning rate')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')
