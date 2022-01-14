@@ -38,7 +38,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import save_mesh, mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import iou_pytorch, save_mesh, mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
     #chamferDist = ChamferDistance()
@@ -345,8 +345,9 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # -5 ~ 5 or -175~175 and mIoU > 0.64:
                 # encode real
                 #if  epoch>=opt.warm_epoch:
-                good_index =  torch.logical_or( torch.abs(Ae['azimuths'])<15 , torch.abs(Ae['azimuths'])>165)
-                #good_index =  torch.abs(Ae['azimuths'])<5 
+                good_index1 =  torch.logical_or( torch.abs(Ae['azimuths'])<15 , torch.abs(Ae['azimuths'])>165)
+                good_index2 =  iou_pytorch(Xer[:,3].detach(), Xa[:,3].detach()) >= 0.8
+                good_index = torch.logical_and(good_index1, good_index2)
                 if opt.em and sum(good_index)>=8:
                     delta_vertices = Ae['delta_vertices']
                     mean_delta_vertices = 0.9*mean_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
