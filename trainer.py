@@ -346,14 +346,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # encode real
                 #if  epoch>=opt.warm_epoch:
                 good_index1 =  torch.logical_or( torch.abs(Ae['azimuths'])<15 , torch.abs(Ae['azimuths'])>165)
-                good_index2 =  iou_pytorch(Xer[:,3].detach(), Xa[:,3].detach()) >= 0.8
+                good_index2 =  iou_pytorch(Xer[:,3].detach(), Xa[:,3].detach()) >= opt.em
                 good_index = torch.logical_and(good_index1, good_index2)
-                if opt.em and sum(good_index)>=8:
+                if opt.em>0 and sum(good_index)>=8:
                     delta_vertices = Ae['delta_vertices']
                     mean_delta_vertices = 0.9*mean_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
                     #print(mean_delta_vertices[0:4,:])
         ## update template in first 80% epochs
-        if opt.em and epoch<int(0.8*opt.niter):
+        if opt.em>0 and epoch<int(0.8*opt.niter):
             netE.vertices_init.data += mean_delta_vertices
 
         if opt.swa and epoch >= opt.swa_start:
