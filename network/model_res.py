@@ -111,20 +111,24 @@ class CameraEncoder(nn.Module):
         self.dist_max = float(dist_range[1])
 
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        #block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        #block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        #block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
+        block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32
+        block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]  #32 -> 16
+        block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)] #16 -> 8
+        block5 = [ResBlock_half(256), ResBlock(512)] #8->4
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
 
-        linear1 = self.linearblock(128, 32, relu = False)
+        linear1 = self.linearblock(512, 32, relu = False)
         #linear2 = self.linearblock(32, 32, relu=False)
         self.linear3 = nn.Linear(32, 4)
 
         #################################################
-        all_blocks = [block1, block2, block3, block4, block5, avgpool]
+        all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
 
         self.encoder1 = nn.Sequential(*all_blocks)
 
@@ -211,7 +215,7 @@ class ShapeEncoder(nn.Module):
             self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
             in_dim = 2048 * 8
         else: 
-            Print('unknown network')
+            print('unknown network')
         #################################################
         linear1 = self.linearblock(in_dim, 2048, relu = False)
         #linear2 = self.linearblock(512, 1024, relu = False)
