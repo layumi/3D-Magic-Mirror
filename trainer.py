@@ -472,7 +472,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 'optimizerE': optimizerE.state_dict(),
                 'optimizerD': optimizerD.state_dict()
             }
-            if epoch >= opt.swa_start:
+            if opt.swa and epoch >= opt.swa_start:
                 state_dict.update({
                     'swa_modelE': swa_modelE.state_dict(),
                     'swa_schedulerE': swa_schedulerE.state_dict(),
