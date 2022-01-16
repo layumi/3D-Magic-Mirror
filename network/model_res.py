@@ -247,7 +247,7 @@ class ShapeEncoder(nn.Module):
         x = self.linear3(x)
 
         delta_vertices = x.view(bnum, self.num_vertices, 3)
-        delta_vertices = torch.tanh(delta_vertices)
+        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
         return delta_vertices
 
 
