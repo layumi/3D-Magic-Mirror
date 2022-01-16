@@ -46,8 +46,9 @@ def trainer(opt, train_dataloader, test_dataloader):
     template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
     #print(template_file.uvs, template_file.face_uvs_idx)
     print('Vertices Number:', template_file.vertices.shape[0]) #642
-    print('Faces Number:', template_file.faces.shape[0])  #1280
+    print('Faces Number:', template_file.faces.shape)  #1280
     diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
+    #save_mesh('init.obj', diffRender.vertices_init, template_file.faces, template_file.uvs)
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
@@ -144,6 +145,7 @@ def trainer(opt, train_dataloader, test_dataloader):
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
 
+        last_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
         mean_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
@@ -350,12 +352,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                 good_index = torch.logical_and(good_index1, good_index2)
                 if opt.em>0 and sum(good_index)>=8:
                     delta_vertices = Ae['delta_vertices']
-                    mean_delta_vertices = 0.9*mean_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
+                    # momentum to update the mean_delta_vertices
+                    last_delta_vertices = 0.9*last_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
+                    mean_delta_vertices = mean_delta_vertices + last_delta_vertices
                     #print(mean_delta_vertices[0:4,:])
         ## update template in first 80% epochs
         if opt.em>0 and epoch<int(0.8*opt.niter):
             netE.vertices_init.data += mean_delta_vertices
-
+        
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()

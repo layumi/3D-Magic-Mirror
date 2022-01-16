@@ -158,7 +158,9 @@ class DiffRender(object):
         vertices_max = vertices.max(0, True)[0]
         vertices_min = vertices.min(0, True)[0]
         vertices = (vertices - vertices_min) / (vertices_max - vertices_min)
-        vertices_init = vertices * 2.0 - 1.0 # (1, V, 3)
+        vertices_init = vertices * 2.0 - 1.0 # (V, 3)
+        vertices_init[:,0] = vertices_init[:,0] / ratio  # width = 1/2 * height
+        vertices_init[:,2] = vertices_init[:,2] / (ratio**2) # depth = 1/4 * height
 
         # get face_uvs
         faces = mesh.faces

@@ -33,7 +33,7 @@ def save_mesh(obj_mesh_name, v, faces, vt=None):
             for i in range(vt.shape[0]):
                 fp.write( 'vt %f %f\n' %  (vt[i,0], vt[i,1]) )
         for f in faces:  # Faces are 1-based, not 0-based in obj files
-            fp.write( 'f %d %d %d\n' %  (f[0], f[1], f[2]) )
+            fp.write( 'f %d %d %d\n' %  (f[0] + 1, f[1] + 1, f[2] + 1) )
 
 def mask(gt_data):
     gt_img = gt_data[:, :3]
