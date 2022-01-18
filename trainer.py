@@ -59,7 +59,8 @@ def trainer(opt, train_dataloader, test_dataloader):
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
-
+    # init template delta
+    last_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
     # netL: for Landmark Consistency
     # print(diffRender.num_faces) # 1280
     if opt.lambda_lc>0:
@@ -547,7 +548,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         if opt.em > 0 and epoch<int(0.8*opt.niter):
             print('Updating template...')
             count = 0.0
-            last_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
+            current_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
             for iter, data in enumerate(train_dataloader):
                 Xa = Variable(data['data']['images']).cuda()
                 with torch.no_grad():
@@ -558,23 +559,26 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Xe0, _ = diffRender.render(**Ae0)
                     Ae0 = netE(Xe0)
 
-                    At0 = deep_copy(Ae)
-                    At0['azimuths'], At0['elevations'], At0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
-                    At0['vertices'] = netE.vertices_init
-                    Xt0, _ = diffRender.render(**At0)
-                    At0 = netE(Xt0)
+                    #At0 = deep_copy(Ae)
+                    #At0['azimuths'], At0['elevations'], At0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
+                    #At0['vertices'] = netE.vertices_init
+                    #Xt0, _ = diffRender.render(**At0)
+                    #At0 = netE(Xt0)
 
-                    #if epoch == 0: #opt.warm_epoch:
-                        # start with average
-                    last_delta_vertices +=  torch.sum(Ae['delta_vertices'],dim=0)
-                    count += Xa.shape[0]
-                    #else:
-                    #    good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
-                    #    delta_vertices = Ae['delta_vertices']
-                    #    last_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
-                    #    count += torch.sum(good_index)
-            #print(count)
-            netE.vertices_init.data += last_delta_vertices * 1.0 / count
+                    if em == 0: # only poistive
+                        good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
+                        good_index = torch.mean(Ae0['vertices'][:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
+                        delta_vertices = Ae0['delta_vertices']
+                        current_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
+                        count += torch.sum(good_index)
+                    else: # em==1
+                        current_delta_vertices +=  torch.sum(Ae0['delta_vertices'],dim=0)
+                        count += Xa.shape[0]
+            print(count)
+            last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
+            last_delta_vertices[last_delta_vertices>0.1] = 0.1 # clip
+            last_delta_vertices[last_delta_vertices<-0.1] = -0.1 # clip
+            netE.vertices_init.data += last_delta_vertices
         netE.train()
 
     ###### After training, test the swa result
