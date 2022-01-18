@@ -349,7 +349,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         schedulerE.step()
 
 
-        if epoch % 2 == 0:
+        if epoch % 5 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
             summary_writer.add_scalar('Train/lossD', lossD, epoch)
             summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
