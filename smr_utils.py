@@ -20,7 +20,7 @@ def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor):
     union = torch.logical_or(outputs, labels).sum((1, 2))         # Will be zzero if both are 0
     
     iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
-    print('Mean IoU: %.2f'% torch.mean(iou))    
+    #print('Mean IoU: %.2f'% torch.mean(iou))    
     thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
     
     return thresholded  # Or thresholded.mean() if you are interested in average across the batch

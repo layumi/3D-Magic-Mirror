@@ -145,8 +145,6 @@ def trainer(opt, train_dataloader, test_dataloader):
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
 
-        last_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
-        mean_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
@@ -344,22 +342,6 @@ def trainer(opt, train_dataloader, test_dataloader):
                         )
                 )
 
-                # -5 ~ 5 or -175~175 and mIoU > 0.64:
-                # encode real
-                #if  epoch>=opt.warm_epoch:
-                good_index1 =  torch.logical_or( torch.abs(Ae['azimuths'])<15 , torch.abs(Ae['azimuths'])>165)
-                good_index2 =  iou_pytorch(Xer[:,3].detach(), Xa[:,3].detach()) >= opt.em
-                good_index = torch.logical_and(good_index1, good_index2)
-                if opt.em>0 and sum(good_index)>=8:
-                    delta_vertices = Ae['delta_vertices']
-                    # momentum to update the mean_delta_vertices
-                    last_delta_vertices = 0.9*last_delta_vertices + 0.1*torch.mean(delta_vertices[good_index],dim=0)
-                    mean_delta_vertices = mean_delta_vertices + last_delta_vertices
-                    #print(mean_delta_vertices[0:4,:])
-        ## update template in first 80% epochs
-        if opt.em>0 and epoch<int(0.8*opt.niter):
-            netE.vertices_init.data += mean_delta_vertices
-        
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()
@@ -367,7 +349,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         schedulerE.step()
 
 
-        if epoch % 10 == 0:
+        if epoch % 2 == 0:
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
             summary_writer.add_scalar('Train/lossD', lossD, epoch)
             summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
@@ -546,7 +528,54 @@ def trainer(opt, train_dataloader, test_dataloader):
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
                 fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
-            netE.train()
+
+        ############################
+        # (3) Update Template
+        ###########################
+        # azimuth 0, mean distance and mIoU of 0.8  with template:
+        # template projection
+        netE.eval()
+        elev_range = opt.elev_range.split('~')
+        elev_min = float(elev_range[0])
+        elev_max = float(elev_range[1])
+        dist_range = opt.dist_range.split('~')
+        dist_min = float(dist_range[0])
+        dist_max = float(dist_range[1])
+        mean_elev = (elev_max + elev_min) /2
+        mean_dist = (dist_max + dist_min) /2
+        # only updating in the first 80% epoch and fix the template for the final shape updating
+        if opt.em > 0 and epoch<int(0.8*opt.niter):
+            print('Updating template...')
+            count = 0.0
+            last_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
+            for iter, data in enumerate(train_dataloader):
+                Xa = Variable(data['data']['images']).cuda()
+                with torch.no_grad():
+                    Ae = netE(Xa)
+                    _, Ae = diffRender.render(**Ae)
+                    Ae0 = deep_copy(Ae)
+                    Ae0['azimuths'], Ae0['elevations'], Ae0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
+                    Xe0, _ = diffRender.render(**Ae0)
+                    Ae0 = netE(Xe0)
+
+                    At0 = deep_copy(Ae)
+                    At0['azimuths'], At0['elevations'], At0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
+                    At0['vertices'] = netE.vertices_init
+                    Xt0, _ = diffRender.render(**At0)
+                    At0 = netE(Xt0)
+
+                    #if epoch == 0: #opt.warm_epoch:
+                        # start with average
+                    last_delta_vertices +=  torch.sum(Ae['delta_vertices'],dim=0)
+                    count += Xa.shape[0]
+                    #else:
+                    #    good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
+                    #    delta_vertices = Ae['delta_vertices']
+                    #    last_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
+                    #    count += torch.sum(good_index)
+            #print(count)
+            netE.vertices_init.data += last_delta_vertices * 1.0 / count
+        netE.train()
 
     ###### After training, test the swa result
 
