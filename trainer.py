@@ -565,8 +565,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                     #Xt0, _ = diffRender.render(**At0)
                     #At0 = netE(Xt0)
 
-                    if opt.em == 0: # only poistive
-                        good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
+                    if opt.em == 2: # only poistive
+                        #good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
                         good_index = torch.mean(Ae0['vertices'][:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
                         delta_vertices = Ae0['delta_vertices']
                         current_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
