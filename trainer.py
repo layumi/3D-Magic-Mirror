@@ -8,6 +8,7 @@ import imageio
 import numpy as np
 import trimesh
 import yaml
+import copy
 
 # import torch related
 import torch
@@ -162,7 +163,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                 batch_size = Xa.shape[0]
 
                 # encode real
-                Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path)
+                train_shape = False
+                if iter % opt.update_shape == 0:
+                    train_shape = True
+                Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
                 Xer, Ae = diffRender.render(**Ae, no_mask = opt.bg)
 
                 # hard
@@ -229,7 +233,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 #    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
                 #    output_Xir.save(inter_path, 'JPEG', quality=100)
                 # predicted 3D attributes from above render images 
-                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0)) #, img_pth = tmp_path)
+                Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0), train_shape = train_shape ) #, img_pth = tmp_path)
                 # render again to update predicted 3D Aire 
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 

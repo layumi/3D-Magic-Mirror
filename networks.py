@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.nn import init
 import kaolin as kal
 import math
+import copy
 from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
@@ -425,7 +426,7 @@ class AttributeEncoder(nn.Module):
         self.feat_enc = VGG19()
         self.feat_enc.eval()
 
-    def forward(self, input_img, need_feats=True, img_pth = None):
+    def forward(self, input_img, need_feats=True, img_pth = None, train_shape = True):
         if type(input_img) == dict: # for swa update_bn function
             input_img = Variable( input_img['data']['images']).cuda().detach()
 
@@ -437,7 +438,14 @@ class AttributeEncoder(nn.Module):
         azimuths, elevations, distances = cameras # 32, 32, 32
 
         # vertex
-        delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
+        if train_shape:
+            print("Train the shape encoder.")
+            delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
+        else: 
+            print("Fix the shape encoder.")
+            self.shape_enc_copy = copy.deepcopy(self.shape_enc)
+            delta_vertices = self.shape_enc_copy(input_img)
+
         if self.romp and img_path is not None:
             vertices = self.romp_enc.run(file_list=img_pth).to(device) 
             print(vertices.shape, delta_vertices.shape)
