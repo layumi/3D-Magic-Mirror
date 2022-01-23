@@ -579,7 +579,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                         current_delta_vertices +=  torch.sum(Ae0['delta_vertices'],dim=0)
                         count += Xa.shape[0]
             print(count)
-            last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
+            #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
+            last_delta_vertices = current_delta_vertices * 1.0 / count 
             last_delta_vertices[last_delta_vertices>0.1] = 0.1 # clip
             last_delta_vertices[last_delta_vertices<-0.1] = -0.1 # clip
             netE.vertices_init.data += last_delta_vertices
