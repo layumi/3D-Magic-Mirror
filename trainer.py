@@ -19,6 +19,7 @@ import torch.optim as optim
 import torch.utils.data
 from torchvision.transforms.functional import to_pil_image
 import torchvision.utils as vutils
+from torchvision.transforms.transforms import ColorJitter
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
@@ -39,7 +40,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import iou_pytorch, save_mesh, mask, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import angle2xy,  iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
     #chamferDist = ChamferDistance()
@@ -309,10 +310,23 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # symmetry
                 if opt.lambda_sym>0:
+                    # change camera & light direction, keep shape and texture
                     Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
-                    # L2 loss will make the result vague
                     l_text = torch.abs(Ae_fliplr['textures'] - Ae['textures']).mean()
-                    lossR_sym = opt.lambda_sym * l_text
+                    l_shape = torch.abs(Ae_fliplr['vertices'] - Ae['vertices']).mean()
+                    lossR_sym = opt.lambda_sym * (l_text + l_shape/2)
+                    # change texture, keep camera and shape and light 
+                    #jitter = ColorJitter(brightness=.5, hue=.3)
+                    Ae_jitter = netE(ChannelShuffle(Xa), need_feats=False, img_pth = img_path)
+                    l_shape = torch.abs(Ae_jitter['vertices'] - Ae['vertices']).mean()
+                    loss_azim = torch.pow(angle2xy(Ae_jitter['azimuths']) -
+                         angle2xy(Ae['azimuths']), 2).mean()
+                    loss_elev = torch.pow(angle2xy(Ae_jitter['elevations']) -
+                         angle2xy(Ae['elevations']), 2).mean()
+                    loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
+                    l_cam = loss_azim + loss_elev + loss_dist
+                    l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
+                    lossR_sym += opt.lambda_sym * (l_cam + l_shape/2 + l_light)
                 else:
                     lossR_sym = 0.0
 

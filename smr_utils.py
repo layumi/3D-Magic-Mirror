@@ -3,11 +3,18 @@ import numpy as np
 import math
 import time
 import torch
+import random
 import numpy as np
 import torch.autograd as autograd
 from torch.autograd import Variable
 
 SMOOTH = 1e-6
+
+def angle2xy(angle):
+    angle = angle * math.pi / 180.0
+    x = torch.cos(angle)
+    y = torch.sin(angle)
+    return torch.stack([x, y], 1)
 
 def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor):
     # You can comment out this line if you are passing tensors of equal shape
@@ -46,6 +53,25 @@ def fliplr(img):
     inv_idx = torch.arange(img.size(3)-1,-1,-1).long().cuda()  # N x C x H x W
     img_flip = img.index_select(3,inv_idx)
     return img_flip
+
+def ChannelShuffle(img):
+    # rgb -> rbg,
+    rand = random.uniform(0, 1)
+    if rand<0.2:
+        inv_idx = [0,2,1,3]
+    elif rand<0.4:
+        inv_idx = [1,0,2,3]
+    elif rand<0.6:
+        inv_idx = [1,2,0,3]
+    elif rand<0.8:
+        inv_idx = [2,0,1,3]
+    else:
+        inv_idx = [2,1,0,3]
+
+    inv_idx = torch.LongTensor(inv_idx).long().cuda()  # N x C x H x W
+    img_shuffle = img.index_select(1,inv_idx)
+    return img_shuffle
+
 
 class Timer:
     def __init__(self, msg):

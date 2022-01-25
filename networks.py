@@ -340,7 +340,7 @@ class DiffRender(object):
         Na = att['delta_vertices']
         Nf = Na.index_select(1, self.flip_index.to(Na.device))
         Nf[..., 2] *= -1
-
+        # control the symmetry along the z axis.
         loss_norm = (Na - Nf).norm(dim=2).mean()
         return loss_norm
 
