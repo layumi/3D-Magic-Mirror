@@ -190,11 +190,12 @@ class DiffRender(object):
         ## Set up auxiliary connectivity matrix of edges to faces indexes for the flat loss
         edges = torch.cat([faces[:,i:i+2] for i in range(face_size - 1)] +
                         [faces[:,[-1,0]]], dim=0)
-
         edges = torch.sort(edges, dim=1)[0]
         face_ids = torch.arange(self.num_faces, dtype=torch.long).repeat(face_size)
         edges, edges_ids = torch.unique(edges, sorted=True, return_inverse=True, dim=0)
         nb_edges = edges.shape[0]
+        self.edges = edges
+        print('Unique Edge Number: %d'%nb_edges)
         # edge to faces
         sorted_edges_ids, order_edges_ids = torch.sort(edges_ids)
         sorted_faces_ids = face_ids[order_edges_ids]
@@ -367,6 +368,10 @@ class DiffRender(object):
 
         loss_reg = laplacian_weight * loss_laplacian + flat_weight * loss_flat
         return loss_reg
+
+    def calc_reg_edge(self, pred): # pred is  att['vertices']
+        l2_loss = nn.MSELoss(reduction='mean')
+        return l2_loss(pred[:, self.edges[:, 0]], pred[:, self.edges[:, 1]]) * pred.size(-1)
 
 
 # network of landmark consistency

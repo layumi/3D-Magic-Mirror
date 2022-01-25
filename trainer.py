@@ -299,10 +299,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                     lossR_data += opt.hmr * cham_dist
                 # mesh regularization
                 lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
-                # lossR_flip = 0.002 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai))
                 lossR_flip = opt.lambda_flipz * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai) + diffRender.recon_flip(Aire)) / 3.0
-                #lossR_flip = 0.1 * (diffRender.recon_flip(Ae) + diffRender.recon_flip(Ai)) / 2.0
-
+                # point not too close
+                if opt.lambda_edge>0:
+                    lossR_reg += opt.lambda_edge * (diffRender.calc_reg_edge(Ae['vertices']) +  diffRender.calc_reg_edge(Ai['vertices'])) / 2.0
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
                 loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
