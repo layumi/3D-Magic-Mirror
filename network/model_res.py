@@ -110,14 +110,11 @@ class CameraEncoder(nn.Module):
         self.dist_min = float(dist_range[0])
         self.dist_max = float(dist_range[1])
 
+        # 2-4-4-2
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        #block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        #block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        #block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        #block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32
-        block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]  #32 -> 16
-        block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)] #16 -> 8
+        block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32 
+        block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128), ResBlock(128)]  #32 -> 16
+        block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256), ResBlock(256)] #16 -> 8
         block5 = [ResBlock_half(256), ResBlock(512)] #8->4
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
@@ -187,10 +184,11 @@ class ShapeEncoder(nn.Module):
         self.num_vertices = num_vertices
 
         if pretrain=='none':
+            # 2-4-4-2
             block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
             block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32
-            block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128)]  #32 -> 16
-            block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256)] #16 -> 8
+            block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128), ResBlock(128)]  #32 -> 16
+            block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256), ResBlock(256)] #16 -> 8
             block5 = [ResBlock_half(256), ResBlock(512)] #8->4
 
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
@@ -313,10 +311,11 @@ class TextureEncoder(nn.Module):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
-        self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn') # 256 -> 128*128*32
+        self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
+        # 2-4-4-2
         self.block2 = nn.Sequential(*[ResBlock_half(32), ResBlock(64)]) # 128 -> 64*64*64
-        self.block3 = nn.Sequential(*[ResBlock_half(64), ResBlock(128)]) # 64->32*32*128
-        self.block4 = nn.Sequential(*[ResBlock_half(128), ResBlock(256)]) # 32 -> 16*16*256
+        self.block3 = nn.Sequential(*[ResBlock_half(64), ResBlock(128), ResBlock(128), ResBlock(128)]) # 64->32*32*128
+        self.block4 = nn.Sequential(*[ResBlock_half(128), ResBlock(256), ResBlock(256), ResBlock(256)]) # 32 -> 16*16*256
         self.block5 = nn.Sequential(*[ResBlock_half(256), ResBlock(512)]) # 16-> 8*8*512
         #avgpool = MMPool()
 
