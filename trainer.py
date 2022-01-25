@@ -313,7 +313,9 @@ def trainer(opt, train_dataloader, test_dataloader):
                     # change camera & light direction, keep shape and texture
                     Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
                     l_text = torch.abs(Ae_fliplr['textures'] - Ae['textures']).mean()
-                    l_shape = torch.abs(Ae_fliplr['vertices'] - Ae['vertices']).mean()
+                    Na = Ae['vertices'].clone()
+                    Na[..., 0] *=-1 # flip x 
+                    l_shape = torch.abs(Ae_fliplr['vertices'] - Na).mean()
                     lossR_sym = opt.lambda_sym * (l_text + l_shape/2)
                     # change texture, keep camera and shape and light 
                     #jitter = ColorJitter(brightness=.5, hue=.3)
