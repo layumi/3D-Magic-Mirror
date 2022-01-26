@@ -573,17 +573,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 Xa = Variable(data['data']['images']).cuda()
                 with torch.no_grad():
                     Ae = netE(Xa)
-                    _, Ae = diffRender.render(**Ae)
-                    Ae0 = deep_copy(Ae)
-                    Ae0['azimuths'], Ae0['elevations'], Ae0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
-                    Xe0, _ = diffRender.render(**Ae0)
-                    Ae0 = netE(Xe0)
+                    _, Ae0 = diffRender.render(**Ae)
 
-                    #At0 = deep_copy(Ae)
-                    #At0['azimuths'], At0['elevations'], At0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
-                    #At0['vertices'] = netE.vertices_init
-                    #Xt0, _ = diffRender.render(**At0)
-                    #At0 = netE(Xt0)
+                    # encode again
+                    #Ae0 = deep_copy(Ae)
+                    #Ae0['azimuths'], Ae0['elevations'], Ae0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
+                    #Xe0, _ = diffRender.render(**Ae0)
+                    #Ae0 = netE(Xe0)
 
                     if opt.em == 2: # only poistive
                         #good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
