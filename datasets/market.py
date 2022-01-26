@@ -30,10 +30,11 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09, bg=False):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09, bg=False, hmr = 0.0):
         super(MarketDataset, self).__init__()
         self.root = root
         self.bg = bg
+        self.hmr = hmr
         self.im_list = []
         if train:
             old_im_list = glob.glob(os.path.join(self.root, 'train_all', '*/*.png'))
@@ -64,48 +65,48 @@ class MarketDataset(data.Dataset):
 
     def __getitem__(self, index):
         seg_path, label = self.imgs[index]
-        target_height, target_width = self.image_size, self.image_size
+        target_width = self.image_size
 
         # image and its flipped image
         #img_path = seg_path.replace('seg', 'pytorch')
         img_path = seg_path.replace('seg_hmr', 'pytorch')
-        obj_path = seg_path.replace('seg_hmr', 'bodymesh')
         # remove foreground precentage
         img_path = img_path[:-9] + '.png'
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path)
         W, H = img.size
-        obj_path = obj_path[:-9] + '.obj'
-        mesh =  kal.io.obj.import_mesh(obj_path)
-        obj = np.asarray(mesh.vertices, dtype=np.float32) # 6890*3
+        if self.hmr>0.0:
+            obj_path = seg_path.replace('seg_hmr', 'bodymesh')
+            obj_path = obj_path[:-9] + '.obj'
+            mesh =  kal.io.obj.import_mesh(obj_path)
+            obj = np.asarray(mesh.vertices, dtype=np.float32) # 6890*3
+        else:
+            obj = -1
+
+        # resize 128x64 (the effective part is 128x64)
+        ratio_h = random.uniform(1.0, 1.2)
+        ratio_w = random.uniform(1.0, 1.2)
+        img = img.resize((target_width*ratio_w, target_width*ratio_h*2))
+        seg = seg.resize((target_width*ratio_w, target_width*ratio_h*2), Image.NEAREST)
+        seg = seg.point(lambda p: p > 160 and 255)
+
         if self.train:
+            #padding 10
+            img = torchvision.transforms.functional.pad(img, 10, 0, "constant")
+            seg = torchvision.transforms.functional.pad(seg, 10, 0, "constant")
+            # random crop
+            h, w = target_width*2, target_width 
+            left = random.randint(0, 19)
+            upper = random.randint(0, 19)
+            img = img.crop((left, upper, left+w, upper+h))
+            seg = seg.crop((left, upper, left+w, upper+h))
+
+            # random flip
             if random.uniform(0, 1) < 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 seg = seg.transpose(Image.FLIP_LEFT_RIGHT)
-                obj[:,0] *= -1
-            #h = random.randint(int(0.90 * H), int(0.99 * H))
-            #w = random.randint(int(0.90 * W), int(0.99 * W))
-            #left = random.randint(0, W-w)
-            #upper = random.randint(0, H-h)
-            #right = random.randint(w - left, W)
-            #lower = random.randint(h - upper, H)
-            #img = img.crop((left, upper, right, lower))
-            #seg = seg.crop((left, upper, right, lower))
-
-        ###### make a square 512x512
-        #W, H = img.size
-        #desired_size = max(W, H)
-        #delta_w = desired_size - W
-        #delta_h = desired_size - H
-        #padding = (delta_w//2, delta_h//2, delta_w-(delta_w//2), delta_h-(delta_h//2))
-
-        #img = ImageOps.expand(img, padding)
-        #seg = ImageOps.expand(seg, padding)
-
-        # resize 128x64 (the effective part is 128x64)
-        img = img.resize((target_height, target_width*2))
-        seg = seg.resize((target_height, target_width*2), Image.NEAREST)
-        seg = seg.point(lambda p: p > 160 and 255)
+                if self.hmr>0.0:
+                    obj[:,0] *= -1 # note this obj need to be normalized before we can use. More code is needed.
 
         #edge = seg.filter(ImageFilter.FIND_EDGES)
         #edge = edge.filter(ImageFilter.SMOOTH_MORE)
