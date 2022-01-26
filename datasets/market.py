@@ -83,14 +83,14 @@ class MarketDataset(data.Dataset):
         else:
             obj = -1
 
-        # resize 128x64 (the effective part is 128x64)
-        ratio_h = random.uniform(1.0, 1.2)
-        ratio_w = random.uniform(1.0, 1.2)
-        img = img.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)))
-        seg = seg.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)), Image.NEAREST)
-        seg = seg.point(lambda p: p > 160 and 255)
-
         if self.train:
+            # resize 128x64 (the effective part is 128x64)
+            ratio_h = random.uniform(1.0, 1.2)
+            ratio_w = random.uniform(1.0, 1.2)
+            img = img.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)))
+            seg = seg.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)), Image.NEAREST)
+            seg = seg.point(lambda p: p > 160 and 255)
+
             #padding 10
             img = torchvision.transforms.functional.pad(img, 10, 0, "constant")
             seg = torchvision.transforms.functional.pad(seg, 10, 0, "constant")
@@ -108,6 +108,10 @@ class MarketDataset(data.Dataset):
                 if self.hmr>0.0:
                     obj[:,0] *= -1 # note this obj need to be normalized before we can use. More code is needed.
 
+        else:
+            img = img.resize((int(target_width), int(target_width*2)))
+            seg = seg.resize((int(target_width), int(target_width*2)), Image.NEAREST)
+            seg = seg.point(lambda p: p > 160 and 255)
         #edge = seg.filter(ImageFilter.FIND_EDGES)
         #edge = edge.filter(ImageFilter.SMOOTH_MORE)
         #edge = edge.point(lambda p: p > 20 and 255)
