@@ -368,16 +368,17 @@ class DiffRender(object):
         loss_reg = laplacian_weight * loss_laplacian + flat_weight * loss_flat
         return loss_reg
 
-    def calc_reg_edge(self, pred): # pred is  att['vertices']
-        
+    def calc_reg_edge(self, pred): # pred is  att['vertices'] 
+        #batchsize = pred.shape[0]
         edge_length = torch.abs(pred[:, self.edges[:, 0]] - pred[:, self.edges[:, 1]])
-        mean_length = torch.mean(edge_length, dim=1)
+        mean_length = torch.mean(edge_length, dim=1, keepdim=True)
         bias_length = edge_length-mean_length
-        return torch.mean(torch.norm(bias_length, p=2, dim=1) )
+        return torch.mean(torch.norm(bias_length, p=2, dim=1) ) 
 
     def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
+        batchsize = pred.shape[0] 
         pred = pred.view(-1, pred.size(2))
-        return torch.mean(torch.norm(V, p=2, dim=1)) 
+        return torch.mean(torch.norm(pred, p=2, dim=1)) 
 
 # network of landmark consistency
 class Landmark_Consistency(nn.Module):
