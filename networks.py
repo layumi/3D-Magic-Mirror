@@ -215,7 +215,6 @@ class DiffRender(object):
         max_sub_idx = 2
         edge2faces = torch.zeros((nb_edges, max_sub_idx), dtype=torch.long)
         edge2faces[sorted_edges_ids, sub_idx] = sorted_faces_ids
-        edge2faces = edge2faces
 
         ## Set up auxiliary laplacian matrix for the laplacian loss
         vertices_laplacian_matrix = kal.ops.mesh.uniform_laplacian(self.num_vertices, faces)
@@ -370,9 +369,15 @@ class DiffRender(object):
         return loss_reg
 
     def calc_reg_edge(self, pred): # pred is  att['vertices']
-        l2_loss = nn.MSELoss(reduction='mean')
-        return l2_loss(pred[:, self.edges[:, 0]], pred[:, self.edges[:, 1]]) * pred.size(-1)
+        
+        edge_length = torch.abs(pred[:, self.edges[:, 0]] - pred[:, self.edges[:, 1]])
+        mean_length = torch.mean(edge_length, dim=1)
+        bias_length = edge_length-mean_length
+        return torch.mean(torch.norm(bias_length, p=2, dim=1) )
 
+    def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
+        pred = pred.view(-1, pred.size(2))
+        return torch.mean(torch.norm(V, p=2, dim=1)) 
 
 # network of landmark consistency
 class Landmark_Consistency(nn.Module):

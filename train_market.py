@@ -78,6 +78,7 @@ parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter'
 parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Since it is hard.')
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_edge', type=float, default=0.1, help='parameter')
+parser.add_argument('--lambda_deform', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_flipz', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
