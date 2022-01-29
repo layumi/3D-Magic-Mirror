@@ -381,7 +381,7 @@ class DiffRender(object):
         batchsize = pred.shape[0] 
         pred = pred.view(-1, pred.size(2)) # ((B*N)*3)
         loss_deform = torch.mean(torch.norm(pred, p=2, dim=1)) 
-        print('Deform;%f'%loss_deform)
+        #print('Deform;%f'%loss_deform)
         return loss_deform
 
 # network of landmark consistency
