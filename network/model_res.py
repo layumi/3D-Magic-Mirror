@@ -97,7 +97,7 @@ class BackgroundEncoder(nn.Module):
         return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
-    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False):
+    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn'):
         super(CameraEncoder, self).__init__()
 
         self.azi_scope = float(azi_scope)
@@ -112,10 +112,10 @@ class CameraEncoder(nn.Module):
 
         # 2-4-4-2
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32 
-        block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128), ResBlock(128)]  #32 -> 16
-        block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256), ResBlock(256)] #16 -> 8
-        block5 = [ResBlock_half(256), ResBlock(512)] #8->4
+        block2 = [ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)] #64 -> 32 
+        block3 = [ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]  #32 -> 16
+        block4 = [ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)] #16 -> 8
+        block5 = [ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)] #8->4
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
@@ -179,17 +179,17 @@ class CameraEncoder(nn.Module):
 
 
 class ShapeEncoder(nn.Module):
-    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False):
+    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False, norm = 'bn'):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
 
         if pretrain=='none':
             # 2-4-4-2
             block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
-            block2 = [ResBlock_half(32), ResBlock(64)] #64 -> 32
-            block3 = [ResBlock_half(64), ResBlock(128), ResBlock(128), ResBlock(128)]  #32 -> 16
-            block4 = [ResBlock_half(128), ResBlock(256), ResBlock(256), ResBlock(256)] #16 -> 8
-            block5 = [ResBlock_half(256), ResBlock(512)] #8->4
+            block2 = [ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)] #64 -> 32
+            block3 = [ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]  #32 -> 16
+            block4 = [ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)] #16 -> 8
+            block5 = [ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)] #8->4
 
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
             avgpool = MMPool((4,2))
@@ -307,16 +307,16 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn' ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
         self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
         # 2-4-4-2
-        self.block2 = nn.Sequential(*[ResBlock_half(32), ResBlock(64)]) # 128 -> 64*64*64
-        self.block3 = nn.Sequential(*[ResBlock_half(64), ResBlock(128), ResBlock(128), ResBlock(128)]) # 64->32*32*128
-        self.block4 = nn.Sequential(*[ResBlock_half(128), ResBlock(256), ResBlock(256), ResBlock(256)]) # 32 -> 16*16*256
-        self.block5 = nn.Sequential(*[ResBlock_half(256), ResBlock(512)]) # 16-> 8*8*512
+        self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)]) # 128 -> 64*64*64
+        self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
+        self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
+        self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)]) # 16-> 8*8*512
         #avgpool = MMPool()
 
         #################################################
@@ -557,6 +557,8 @@ class Conv2dBlock(nn.Module):
             self.norm = nn.BatchNorm2d(norm_dim)
         elif norm == 'in':
             self.norm = nn.InstanceNorm2d(norm_dim)
+        elif norm == 'ibn':
+            self.norm = IBN(norm_dim)
         elif norm == 'ln':
             self.norm = LayerNorm(norm_dim, fp16 = fp16)
         elif norm == 'adain':
@@ -592,6 +594,27 @@ class Conv2dBlock(nn.Module):
         if self.activation:
             x = self.activation(x)
         return x
+
+class IBN(nn.Module):
+    r"""Instance-Batch Normalization layer from
+    `"Two at Once: Enhancing Learning and Generalization Capacities via IBN-Net"
+    <https://arxiv.org/pdf/1807.09441.pdf>`
+    Args:
+        planes (int): Number of channels for the input tensor
+        ratio (float): Ratio of instance normalization in the IBN layer
+    """
+    def __init__(self, planes, ratio=0.5):
+        super(IBN, self).__init__()
+        self.half = int(planes * ratio)
+        self.IN = nn.InstanceNorm2d(self.half, affine=True)
+        self.BN = nn.BatchNorm2d(planes - self.half)
+
+    def forward(self, x):
+        split = torch.split(x, self.half, 1)
+        out1 = self.IN(split[0].contiguous())
+        out2 = self.BN(split[1].contiguous())
+        out = torch.cat((out1, out2), 1)
+        return out
 
 class LayerNorm(nn.Module):
     def __init__(self, num_features, eps=1e-5, affine=True, fp16=False):
