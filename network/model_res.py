@@ -215,8 +215,8 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.linearblock(in_dim, 2048, relu = False)
-        #linear2 = self.linearblock(512, 1024, relu = False)
+        linear1 = self.linearblock(in_dim, self.num_vertices * 3, relu = False)
+        #linear2 = self.linearblock(2048, self.num_vertices * 6, relu = False)
 
         all_blocks = linear1 
         if droprate>0:
@@ -225,7 +225,7 @@ class ShapeEncoder(nn.Module):
         self.encoder2.apply(weights_init)
 
         #################################################
-        self.linear3 = nn.Linear(2048, self.num_vertices * 3)
+        self.linear3 = nn.Linear(self.num_vertices * 4, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
@@ -242,9 +242,11 @@ class ShapeEncoder(nn.Module):
         x = self.encoder1(x)
         x = x.reshape(bnum, -1)
         x = self.encoder2(x)
-        x = self.linear3(x)
 
-        delta_vertices = x.view(bnum, self.num_vertices, 3)
+        position = torch.FloatTensor(torch.range(-0.1, 0.1, 0.2/self.num_vertices)).cuda()
+        position = position.unsqueeze(0).repeat(bnum, 1)
+        delta_vertices = torch.cat( (x.view(bnum, 3* self.num_vertices), position), dim=1)
+        delta_vertices = self.linear3(delta_vertices) # all points 
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
         return delta_vertices
 
