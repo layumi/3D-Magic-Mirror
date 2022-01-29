@@ -225,7 +225,7 @@ class ShapeEncoder(nn.Module):
         self.encoder2.apply(weights_init)
 
         #################################################
-        self.linear3 = nn.Linear(self.num_vertices * 4, self.num_vertices * 3)
+        self.linear3 = nn.Linear(self.num_vertices * 6, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
@@ -237,18 +237,16 @@ class ShapeEncoder(nn.Module):
             block2.append(nn.ReLU(inplace=True))
         return block2
 
-    def forward(self, x):
+    def forward(self, x, template):
         bnum = x.shape[0]
         x = self.encoder1(x)
         x = x.reshape(bnum, -1)
         x = self.encoder2(x)
-
-        position = torch.FloatTensor(torch.range(-0.1, 0.1, 0.2/self.num_vertices)).cuda()
-        position = position.unsqueeze(0).repeat(bnum, 1)
-        delta_vertices = torch.cat( (x.view(bnum, 3* self.num_vertices), position), dim=1)
+        current_position = template.repeat(bnum,1,1).view(bnum, 3* self.num_vertices)
+        delta_vertices = torch.cat( (x.view(bnum, 3* self.num_vertices), current_position), dim=1)
         delta_vertices = self.linear3(delta_vertices) # all points 
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
-        return delta_vertices
+        return delta_vertices.view(bnum, self.num_vertices, 3)
 
 
 class LightEncoder(nn.Module):

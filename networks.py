@@ -455,11 +455,11 @@ class AttributeEncoder(nn.Module):
         # vertex
         if train_shape:
             print("Train the shape encoder.")
-            delta_vertices = self.shape_enc(input_img) # 32 x 642x 3
+            delta_vertices = self.shape_enc(input_img, template = self.vertices_init) # 32 x 642x 3
         else: 
             print("Fix the shape encoder.")
             self.shape_enc_copy = copy.deepcopy(self.shape_enc)
-            delta_vertices = self.shape_enc_copy(input_img)
+            delta_vertices = self.shape_enc_copy(input_img, template = self.vertices_init)
 
         if self.romp and img_path is not None:
             vertices = self.romp_enc.run(file_list=img_pth).to(device) 
