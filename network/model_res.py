@@ -215,7 +215,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.Conv1d(in_dim, 128, relu=True )
+        linear1 = self.Conv1d(in_dim*2, 128, relu=True )
         linear2 = self.Conv1d(128, 3, relu = False)
 
         all_blocks = linear1 + linear2
@@ -223,7 +223,6 @@ class ShapeEncoder(nn.Module):
             all_blocks += [nn.Dropout(p=droprate)]
         self.encoder2 = nn.Sequential(*all_blocks)
         self.encoder2.apply(weights_init)
-
         #################################################
         self.linear3 = nn.Linear(self.num_vertices * 3, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
@@ -249,13 +248,15 @@ class ShapeEncoder(nn.Module):
     def forward(self, x, template):
         bnum = x.shape[0]
         x = self.encoder1(x)
-        # 8*4*4096 -> 3*642
-        # template is 1x642x3
+        # template is 1x642x3, use location to get local feature
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
-        x = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 512 x642x1
+        # local + global
+        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 512 x642x1
+        glob = F.adaptive_avg_pool2d(x, (1,1))
+        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1)), dim = 1 ) # 32x1024x642
         x = self.encoder2(x.squeeze()) # 32x3x642
-        delta_vertices = x.permute(0, 2, 1).view(bnum, -1) # 32x642x3
+        delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points 
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
         #print(delta_vertices.shape)
