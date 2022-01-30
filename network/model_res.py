@@ -196,41 +196,50 @@ class ShapeEncoder(nn.Module):
             all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
             self.encoder1 = nn.Sequential(*all_blocks)
             self.encoder1.apply(weights_init)
-            in_dim = 512 * 8
+            in_dim = 512 
         elif pretrain=='res18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
             avgpool = MMPool((8,4))
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
-            in_dim = 512 * 8
+            in_dim = 512 
         elif pretrain=='res50':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
             avgpool = MMPool((8,4))
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
-            in_dim = 2048 * 8
+            in_dim = 2048 
         elif pretrain=='hr18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
             avgpool = MMPool((8,4))
             self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
-            in_dim = 2048 * 8
+            in_dim = 2048 
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.linearblock(in_dim, 2048, relu = False)
-        #linear2 = self.linearblock(2048, self.num_vertices * 6, relu = False)
+        linear1 = self.Conv1d(in_dim, 128, relu=True )
+        linear2 = self.Conv1d(128, 3, relu = False)
 
-        all_blocks = linear1 
+        all_blocks = linear1 + linear2
         if droprate>0:
             all_blocks += [nn.Dropout(p=droprate)]
         self.encoder2 = nn.Sequential(*all_blocks)
         self.encoder2.apply(weights_init)
 
         #################################################
-        self.linear3 = nn.Linear(2048, self.num_vertices * 3)
-        self.linear3.apply(weights_init_classifier)
+        #self.linear3 = nn.Linear(2048, self.num_vertices * 3)
+        #self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
         block2 = [
             nn.Linear(indim, outdim),
+            nn.BatchNorm1d(outdim),
+        ]
+        if relu:
+            block2.append(nn.ReLU(inplace=True))
+        return block2
+
+    def Conv1d(self, indim, outdim, relu=True):
+        block2 = [
+            nn.Conv1d(indim, outdim, kernel_size=1),
             nn.BatchNorm1d(outdim),
         ]
         if relu:
@@ -244,12 +253,13 @@ class ShapeEncoder(nn.Module):
         # template is 1x642x3
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
-        textures = F.grid_sample(x, uv_sampler, align_corners=False) # 32 x 642x1x4096
-        x = x.reshape(bnum, -1)
-        #x = self.encoder2(x)
-        delta_vertices = self.linear3(delta_vertices) # all points 
+        x = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 512 x642x1
+        x = self.encoder2(x.squeeze()) # 32x3x642
+        delta_vertices = x.permute(0, 2, 1) # 32x642x3
+        #delta_vertices = self.linear3(delta_vertices) # all points 
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
-        return delta_vertices.view(bnum, self.num_vertices, 3)
+        #print(delta_vertices.shape)
+        return delta_vertices #.view(bnum, self.num_vertices, 3)
 
 
 class LightEncoder(nn.Module):
