@@ -225,8 +225,8 @@ class ShapeEncoder(nn.Module):
         self.encoder2.apply(weights_init)
 
         #################################################
-        #self.linear3 = nn.Linear(2048, self.num_vertices * 3)
-        #self.linear3.apply(weights_init_classifier)
+        self.linear3 = nn.Linear(self.num_vertices * 3, self.num_vertices * 3)
+        self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
         block2 = [
@@ -255,11 +255,11 @@ class ShapeEncoder(nn.Module):
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         x = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 512 x642x1
         x = self.encoder2(x.squeeze()) # 32x3x642
-        delta_vertices = x.permute(0, 2, 1) # 32x642x3
-        #delta_vertices = self.linear3(delta_vertices) # all points 
+        delta_vertices = x.permute(0, 2, 1).view(bnum, -1) # 32x642x3
+        delta_vertices = self.linear3(delta_vertices) # all points 
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
         #print(delta_vertices.shape)
-        return delta_vertices #.view(bnum, self.num_vertices, 3)
+        return delta_vertices.view(bnum, self.num_vertices, 3)
 
 
 class LightEncoder(nn.Module):
