@@ -192,30 +192,30 @@ class ShapeEncoder(nn.Module):
             block5 = [ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)] #8->4
 
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
-            avgpool = MMPool((4,2))
+            avgpool = MMPool((8,4))
             all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
             self.encoder1 = nn.Sequential(*all_blocks)
             self.encoder1.apply(weights_init)
             in_dim = 512 * 8
         elif pretrain=='res18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            avgpool = MMPool((4,2))
+            avgpool = MMPool((8,4))
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
             in_dim = 512 * 8
         elif pretrain=='res50':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            avgpool = MMPool((4,2))
+            avgpool = MMPool((8,4))
             self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
             in_dim = 2048 * 8
         elif pretrain=='hr18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            avgpool = MMPool((4,2))
+            avgpool = MMPool((8,4))
             self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
             in_dim = 2048 * 8
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.linearblock(in_dim, self.num_vertices * 3, relu = False)
+        linear1 = self.linearblock(in_dim, 2048, relu = False)
         #linear2 = self.linearblock(2048, self.num_vertices * 6, relu = False)
 
         all_blocks = linear1 
@@ -225,7 +225,7 @@ class ShapeEncoder(nn.Module):
         self.encoder2.apply(weights_init)
 
         #################################################
-        self.linear3 = nn.Linear(self.num_vertices * 6, self.num_vertices * 3)
+        self.linear3 = nn.Linear(2048, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
@@ -240,10 +240,13 @@ class ShapeEncoder(nn.Module):
     def forward(self, x, template):
         bnum = x.shape[0]
         x = self.encoder1(x)
+        # 8*4*4096 -> 3*642
+        # template is 1x642x3
+        current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
+        uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
+        textures = F.grid_sample(x, uv_sampler, align_corners=False) # 32 x 642x1x4096
         x = x.reshape(bnum, -1)
-        x = self.encoder2(x)
-        current_position = template.repeat(bnum,1,1).view(bnum, 3* self.num_vertices)
-        delta_vertices = torch.cat( (x.view(bnum, 3* self.num_vertices), current_position), dim=1)
+        #x = self.encoder2(x)
         delta_vertices = self.linear3(delta_vertices) # all points 
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
         return delta_vertices.view(bnum, self.num_vertices, 3)
