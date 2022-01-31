@@ -312,29 +312,30 @@ def trainer(opt, train_dataloader, test_dataloader):
                 loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
 
-                # symmetry
-                if opt.lambda_sym>0:
+                # disentangle regularization
+                if opt.dis1>0 or opt.dis2>0:
+                    bnum = Ae['vertices'].shape[0]
                     # change camera & light direction, keep shape and texture
                     Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
-                    l_text = torch.abs(Ae_fliplr['textures'] - Ae['textures']).mean()
+                    l_text = torch.abs( fliplr(Ae_fliplr['textures']) - Ae['textures']).mean()
                     Na = Ae['vertices'].clone()
                     Na[..., 0] *=-1 # flip x 
-                    l_shape = torch.abs(Ae_fliplr['vertices'] - Na).mean()
-                    lossR_sym = opt.lambda_sym * (l_text + l_shape/2)
-                    # change texture, keep camera and shape and light 
-                    #jitter = ColorJitter(brightness=.5, hue=.3)
+                    l_shape = torch.norm(Ae_fliplr['vertices'].view(bnum,-1) - Na.view(bnum,-1), p=2, dim=1).mean()
+                    lossR_dis = opt.dis1 * (l_text + l_shape/2)
+                    # change texture, keep camera and shape
+                    # jitter = ColorJitter(brightness=.5, hue=.3)
                     Ae_jitter = netE(ChannelShuffle(Xa), need_feats=False, img_pth = img_path)
-                    l_shape = torch.abs(Ae_jitter['vertices'] - Ae['vertices']).mean()
+                    l_shape = torch.norm(Ae_jitter['delta_vertices'].view(bnum,-1) - Ae['delta_vertices'].view(bnum,-1), p=2, dim=1).mean()
                     loss_azim = torch.pow(angle2xy(Ae_jitter['azimuths']) -
                          angle2xy(Ae['azimuths']), 2).mean()
                     loss_elev = torch.pow(angle2xy(Ae_jitter['elevations']) -
                          angle2xy(Ae['elevations']), 2).mean()
                     loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
                     l_cam = loss_azim + loss_elev + loss_dist
-                    l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
-                    lossR_sym += opt.lambda_sym * (l_cam + l_shape/2 + l_light)
+                    #l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
+                    lossR_dis += opt.dis2 * (l_cam + l_shape/2)
                 else:
-                    lossR_sym = 0.0
+                    lossR_dis = 0.0
 
                 # landmark consistency
                 if opt.lambda_lc>0:
@@ -349,7 +350,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     lossR_LC = 0.0
 
                 # overall loss
-                lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC + lossR_sym
+                lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC + lossR_dis
 
                 lossR *= warm_up
                 lossR.backward()
@@ -359,11 +360,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                 print('[%d/%d][%d/%d]\n'
                 'LossD: %.4f lossD_real: %.4f lossD_fake: %.4f lossD_gp: %.4f\n'
                 'lossR: %.4f lossR_fake: %.4f lossR_reg: %.4f lossR_data: %.4f '
-                'lossR_IC: %.4f lossR_sym: %.4f \n'
+                'lossR_IC: %.4f lossR_dis: %.4f \n'
                     % (epoch, opt.niter, iter, len(train_dataloader),
                         lossD, lossD_real, lossD_fake, lossD_gp,
                         lossR, lossR_fake, lossR_reg, lossR_data,
-                        lossR_IC, lossR_sym
+                        lossR_IC, lossR_dis
                         )
                 )
 

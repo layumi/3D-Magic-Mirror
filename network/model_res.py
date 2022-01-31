@@ -215,7 +215,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.Conv1d(in_dim*2, 128, relu=True )
+        linear1 = self.Conv1d(in_dim*2 + 1, 128, relu=True )
         linear2 = self.Conv1d(128, 3, relu = False)
 
         all_blocks = linear1 + linear2
@@ -248,13 +248,15 @@ class ShapeEncoder(nn.Module):
     def forward(self, x, template):
         bnum = x.shape[0]
         x = self.encoder1(x)
-        # template is 1x642x3, use location to get local feature
+        # template is 1x642x3, use location (x,y) to get local feature
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
-        # local + global
+        depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
+        # extract local 
         local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 512 x642x1
         glob = F.adaptive_avg_pool2d(x, (1,1))
-        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1)), dim = 1 ) # 32x1024x642
+        # local + global + depth
+        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), depth.unsqueeze(1)), dim = 1 ) # 32x1025x642x1
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points 
@@ -264,14 +266,14 @@ class ShapeEncoder(nn.Module):
 
 
 class LightEncoder(nn.Module):
-    def __init__(self, nc, nk, droprate = 0.0, coordconv=False):
+    def __init__(self, nc, nk, droprate = 0.0, coordconv=False, norm='bn'):
         super(LightEncoder, self).__init__()
 
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2)
-        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2)
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, norm = norm, coordconv=coordconv)
+        block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, norm = norm, coordconv=coordconv)
+        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2, norm = norm)
+        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2, norm = norm)
+        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2, norm = norm)
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()

@@ -430,7 +430,7 @@ class AttributeEncoder(nn.Module):
         self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range, droprate = droprate, coordconv=coordconv, norm = norm)
         self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices, pretrain = pretrain, droprate = droprate, coordconv=coordconv, norm=norm)
         self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, ratio = ratio, makeup = makeup, droprate = droprate, coordconv=coordconv, norm=norm)
-        self.light_enc = LightEncoder(nc=nc, nk=nk, droprate=droprate, coordconv=coordconv)
+        self.light_enc = LightEncoder(nc=nc, nk=nk, droprate=droprate, coordconv=coordconv, norm=norm)
         self.bg = bg
         if self.bg:
             self.bg_enc = BackgroundEncoder(nc=nc, droprate = droprate, coordconv=coordconv)
