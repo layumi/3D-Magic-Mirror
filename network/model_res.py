@@ -340,15 +340,15 @@ class TextureEncoder(nn.Module):
         #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
 
         # 8*8*512
-        up1 = [Conv2dBlock(512, 256, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(256), nn.Upsample(scale_factor=2)]
+        up1 = [Conv2dBlock(512, 256, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(256), nn.Upsample(scale_factor=2)]
         # 16*16*256 + 16*16*256 = 16*16*512
-        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(128), nn.Upsample(scale_factor=2)]
+        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(128), nn.Upsample(scale_factor=2)]
         # 32*32*128 + 32*32*128 =  32*32*256
-        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
+        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
         # 64*64*64 + 64*64*64 = 64*64*128 
-        up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
+        up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
         # 128*128*64
-        up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm='bn', padding_mode='zeros', coordconv=coordconv), ResBlock(32), nn.Upsample(scale_factor=2)]
+        up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(32), nn.Upsample(scale_factor=2)]
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
         if droprate >0:
