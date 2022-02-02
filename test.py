@@ -107,6 +107,8 @@ torch.manual_seed(opt.manualSeed)
 with open('log/%s/opts.yaml'%opt.name,'r') as fp:
     config = yaml.load(fp, Loader=yaml.FullLoader)
 
+opt.template_path = config['template_path']
+opt.elev_range= config['elev_range']
 opt.name = config['name']
 opt.dataroot = config['dataroot']
 opt.gan_type = config['gan_type']
@@ -123,8 +125,9 @@ opt.azi_scope = config['azi_scope']
 opt.elev_range = config['elev_range']
 opt.dist_range = config['dist_range']
 opt.bg = config['bg']
-if 'threshold' in config:
-    opt.threshold = config['threshold']
+opt.coordconv = config['coordconv']
+opt.norm = config['norm']
+opt.threshold = config['threshold']
 
 if torch.cuda.is_available():
     cudnn.benchmark = True
@@ -161,35 +164,16 @@ if __name__ == '__main__':
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
     diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = ratio, image_weight=opt.image_weight)
-
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, makeup=opt.makeup, bg = opt.bg,
-                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, coordconv=opt.coordconv)
+                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
+                            coordconv=opt.coordconv, norm = opt.norm)
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
-
-    # netL: for Landmark Consistency
-    # print(diffRender.num_faces) # 1280
-    netL = Landmark_Consistency(num_landmarks=diffRender.num_faces, dim_feat=256, num_samples=64)
-    if opt.multigpus:
-        netL = torch.nn.DataParallel(netL)
-    netL = netL.cuda()
-
-    # netD: Discriminator rgb+seg
-    if opt.gan_type == 'wgan':
-        netD = Discriminator(nc=4, nf=32)
-    elif opt.gan_type == 'lsgan':
-        netD = MS_Discriminator(nc=4, nf=32)
-    else:
-        print('unknow gan type. Only lsgan or wgan is accepted.')
-
-    if opt.multigpus:
-        netD = torch.nn.DataParallel(netD)
-    netD = netD.cuda()
 
     # restore from latest_ckpt.path
     start_iter = 0
@@ -201,11 +185,12 @@ if __name__ == '__main__':
         start_epoch = checkpoint['epoch']
         start_iter = 0
         #netD.load_state_dict(checkpoint['netD'])
-        netE.load_state_dict(checkpoint['netE'])
+        netE.load_state_dict(checkpoint['netE'], strict=False)
 
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
 
+    
     ori_dir = os.path.join(opt.outf, 'fid/ori')
     rec_dir = os.path.join(opt.outf, 'fid/rec')
     inter_dir = os.path.join(opt.outf, 'fid/inter')
@@ -230,7 +215,7 @@ if __name__ == '__main__':
         Xa = fliplr(Xa)
         with torch.no_grad():
             Ae = netE(Xa)
-            #print(Ae['azimuths']+90)
+            #print(Ae['azimuths'])
             Xer, Ae = diffRender.render(**Ae)
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))

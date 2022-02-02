@@ -460,7 +460,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
             rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation.gif' % epoch)
             writer = imageio.get_writer(rotate_path, mode='I')
-            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10)))
+            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
             for delta_azimuth in loop:
                 Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()

@@ -260,7 +260,7 @@ class ShapeEncoder(nn.Module):
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points 
-        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5,0.5]
+        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5, 0.5]
         #print(delta_vertices.shape)
         return delta_vertices.view(bnum, self.num_vertices, 3)
 
@@ -421,7 +421,6 @@ class TextureEncoder(nn.Module):
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
-
         # zzd: Here we need a network to make up the hole via reasonable guessing.
         if self.makeup:
             textures = self.make(textures)
