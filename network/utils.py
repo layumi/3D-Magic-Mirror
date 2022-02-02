@@ -9,8 +9,11 @@ def weights_init(m):
         init.kaiming_normal_(m.weight.data, a=0, mode='fan_in') # For old pytorch, you may use kaiming_normal.
     elif classname.find('Linear') != -1:
         init.kaiming_normal_(m.weight.data, a=0, mode='fan_out')
-    elif classname.find('BatchNorm') != -1 or classname.find('InstanceNorm') != -1:
+    elif classname.find('BatchNorm') != -1: 
         init.normal_(m.weight.data, 1.0, 0.02)
+    elif classname.find('InstanceNorm') != -1:
+        if hasattr(m, 'weight')  and m.weight is not None:
+            init.normal_(m.weight.data, 1.0, 0.02)
     if hasattr(m, 'bias') and m.bias is not None:
         init.constant_(m.bias.data, 0.0)
 
