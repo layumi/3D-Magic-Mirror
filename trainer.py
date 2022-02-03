@@ -598,11 +598,11 @@ def trainer(opt, train_dataloader, test_dataloader):
             print(count)
             #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
             last_delta_vertices = current_delta_vertices * 1.0 / count 
-            last_delta_vertices[last_delta_vertices>0.05] = 0.05 # clip 0.05 == 1/20
-            last_delta_vertices[last_delta_vertices<-0.05] = -0.05 # clip
+            last_delta_vertices[last_delta_vertices>0.03] = 0.03 # clip 0.05 == 1/20
+            last_delta_vertices[last_delta_vertices<-0.03] = -0.03 # clip
             new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
-            new_template[new_template>0.99] = 0.99
-            new_template[new_template<-0.99] = -0.99
+            new_template[new_template>0.999] = 0.999
+            new_template[new_template<-0.999] = -0.999
             netE.vertices_init.data = new_template
             opt.em_step = opt.em_step*0.99 # decay
         netE.train()
