@@ -592,17 +592,27 @@ def trainer(opt, train_dataloader, test_dataloader):
                         delta_vertices = Ae0['delta_vertices']
                         current_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
                         count += torch.sum(good_index)
+                    elif opt.em == 3: # symmetry
+                        left = torch.sum(Ae0['vertices'][:,:,0]>0, dim=1)
+                        front =  torch.sum(Ae0['vertices'][:,:,2]>0, dim=1) 
+                        
+                        good_index1 = torch.abs( left - netE.num_vertices //2) < int(netE.num_vertices*0.1)
+                        good_index2 = torch.abs( front - netE.num_vertices //2) < int(netE.num_vertices*0.1)
+                        good_index = torch.logical_and(good_index1, good_index2) 
+                        delta_vertices = Ae0['delta_vertices']
+                        current_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
+                        count += torch.sum(good_index)
                     else: # em==1
                         current_delta_vertices +=  torch.sum(Ae0['delta_vertices'],dim=0)
                         count += Xa.shape[0]
-            print(count)
+            print('The template mesh fuses %d / %d meshes'%(count, len(train_dataloader.dataset)) )
             #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
             last_delta_vertices = current_delta_vertices * 1.0 / count 
-            last_delta_vertices[last_delta_vertices>0.03] = 0.03 # clip 0.05 == 1/20
-            last_delta_vertices[last_delta_vertices<-0.03] = -0.03 # clip
+            last_delta_vertices[last_delta_vertices>0.05] = 0.05 # clip 0.05 == 1/20
+            last_delta_vertices[last_delta_vertices<-0.05] = -0.05 # clip
             new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
-            new_template[new_template>0.999] = 0.999
-            new_template[new_template<-0.999] = -0.999
+            #new_template[new_template>0.999] = 0.999
+            #new_template[new_template<-0.999] = -0.999
             netE.vertices_init.data = new_template
             opt.em_step = opt.em_step*0.99 # decay
         netE.train()
