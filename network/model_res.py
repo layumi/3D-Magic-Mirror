@@ -120,9 +120,9 @@ class CameraEncoder(nn.Module):
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
 
-        linear1 = self.linearblock(512, 32, relu = False)
+        linear1 = self.linearblock(512, 128, relu = False)
         #linear2 = self.linearblock(32, 32, relu=False)
-        self.linear3 = nn.Linear(32, 4)
+        self.linear3 = nn.Linear(128, 4)
 
         #################################################
         all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
@@ -215,12 +215,10 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.Conv1d(in_dim*2 + 1, 128, relu=True )
-        linear2 = self.Conv1d(128, 3, relu = False)
+        linear1 = self.Conv1d(in_dim*2 + 1, 256, relu=True, droprate = droprate )
+        linear2 = self.Conv1d(256, 3, relu = False)
 
         all_blocks = linear1 + linear2
-        if droprate>0:
-            all_blocks += [nn.Dropout(p=droprate)]
         self.encoder2 = nn.Sequential(*all_blocks)
         self.encoder2.apply(weights_init)
         #################################################
@@ -236,13 +234,15 @@ class ShapeEncoder(nn.Module):
             block2.append(nn.ReLU(inplace=True))
         return block2
 
-    def Conv1d(self, indim, outdim, relu=True):
+    def Conv1d(self, indim, outdim, relu=True, droprate = 0.0 ):
         block2 = [
             nn.Conv1d(indim, outdim, kernel_size=1),
             nn.BatchNorm1d(outdim),
         ]
         if relu:
             block2.append(nn.ReLU(inplace=True))
+        if droprate>0:
+            block2.append(nn.Dropout(p=droprate))
         return block2
 
     def forward(self, x, template):
@@ -278,9 +278,9 @@ class LightEncoder(nn.Module):
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
 
-        linear1 = self.linearblock(128, 32, relu=False)
+        linear1 = self.linearblock(128, 64, relu=False)
         #linear2 = self.linearblock(32, 32)
-        self.linear3 = nn.Linear(32, 9)
+        self.linear3 = nn.Linear(64, 9)
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
