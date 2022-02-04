@@ -215,7 +215,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.Conv1d(in_dim*2 + 1, 256, relu=True, droprate = droprate )
+        linear1 = self.Conv1d(in_dim*2 + 1, 256, relu=True, droprate = droprate, coordconv=True )
         linear2 = self.Conv1d(256, 3, relu = False)
 
         all_blocks = linear1 + linear2
@@ -234,7 +234,7 @@ class ShapeEncoder(nn.Module):
             block2.append(nn.ReLU(inplace=True))
         return block2
 
-    def Conv1d(self, indim, outdim, relu=True, droprate = 0.0 ):
+    def Conv1d(self, indim, outdim, relu=True, droprate = 0.0, coordconv=False):
         block2 = [
             nn.Conv1d(indim, outdim, kernel_size=1),
             nn.BatchNorm1d(outdim),
@@ -243,6 +243,8 @@ class ShapeEncoder(nn.Module):
             block2.append(nn.ReLU(inplace=True))
         if droprate>0:
             block2.append(nn.Dropout(p=droprate))
+        if coordconv:
+            block2 = [AddCoords1d()]+ block2
         return block2
 
     def forward(self, x, template):
@@ -517,7 +519,34 @@ class ResBlock_half(nn.Module):
         out = torch.cat([out,residual], dim=1)
         return out
 
-class AddCoords(nn.Module):
+class AddCoords1d(nn.Module):
+
+    def __init__(self, with_r=False):
+        super().__init__()
+        self.with_r = with_r
+
+    def forward(self, input_tensor):
+        """
+        Args:
+            input_tensor: shape(batch, channel, x_dim)
+        """
+        batch_size, _, x_dim = input_tensor.size()
+
+        xx_channel = torch.arange(x_dim).view(1, 1, x_dim)
+
+        xx_channel = xx_channel.float() / (x_dim - 1)
+
+        xx_channel = xx_channel * 2 - 1
+
+        xx_channel = xx_channel.repeat(batch_size, 1, 1)  # batchsize, 1, x_dim
+
+        ret = torch.cat([
+            input_tensor,
+            xx_channel.type_as(input_tensor)], dim=1)
+        
+        return ret
+    
+class AddCoords2d(nn.Module):
 
     def __init__(self, with_r=False):
         super().__init__()
@@ -563,7 +592,7 @@ class Conv2dBlock(nn.Module):
         self.coordconv = coordconv
         if self.coordconv:
             input_dim = input_dim + 2
-            self.addcoords = AddCoords(with_r=False)
+            self.addcoords = AddCoords2d(with_r=False)
 
         self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, padding=padding, padding_mode=padding_mode, dilation=dilation, bias=self.use_bias)
         # initialize normalization
