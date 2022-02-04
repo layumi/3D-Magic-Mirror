@@ -242,7 +242,7 @@ class ShapeEncoder(nn.Module):
             nn.BatchNorm1d(outdim),
         ]
         if relu:
-            block2.append(nn.ReLU(inplace=True))
+            block2.append(nn.LeakyReLU(0.2, inplace=True))
         if droprate>0:
             block2.append(nn.Dropout(p=droprate))
         if coordconv:
