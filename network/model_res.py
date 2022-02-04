@@ -184,33 +184,36 @@ class ShapeEncoder(nn.Module):
         self.num_vertices = num_vertices
 
         if pretrain=='none':
-            # 2-4-4-2
-            block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
-            block2 = [ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)] #64 -> 32
-            block3 = [ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]  #32 -> 16
-            block4 = [ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)] #16 -> 8
-            block5 = [ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)] #8->4
+            # 2-4-4-3 = 12 resblocks = 24 conv
+            block1 = Conv2dBlock(nc, 36, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
+            block2 = [ResBlock_half(36, norm=norm), ResBlock(72, norm=norm)] #64 -> 32
+            block3 = [ResBlock_half(72, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm)]  #32 -> 16
+            block4 = [ResBlock_half(144, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
+            block5 = [ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
 
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
-            avgpool = MMPool((8,4))
-            all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
+            #avgpool = MMPool((8,4))
+            all_blocks = [block1, *block2, *block3, *block4, *block5] #, avgpool]
             self.encoder1 = nn.Sequential(*all_blocks)
             self.encoder1.apply(weights_init)
-            in_dim = 512 
+            in_dim = 288 
         elif pretrain=='res18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
             avgpool = MMPool((8,4))
-            self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
+            #self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
+            self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
         elif pretrain=='res50':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            avgpool = MMPool((8,4))
-            self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
+            #avgpool = MMPool((8,4))
+            #self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
+            self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048 
         elif pretrain=='hr18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
             avgpool = MMPool((8,4))
-            self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
+            #self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
+            self.encoder1 = HRnet_4C()
             in_dim = 2048 
         else: 
             print('unknown network')
@@ -251,16 +254,16 @@ class ShapeEncoder(nn.Module):
 
     def forward(self, x, template):
         bnum = x.shape[0]
-        x = self.encoder1(x)
+        x = self.encoder1(x) # recommend a high resolution  8x4
         # template is 1x642x3, use location (x,y) to get local feature
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
         # extract local 
-        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 512 x642x1
+        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 288 x642x1
         glob = F.adaptive_avg_pool2d(x, (1,1))
         # local + global + depth
-        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), depth.unsqueeze(1)), dim = 1 ) # 32x1025x642x1
+        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), depth.unsqueeze(1)), dim = 1 ) # 32x 577 x642x1
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points 
@@ -430,6 +433,7 @@ class TextureEncoder(nn.Module):
             textures = self.make(textures)
 
         return textures
+
 
 class Resnet_4C(nn.Module):
     def __init__(self, pretrain):
