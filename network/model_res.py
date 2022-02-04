@@ -235,6 +235,8 @@ class ShapeEncoder(nn.Module):
         return block2
 
     def Conv1d(self, indim, outdim, relu=True, droprate = 0.0, coordconv=False):
+        if coordconv: 
+            indim = indim + 1
         block2 = [
             nn.Conv1d(indim, outdim, kernel_size=1),
             nn.BatchNorm1d(outdim),
