@@ -416,14 +416,14 @@ class TextureEncoder(nn.Module):
         x4 = self.block4(x3)
         x5 = self.block5(x4)
         # up 
-        up1 = self.up1(x5)
-        up2 = self.up2(torch.cat((up1,x4),dim=1))
-        up3 = self.up3(torch.cat((up2,x3),dim=1))
-        up4 = self.up4(torch.cat((up3,x2),dim=1))
-        up5 = self.up5(up4)
-        texture_flow = self.up6(up5)
+        y = self.up1(x5)
+        y = self.up2(torch.cat((y,x4),dim=1))
+        y = self.up3(torch.cat((y,x3),dim=1))
+        y = self.up4(torch.cat((y,x2),dim=1))
+        y = self.up5(y)
+        texture_flow = self.up6(y)
         # clear
-        del x1,x2,x3,x4,x5, up1,up2,up3,up4,up5
+        del x1,x2,x3,x4,x5,y
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
         textures_flip = textures.flip([2])
