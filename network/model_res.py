@@ -182,7 +182,7 @@ class ShapeEncoder(nn.Module):
     def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False, norm = 'bn'):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
-
+        self.mmpool = MMPool((1,1))
         if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
             block1 = Conv2dBlock(nc, 36, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
@@ -218,7 +218,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        linear1 = self.Conv1d(in_dim*2 + 1, 256, relu=True, droprate = droprate, coordconv=True )
+        linear1 = self.Conv1d(in_dim*2 + 3, 256, relu=True, droprate = droprate, coordconv=True )
         linear2 = self.Conv1d(256, 3, relu = False)
 
         all_blocks = linear1 + linear2
@@ -258,12 +258,12 @@ class ShapeEncoder(nn.Module):
         # template is 1x642x3, use location (x,y) to get local feature
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
-        depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
+        # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
         # extract local 
         local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 288 x642x1
-        glob = F.adaptive_avg_pool2d(x, (1,1))
-        # local + global + depth
-        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), depth.unsqueeze(1)), dim = 1 ) # 32x 577 x642x1
+        glob = self.mmpool(x) # mean + max pool
+        # Per-Point: local + global + depth
+        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), current_position.permute(0,3,1,2)), dim = 1 ) # 32x (576+3) x642x1
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points 
@@ -362,22 +362,22 @@ class TextureEncoder(nn.Module):
             up6 = [nn.Dropout2d(droprate/2)] + up6 # small drop for dense prediction
 
         if self.makeup==1:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='in', padding_mode='reflect', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='in', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==2:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='bn', padding_mode='reflect', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='bn', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='bn'), ResBlock(32, norm='bn'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==3:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='ln', padding_mode='reflect', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='ln', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==4:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 3, 1, 1, norm='none', padding_mode='reflect', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='none'), ResBlock(32, norm='none'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
@@ -404,7 +404,7 @@ class TextureEncoder(nn.Module):
         self.up6.apply(weights_init_classifier)
         if self.makeup:
             self.make.apply(weights_init)
-            self.make[-2].apply(weights_init_classifier)
+            #self.make[-2].apply(weights_init_classifier)
 
     def forward(self, x):
         img = x[:, :3]
@@ -428,10 +428,11 @@ class TextureEncoder(nn.Module):
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
-        # zzd: Here we need a network to make up the hole via reasonable guessing.
+        # zzd: Here we need a network to make up the hole via re-fining.
+        # back may be differ from front.
         if self.makeup:
             textures = self.make(textures)
-
+        #print(torch.max(textures[:]), torch.min(textures[:]))
         return textures
 
 
