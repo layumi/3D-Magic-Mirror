@@ -336,12 +336,15 @@ class DiffRender(object):
         loss_data = image_weight * loss_image + mask_weight * loss_mask
         return loss_data
 
-    def recon_flip(self, att):
+    def recon_flip(self, att, L1):
         Na = att['delta_vertices']
         Nf = Na.index_select(1, self.flip_index.to(Na.device))
         Nf[..., 2] *= -1
         # control the symmetry along the z axis.
-        loss_norm = (Na - Nf).norm(dim=2).mean()
+        if L1: # encourage hand to move out. 
+            loss_norm = torch.abs(Na - Nf).mean()
+        else:
+            loss_norm = (Na - Nf).norm(dim=2).mean()
         return loss_norm
 
     def calc_reg_loss(self, att):
@@ -374,13 +377,13 @@ class DiffRender(object):
         edge_length = torch.norm( (pred[:, self.edges[:, 0]] - pred[:, self.edges[:, 1]]), p =2, dim=2)
         mean_length = torch.mean(edge_length, dim=1, keepdim=True)
         bias_length = edge_length-mean_length
-        loss_edge = edge_weight*torch.mean(torch.norm(bias_length, p=2, dim=1) ) 
+        loss_edge = edge_weight*torch.mean(torch.norm(bias_length, p=2, dim=1) ) # have to be mse , otherwise sparse L1 case.
         return loss_edge
 
     def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
         batchsize = pred.shape[0] 
         pred = pred.reshape(-1, pred.size(2)) # ((B*N)*3)
-        loss_deform = torch.mean(torch.norm(pred, p=2, dim=1)) 
+        loss_deform = torch.mean(torch.norm(pred, p=2, dim=1)) # have to be mse , otherwise sparse L1 case.
         #print('Deform;%f'%loss_deform)
         return loss_deform
 
