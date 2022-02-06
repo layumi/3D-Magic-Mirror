@@ -481,14 +481,18 @@ class ResBlock(nn.Module):
         super(ResBlock, self).__init__()
 
         model = []
+        if norm == 'ibn':
+           norm2 = 'bn'
+        else: 
+           norm2 = norm
         if res_type=='basic':
             model += [Conv2dBlock(dim ,dim//2, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
-            model += [Conv2dBlock(dim//2 ,dim, 3, 1, 1, norm=norm, activation='none', padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim//2 ,dim, 3, 1, 1, norm=norm2, activation='none', padding_mode=padding_mode)]
         elif res_type=='slim':
             dim_half = dim//2
             model += [Conv2dBlock(dim ,dim_half, 1, 1, 0, norm='in', activation=activation, padding_mode=padding_mode)]
             model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
-            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm2, activation=activation, padding_mode=padding_mode)]
             model += [Conv2dBlock(dim_half, dim, 1, 1, 0, norm='in', activation='none', padding_mode=padding_mode)]
         else:
             ('unkown block type')
@@ -506,14 +510,18 @@ class ResBlock_half(nn.Module):
         super(ResBlock_half, self).__init__()
 
         model = []
+        if norm == 'ibn':
+           norm2 = 'bn'
+        else:
+           norm2 = norm
         if res_type=='basic':
             model += [Conv2dBlock(dim, dim, 3, 2, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
-            model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation='none', padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm2, activation='none', padding_mode=padding_mode)]
         elif res_type=='slim':
             dim_half = dim//2
             model += [Conv2dBlock(dim ,dim_half, 1, 1, 0, norm='in', activation=activation, padding_mode=padding_mode)]
             model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
-            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm, activation=activation, padding_mode=padding_mode)]
+            model += [Conv2dBlock(dim_half, dim_half, 3, 1, 1, norm=norm2, activation=activation, padding_mode=padding_mode)]
             model += [Conv2dBlock(dim_half, dim, 1, 1, 0, norm='in', activation='none', padding_mode=padding_mode)]
         else:
             ('unkown block type')
