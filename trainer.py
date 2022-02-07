@@ -248,26 +248,25 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Ma = mask(Xa)
                     Mer90 = mask(Xer90)
                     Mir = mask(Xir)
-                outs0 = netD(Ma.requires_grad_()) # real
-                outs1 = netD(Mer90.detach().clone()) # fake - recon?
-                outs2 = netD(Mir.detach().clone()) # fake - inter?
-                lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0 
-                if opt.gan_type == 'wgan':
-                    # WGAN-GP
+                #outs0 = netD(Ma.detach().clone()) # real
+                #outs1 = netD(Mer90.detach().clone()) # fake - recon?
+                #outs2 = netD(Mir.detach().clone()) # fake - inter?
+                outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
+                lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0
+ 
+                if opt.gan_type == 'wgan': # WGAN-GP
+                    outs0, outs1,outs2 = torch.split(outs, batch_size, dim= 0)
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
                     lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + opt.ganw*torch.mean(outs2)) / (1.0+opt.ganw)
 
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Ma.data, Mer90.data) + \
                                         opt.ganw*compute_gradient_penalty(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
-                    if opt.reg > 0:
-                        reg += opt.reg * opt.lambda_gan * netD.compute_grad2(outs0, Ma).mean()
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
-                    for it, (out0, out1, out2) in enumerate(zip(outs0, outs1, outs2)):
+                    for it, out in enumerate(outs):
+                        out0, out1,out2 = torch.split(out, batch_size, dim= 0)
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + opt.ganw*torch.mean((out2 - 0)**2)) /(1.0+opt.ganw)
-                        if opt.reg > 0:
-                            reg += opt.reg * opt.lambda_gan * netD.compute_grad2(out0, Ma).mean()
                     lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Ma.data, Mer90.data) + \
                                     opt.ganw*compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     lossD = lossD_fake + lossD_real + lossD_gp 
@@ -283,12 +282,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 optimizerE.zero_grad()
                 # GAN loss
                 lossR_fake = 0
+                outs = netD(torch.cat( (Mer90, Mir), dim=0))
                 if opt.gan_type == 'wgan':
-                    lossR_fake = opt.lambda_gan * (-netD(Mer90).mean() - opt.ganw*netD(Mir).mean()) / (1.0+opt.ganw)
+                    outs1,outs2 = torch.split(outs, batch_size, dim= 0)
+                    lossR_fake = opt.lambda_gan * (-outs1.mean() - opt.ganw*outs2.mean()) / (1.0+opt.ganw)
                 elif opt.gan_type == 'lsgan':
-                    outs1 = netD(Mer90) # fake - recon?
-                    outs2 = netD(Mir) # fake - inter?
-                    for it, (out1, out2) in enumerate(zip(outs1, outs2)):
+                    for it, out in enumerate(outs):
+                        out1,out2 = torch.split(out, batch_size, dim= 0)
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+opt.ganw)
 
                 # Image Recon loss.
@@ -371,6 +371,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                         )
                 )
 
+
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()
@@ -391,8 +392,6 @@ def trainer(opt, train_dataloader, test_dataloader):
             summary_writer.add_scalar('Train/lossR_IC', lossR_IC, epoch)
             summary_writer.add_scalar('Train/lossR_LC', lossR_LC, epoch)
             summary_writer.add_scalar('Train/lossR_flip', lossR_flip, epoch)
-
-            num_images = Xa.shape[0]
             textures = Ae['textures']
 
             Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
@@ -667,7 +666,6 @@ def trainer(opt, train_dataloader, test_dataloader):
                 output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
             # save files
-            num_images = Xa.shape[0]
             textures = Ae['textures']
 
             Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
