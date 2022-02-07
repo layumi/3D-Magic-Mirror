@@ -309,7 +309,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1)
+                loss_cam, loss_shape, loss_texture, loss_light = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1, chamfer = opt.chamfer)
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light)
 
                 # disentangle regularization
@@ -320,7 +320,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                     l_text = torch.abs( fliplr(Ae_fliplr['textures']) - Ae['textures']).mean()
                     Na = Ae['vertices'].clone()
                     Na[..., 0] *=-1 # flip x 
-                    l_shape = torch.norm(Ae_fliplr['vertices'].view(bnum,-1) - Na.view(bnum,-1), p=2, dim=1).mean()
+                    if opt.chamfer:
+                        l_shape, _  = chamfer_distance(Ae_fliplr['vertices'], Na)
+                    else: #L2 loss
+                        l_shape = torch.norm(Ae_fliplr['vertices'].view(bnum,-1) - Na.view(bnum,-1), p=2, dim=1).mean()
                     lossR_dis = opt.dis1 * (l_text + l_shape/2)
                     # change texture, keep camera and shape
                     # jitter = ColorJitter(brightness=.5, hue=.3)
