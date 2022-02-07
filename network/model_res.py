@@ -364,27 +364,27 @@ class TextureEncoder(nn.Module):
         if self.makeup==1:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
-                                      nn.Dropout2d(droprate/2),
+                                      #nn.Dropout2d(droprate/2),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
-                                      nn.Sigmoid()])
+                                      ])
         elif self.makeup==2:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='bn'), ResBlock(32, norm='bn'),
-                                      nn.Dropout2d(droprate/2),
+                                      #nn.Dropout2d(droprate/2),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
-                                      nn.Sigmoid()])
+                                      ])
         elif self.makeup==3:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
-                                      nn.Dropout2d(droprate/2),
+                                      #nn.Dropout2d(droprate/2),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
-                                      nn.Sigmoid()])
+                                      ])
         elif self.makeup==4:
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='none'), ResBlock(32, norm='none'),
-                                      nn.Dropout2d(droprate/2),
+                                      #nn.Dropout2d(droprate/2),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
-                                      nn.Sigmoid()])
+                                      ])
 
 
         self.up1 = nn.Sequential(*up1)
@@ -436,6 +436,7 @@ class TextureEncoder(nn.Module):
         # back may be differ from front.
         if self.makeup:
             textures = self.make(textures)
+            textures = torch.clamp(textures, min=0.0, max=1.0)
         #print(torch.max(textures[:]), torch.min(textures[:]))
         return textures
 
