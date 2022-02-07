@@ -362,22 +362,22 @@ class TextureEncoder(nn.Module):
             up6 = [nn.Dropout2d(droprate/2)] + up6 # small drop for dense prediction
 
         if self.makeup==1:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='in', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation == 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==2:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='bn', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation == 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='bn'), ResBlock(32, norm='bn'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==3:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='ln', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation == 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
         elif self.makeup==4:
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation == 'none', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='none'), ResBlock(32, norm='none'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='reflect'),
                                       nn.Sigmoid()])
