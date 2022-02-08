@@ -102,11 +102,8 @@ class Discriminator(nn.Module):
             nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias), # 128 -> 128
             nn.LeakyReLU(0.2, inplace=True),
 
-            # nn.AdaptiveAvgPool2d(1),
-
             nn.Conv2d(nf * 4, nf * 2, 1, 1, 0, bias=self.use_bias), # 128 -> 64
             nn.LeakyReLU(0.2, inplace=True),
-
             nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias) # 64->1
         )
         self.main.apply(weights_init)
@@ -433,7 +430,7 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none', droprate=0.0, romp=False, coordconv=False, norm = 'bn'):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretrain = 'none', droprate=0.0, romp=False, coordconv=False, norm = 'bn', lpl = None):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init[None].cuda() # (1, V, 3) in [-1,1]
@@ -449,8 +446,9 @@ class AttributeEncoder(nn.Module):
         self.romp = romp
         if self.romp:
             self.romp_enc = Image_processor()
-        self.feat_enc = VGG19()
-        self.feat_enc.eval()
+        self.lpl = lpl
+        #self.feat_enc = VGG19()
+        #self.feat_enc.eval()
 
     def forward(self, input_img, need_feats=True, img_pth = None, train_shape = True):
         if type(input_img) == dict: # for swa update_bn function
@@ -466,11 +464,11 @@ class AttributeEncoder(nn.Module):
         # vertex
         if train_shape:
             print("Train the shape encoder.")
-            delta_vertices = self.shape_enc(input_img, template = self.vertices_init) # 32 x 642x 3
+            delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
         else: 
             print("Fix the shape encoder.")
             shape_enc_copy = copy.deepcopy(self.shape_enc)
-            delta_vertices = shape_enc_copy(input_img, template = self.vertices_init)
+            delta_vertices = shape_enc_copy(input_img, template = self.vertices_init, lpl = self.lpl)
 
         if self.romp and img_path is not None:
             vertices = self.romp_enc.run(file_list=img_pth).to(device) 

@@ -252,7 +252,7 @@ class ShapeEncoder(nn.Module):
             block2 = [AddCoords1d()]+ block2
         return block2
 
-    def forward(self, x, template):
+    def forward(self, x, template, lpl):
         bnum = x.shape[0]
         x = self.encoder1(x) # recommend a high resolution  8x4
         # template is 1x642x3, use location (x,y) to get local feature
@@ -262,8 +262,9 @@ class ShapeEncoder(nn.Module):
         # extract local 
         local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 288 x642x1
         glob = self.mmpool(x) # mean + max pool
+        neighbor_diff = local.squeeze() * lpl # 32x288x642 * 642x642
         # Per-Point: local + global + depth
-        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), current_position.permute(0,3,1,2)), dim = 1 ) # 32x (576+3) x642x1
+        x = torch.cat( (local, glob.repeat(1,1,self.num_vertices,1), current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points 
