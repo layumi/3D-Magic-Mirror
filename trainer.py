@@ -17,6 +17,7 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
+import torchvision
 from torchvision.transforms.functional import to_pil_image
 import torchvision.utils as vutils
 from torchvision.transforms.transforms import ColorJitter
@@ -327,8 +328,12 @@ def trainer(opt, train_dataloader, test_dataloader):
                     lossR_dis = opt.dis1 * (l_text + l_shape/2)
                     # change texture, keep camera and shape
                     # jitter = ColorJitter(brightness=.5, hue=.3)
-                    Ae_jitter = netE(ChannelShuffle(Xa), need_feats=False, img_pth = img_path)
-                    l_shape = torch.norm(Ae_jitter['delta_vertices'].view(bnum,-1) - Ae['delta_vertices'].view(bnum,-1), p=2, dim=1).mean()
+                    re = torchvision.transforms.RandomErasing(p=1)
+                    Ae_jitter = netE(re(Xa), need_feats=False, img_pth = img_path)
+                    if opt.chamfer:
+                        l_shape, _  = chamfer_distance(Ae_jitter['vertices'],  Ae['vertices'])
+                    else: #L2 loss
+                        l_shape = torch.norm(Ae_jitter['delta_vertices'].view(bnum,-1) - Ae['delta_vertices'].view(bnum,-1), p=2, dim=1).mean()
                     loss_azim = torch.pow(angle2xy(Ae_jitter['azimuths']) -
                          angle2xy(Ae['azimuths']), 2).mean()
                     loss_elev = torch.pow(angle2xy(Ae_jitter['elevations']) -
