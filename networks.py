@@ -450,7 +450,7 @@ class AttributeEncoder(nn.Module):
         #self.feat_enc = VGG19()
         #self.feat_enc.eval()
 
-    def forward(self, input_img, need_feats=True, img_pth = None, train_shape = True):
+    def forward(self, input_img, need_feats=False, img_pth = None, train_shape = True):
         if type(input_img) == dict: # for swa update_bn function
             input_img = Variable( input_img['data']['images']).cuda().detach()
 
@@ -487,11 +487,11 @@ class AttributeEncoder(nn.Module):
             background = None
 
         # image feat
-        if need_feats:
-            with torch.no_grad():
-                img_feats = self.feat_enc(input_img) # 32x256x32x32
-        else:
-            img_feats = None #
+        #if need_feats:
+        #    with torch.no_grad():
+        #        img_feats = self.feat_enc(input_img) # 32x256x32x32
+        #else:
+        img_feats = None #
         # others
         attributes = {
         'azimuths': azimuths,
