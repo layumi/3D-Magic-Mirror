@@ -65,6 +65,7 @@ parser.add_argument('--multigpus', action='store_true', default=False, help='whe
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
 parser.add_argument('--chamfer', action='store_true', default=False, help='use chamfer loss for vertices')
 parser.add_argument('--bg', action='store_true', default=False, help='use background')
+parser.add_argument('--white', action='store_true', default=False, help='use normalized template')
 parser.add_argument('--makeup', type=int, default=0, help='whether makeup texture 0:nomakeup 1:in 2:bn 3:ln 4.none')
 parser.add_argument('--beta', type=float, default=0, help='using beta distribution instead of uniform.')
 parser.add_argument('--hard', action='store_true', default=False, help='using Xer90 instead of Xer.')

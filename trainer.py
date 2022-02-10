@@ -149,7 +149,6 @@ def trainer(opt, train_dataloader, test_dataloader):
     warm_iteration = len(train_dataloader)*opt.warm_epoch # first 20 epoch
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
-
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
                 warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
@@ -325,7 +324,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                         l_shape, _  = chamfer_distance(Ae_fliplr['vertices'], Na)
                     else: #L2 loss
                         l_shape = torch.norm(Ae_fliplr['vertices'].view(bnum,-1) - Na.view(bnum,-1), p=2, dim=1).mean()
-                    lossR_dis = opt.dis1 * (l_text + l_shape/2)
+                    lossR_dis = opt.dis1 * (l_text + l_shape)
                     # change texture, keep camera and shape
                     # jitter = ColorJitter(brightness=.5, hue=.3)
                     re = torchvision.transforms.RandomErasing(p=1)
@@ -341,7 +340,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
                     l_cam = loss_azim + loss_elev + loss_dist
                     #l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
-                    lossR_dis += opt.dis2 * (l_cam + l_shape/2)
+                    lossR_dis += opt.dis2 * (l_cam + l_shape)
                 else:
                     lossR_dis = 0.0
 
@@ -375,7 +374,6 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR_IC, lossR_dis
                         )
                 )
-
 
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
@@ -498,7 +496,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 })
             torch.save(state_dict, latest_name)
 
-        if epoch % 20 == 0: # and epoch > 0:
+        if epoch % 20 == 0 and epoch > 0:
             netE.eval()
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
                 Xa = Variable(data['data']['images']).cuda()
@@ -586,12 +584,21 @@ def trainer(opt, train_dataloader, test_dataloader):
                 with torch.no_grad():
                     Ae = netE(Xa)
                     _, Ae0 = diffRender.render(**Ae)
-
-                    # encode again
-                    #Ae0 = deep_copy(Ae)
-                    #Ae0['azimuths'], Ae0['elevations'], Ae0['distances'] = torch.zeros((Xa.shape[0]), dtype=torch.float32).cuda(), torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_elev, torch.ones((Xa.shape[0]), dtype=torch.float32).cuda()*mean_dist
-                    #Xe0, _ = diffRender.render(**Ae0)
-                    #Ae0 = netE(Xe0)
+                    
+                    if opt.white:
+                        v = Ae0['vertices']
+                        Ae0['vertices'] -= torch.mean(v, dim=1, keepdim = True).repeat(1, v.shape[1], 1)
+                        va = Ae0['delta_vertices']
+                        Ae0['delta_vertices'] -= torch.mean(va, dim=1, keepdim = True).repeat(1, va.shape[1], 1)
+                        #vertice_mean = torch.mean(v, dim=1, keepdim = True) # N*1*3
+                        #vertice_mean = vertice_mean.repeat(1, v.shape[1], 1)
+                        #v -= vertice_mean 
+                        #y_max, _  = torch.max(v[:,:,1], dim=1, keepdim=True) # N*1
+                        #y_min, _  = torch.min(v[:,:,1], dim=1, keepdim=True) # N*1
+                        #std = y_max - y_min
+                        #std = std.unsqueeze(-1).repeat(1, v.shape[1], 3) # N * 642 * 3
+                        #Ae0['vertices'] = v/ std
+                        #Ae0['delta_vertices'] = Ae0['vertices'] - netE.vertices_init.repeat(batch_size,1,1)
 
                     if opt.em == 2: # only poistive
                         #good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
@@ -621,6 +628,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                 new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
                 #new_template[new_template>0.999] = 0.999
                 #new_template[new_template<-0.999] = -0.999
+               # 1*642*3
+                if opt.white:
+                    new_template -= torch.mean(new_template, dim=1, keepdim = True) # 1*1*3
+                    #y_max, _  = torch.max(new_template[:,:,1], dim=1, keepdim=True) # 1*1
+                    #y_min, _  = torch.min(new_template[:,:,1], dim=1, keepdim=True) # 1*1
+                    #std = y_max - y_min
+                    #std = std.unsqueeze(-1).repeat(1, v.shape[1], 3) # 1 * 642 * 3
+                    #new_template /= std
                 netE.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay
         netE.train()
