@@ -616,8 +616,8 @@ def trainer(opt, train_dataloader, test_dataloader):
             if count > 1:
                 #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
                 last_delta_vertices = current_delta_vertices * 1.0 / count 
-                last_delta_vertices[last_delta_vertices>0.05] = 0.05 # clip 0.05 == 1/20
-                last_delta_vertices[last_delta_vertices<-0.05] = -0.05 # clip
+                last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
+                last_delta_vertices[last_delta_vertices<-opt.clip] = - opt.clip # clip
                 new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
                 #new_template[new_template>0.999] = 0.999
                 #new_template[new_template<-0.999] = -0.999

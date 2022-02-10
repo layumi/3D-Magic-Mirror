@@ -269,8 +269,8 @@ class ShapeEncoder(nn.Module):
         x = torch.cat( (local, glob, neighbor_diff, current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
-        delta_vertices = self.linear3(delta_vertices) # all points 
-        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5, 0.5]
+        delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
+        delta_vertices = torch.tanh(delta_vertices) # limit the bias within [-1, 1]
         #print(delta_vertices.shape)
         return delta_vertices.view(bnum, self.num_vertices, 3)
 
