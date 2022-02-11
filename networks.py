@@ -128,7 +128,7 @@ def deep_copy(att, index=None, detach=False):
 
     copy_att = {}
     for key, value in att.items():
-        copy_keys = ['azimuths', 'bg', 'elevations', 'distances', 'vertices', 'delta_vertices', 'textures', 'lights']
+        copy_keys = ['azimuths', 'bg', 'biases', 'elevations', 'distances', 'vertices', 'delta_vertices', 'textures', 'lights']
         if key in copy_keys:
             if value is None:
                 copy_att[key] = None
@@ -227,6 +227,7 @@ class DiffRender(object):
         azimuths = attributes['azimuths']
         elevations = attributes['elevations']
         distances = attributes['distances']
+        biases = attributes['biases']
         bg = attributes['bg']
         batch_size = azimuths.shape[0]
         device = azimuths.device
@@ -241,7 +242,8 @@ class DiffRender(object):
 
         num_faces = faces.shape[0]
 
-        object_pos = torch.tensor([[0., 0., 0.]], dtype=torch.float, device=device).repeat(batch_size, 1)
+        #object_pos = torch.tensor([[0., 0., 0.]], dtype=torch.float, device=device).repeat(batch_size, 1)
+        object_pos = torch.cat((biases, torch.zeros(batch_size, 1, device=device)), dim=1) # N*2 + 0 ->N*3
         camera_up = torch.tensor([[0., 1., 0.]], dtype=torch.float, device=device).repeat(batch_size, 1)
         # camera_pos = torch.tensor([[0., 0., 4.]], dtype=torch.float, device=device).repeat(batch_size, 1)
         camera_pos = camera_position_from_spherical_angles(distances, elevations, azimuths, degrees=True)
@@ -459,14 +461,14 @@ class AttributeEncoder(nn.Module):
 
         # cameras
         cameras = self.camera_enc(input_img) 
-        azimuths, elevations, distances = cameras # 32, 32, 32
+        azimuths, elevations, distances, biases = cameras # 32, 32, 32
 
         # vertex
         if train_shape:
-            print("Train the shape encoder.")
+            #print("Train the shape encoder.")
             delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
         else: 
-            print("Fix the shape encoder.")
+            #print("Fix the shape encoder.")
             shape_enc_copy = copy.deepcopy(self.shape_enc)
             delta_vertices = shape_enc_copy(input_img, template = self.vertices_init, lpl = self.lpl)
 
@@ -497,6 +499,7 @@ class AttributeEncoder(nn.Module):
         'azimuths': azimuths,
         'elevations': elevations,
         'distances': distances,
+        'biases': biases,
         'vertices': vertices,
         'delta_vertices': delta_vertices,
         'textures': textures,

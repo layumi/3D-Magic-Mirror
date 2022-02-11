@@ -122,7 +122,7 @@ class CameraEncoder(nn.Module):
 
         linear1 = self.linearblock(512, 128, relu = False)
         #linear2 = self.linearblock(32, 32, relu=False)
-        self.linear3 = nn.Linear(128, 4)
+        self.linear3 = nn.Linear(128, 6)
 
         #################################################
         all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
@@ -174,7 +174,8 @@ class CameraEncoder(nn.Module):
         # azimuths = 90.0 - self.atan2(azimuths_y, azimuths_x)
         azimuths = - self.atan2(azimuths_y, azimuths_x) / 360.0 * self.azi_scope
 
-        cameras = [azimuths, elevations, distances]
+        biases = torch.nn.functional.tanh(camera_output[:, 4:6]) # -1 to 1
+        cameras = [azimuths, elevations, distances, biases]
         return cameras
 
 

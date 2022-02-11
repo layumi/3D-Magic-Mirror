@@ -196,7 +196,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
                     Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
-
+                    alpha_camera2 = alpha_camera.unsqueeze(-1).repeat(1, 2)
+                    Ai['biases'] = alpha_camera2 * Aa['biases'] + (1-alpha_camera2) * Ab['biases']
                     # texture & shape interpolation
                     if opt.beta>0:
                         beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
@@ -382,7 +383,8 @@ def trainer(opt, train_dataloader, test_dataloader):
         schedulerE.step()
 
 
-        if epoch % 5 == 0:
+        if epoch % 5 == 0:  
+            print('===========Saving JPEG===========')
             summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
             summary_writer.add_scalar('Train/lossD', lossD, epoch)
             summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
@@ -463,10 +465,11 @@ def trainer(opt, train_dataloader, test_dataloader):
             #save_mesh('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch), vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
             save_mesh('%s/epoch_%03d_template.obj' % (opt.outf, epoch), netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
 
+            print('===========Saving Gif-Azi===========')
             rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation.gif' % epoch)
             writer = imageio.get_writer(rotate_path, mode='I')
             loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
-            loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
             for delta_azimuth in loop:
                 Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
                 predictions, _ = diffRender.render(**Ae)
@@ -479,24 +482,66 @@ def trainer(opt, train_dataloader, test_dataloader):
             current_rotate_path = os.path.join(opt.outf, 'current_rotation.gif')
             shutil.copyfile(rotate_path, current_rotate_path)
 
+            print('===========Saving Gif-Y===========')
+            rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation_ele.gif' % epoch)
+            writer = imageio.get_writer(rotate_path, mode='I')
+            elev_range = opt.elev_range.split('~')
+            elev_min = int(elev_range[0])
+            elev_max = int(elev_range[1])
+            loop = tqdm.tqdm(list(range(elev_min, elev_max, 10))) # 15~-45
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_ele)')
+            for delta_elevation in loop:
+                Ae['elevations'] = - torch.tensor([delta_elevation], dtype=torch.float32).repeat(batch_size).cuda()
+                predictions, _ = diffRender.render(**Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+            current_rotate_path = os.path.join(opt.outf, 'current_rotation_ele.gif')
+            shutil.copyfile(rotate_path, current_rotate_path)
+
+            print('===========Saving Gif-Dist===========')
+            rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation_dist.gif' % epoch)
+            writer = imageio.get_writer(rotate_path, mode='I')
+            dist_range = opt.dist_range.split('~')
+            dist_min = int(dist_range[0])
+            dist_max = int(dist_range[1])
+            loop = tqdm.tqdm(list(range(dist_min, dist_max, 1))) # 1, 7
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_dist)')
+            for delta_dist in loop:
+                Ae['distances'] = - torch.tensor([delta_dist], dtype=torch.float32).repeat(batch_size).cuda()
+                predictions, _ = diffRender.render(**Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+            current_rotate_path = os.path.join(opt.outf, 'current_rotation_dist.gif')
+            shutil.copyfile(rotate_path, current_rotate_path)
+
         if epoch % 20 == 0 and epoch > 0:
+            print('===========Saving Snapshot===========')
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
             latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
             state_dict = {
                 'epoch': epoch,
                 'netE': netE.state_dict(),
                 'netD': netD.state_dict(),
-                'optimizerE': optimizerE.state_dict(),
-                'optimizerD': optimizerD.state_dict()
+                #'optimizerE': optimizerE.state_dict(),
+                #'optimizerD': optimizerD.state_dict()
             }
             if opt.swa and epoch >= opt.swa_start:
                 state_dict.update({
                     'swa_modelE': swa_modelE.state_dict(),
-                    'swa_schedulerE': swa_schedulerE.state_dict(),
+                    #'swa_schedulerE': swa_schedulerE.state_dict(),
                 })
             torch.save(state_dict, latest_name)
 
         if epoch % 20 == 0: # and epoch > 0:
+            print('===========Generating Test Images===========')
             netE.eval()
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
                 Xa = Variable(data['data']['images']).cuda()
@@ -546,6 +591,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                             output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                             output_Xa.save(ori_path, 'JPEG', quality=100)
 
+            print('===========Evaluating FID Score===========')
             fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
             print('Epoch %03d Test recon fid: %0.2f' % (epoch, fid_recon) ) 
             summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch)
@@ -576,7 +622,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         mean_dist = (dist_max + dist_min) /2
         # only updating in the first 80% epoch and fix the template for the final shape updating
         if opt.em > 0 and epoch<int(0.8*opt.niter):
-            print('Updating template...')
+            print('===========Updating template===========')
             count = 0.0
             current_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
             for iter, data in enumerate(train_dataloader):
@@ -641,7 +687,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         netE.train()
 
     ###### After training, test the swa result
-
+    print('Start SWA Test!')
     # Update bn statistics for the swa_model at the end
     torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
 
