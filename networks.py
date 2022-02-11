@@ -302,6 +302,7 @@ class DiffRender(object):
             loss_elev = torch.abs(angle2xy(pred_att['elevations']) -
                      angle2xy(target_att['elevations'])).mean()
             loss_dist = torch.abs(pred_att['distances'] - target_att['distances']).mean()
+            loss_bias = torch.abs(pred_att['biases'] - target_att['biases']).mean()
             loss_cam = loss_azim + loss_elev + loss_dist
             if chamfer:
                 loss_shape, _  = chamfer_distance(pred_att['vertices'], target_att['vertices'])
@@ -315,6 +316,7 @@ class DiffRender(object):
             loss_elev = torch.pow(angle2xy(pred_att['elevations']) -
                      angle2xy(target_att['elevations']), 2).mean()
             loss_dist = torch.pow(pred_att['distances'] - target_att['distances'], 2).mean()
+            loss_bias = torch.pow(pred_att['biases'] - target_att['biases'], 2).mean()
             loss_cam = loss_azim + loss_elev + loss_dist
             if chamfer:
                 loss_shape, _  = chamfer_distance(pred_att['vertices'], target_att['vertices'])
@@ -323,7 +325,7 @@ class DiffRender(object):
             loss_texture = torch.pow(pred_att['textures'] - target_att['textures'], 2).mean()
             loss_light = 0.1  * torch.pow(pred_att['lights'] - target_att['lights'], 2).mean()
 
-        return loss_cam, loss_shape, loss_texture, loss_light
+        return loss_cam, loss_shape, loss_texture, loss_light, loss_bias
 
     def recon_data(self, pred_data, gt_data, no_mask=False):
         image_weight = self.image_weight
