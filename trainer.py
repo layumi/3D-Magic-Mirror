@@ -496,7 +496,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 })
             torch.save(state_dict, latest_name)
 
-        if epoch % 20 == 0 and epoch > 0:
+        if epoch % 20 == 0: # and epoch > 0:
             netE.eval()
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
                 Xa = Variable(data['data']['images']).cuda()
