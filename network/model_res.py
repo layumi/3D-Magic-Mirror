@@ -97,11 +97,11 @@ class BackgroundEncoder(nn.Module):
         return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
-    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn'):
+    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn', ratio=1):
         super(CameraEncoder, self).__init__()
 
         self.azi_scope = float(azi_scope)
-
+        self.ratio = ratio
         elev_range = elev_range.split('~')
         self.elev_min = float(elev_range[0])
         self.elev_max = float(elev_range[1])
@@ -174,7 +174,10 @@ class CameraEncoder(nn.Module):
         # azimuths = 90.0 - self.atan2(azimuths_y, azimuths_x)
         azimuths = - self.atan2(azimuths_y, azimuths_x) / 360.0 * self.azi_scope
 
-        biases = torch.nn.functional.tanh(camera_output[:, 4:6]) # -1 to 1
+        biases_x = torch.nn.functional.tanh(camera_output[:, 4]).unsqueeze(-1) # x from -1 to 1 #
+        biases_y = torch.nn.functional.tanh(camera_output[:, 5]).unsqueeze(-1) * self.ratio # y from -2 to 2
+        biases = torch.cat( (biases_x, biases_y), dim=1)
+        # y from -2 to 2
         cameras = [azimuths, elevations, distances, biases]
         return cameras
 
