@@ -314,37 +314,38 @@ def trainer(opt, train_dataloader, test_dataloader):
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light+loss_bias)
 
                 # disentangle regularization
+                lossR_dis = 0.0
                 if opt.dis1>0 or opt.dis2>0:
                     bnum = Ae['vertices'].shape[0]
                     # change camera & light direction, keep shape and texture
-                    Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
-                    l_text = torch.abs( fliplr(Ae_fliplr['textures']) - Ae['textures']).mean()
-                    Na = Ae['vertices'].clone()
-                    Na[..., 0] *=-1 # flip x 
-                    if opt.chamfer:
-                        l_shape, _  = chamfer_distance(Ae_fliplr['vertices'], Na)
-                    else: #L2 loss
-                        l_shape = torch.norm(Ae_fliplr['vertices'].view(bnum,-1) - Na.view(bnum,-1), p=2, dim=1).mean()
-                    lossR_dis = opt.dis1 * (l_text + l_shape)
+                    if opt.dis1>0:
+                        Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
+                        l_text = torch.abs( fliplr(Ae_fliplr['textures']) - Ae['textures']).mean()
+                        Na = Ae['vertices'].clone()
+                        Na[..., 0] *=-1 # flip x 
+                        if opt.chamfer:
+                            l_shape, _  = chamfer_distance(Ae_fliplr['vertices'], Na)
+                        else: #L2 loss
+                            l_shape = torch.norm(Ae_fliplr['vertices'].view(bnum,-1) - Na.view(bnum,-1), p=2, dim=1).mean()
+                        lossR_dis += opt.dis1 * (l_text + l_shape)
                     # change texture, keep camera and shape
                     # jitter = ColorJitter(brightness=.5, hue=.3)
-                    re = torchvision.transforms.RandomErasing(p=1)
-                    Ae_jitter = netE(re(Xa), need_feats=False, img_pth = img_path)
-                    if opt.chamfer:
-                        l_shape, _  = chamfer_distance(Ae_jitter['vertices'],  Ae['vertices'])
-                    else: #L2 loss
-                        l_shape = torch.norm(Ae_jitter['delta_vertices'].view(bnum,-1) - Ae['delta_vertices'].view(bnum,-1), p=2, dim=1).mean()
-                    loss_azim = torch.pow(angle2xy(Ae_jitter['azimuths']) -
-                         angle2xy(Ae['azimuths']), 2).mean()
-                    loss_elev = torch.pow(angle2xy(Ae_jitter['elevations']) -
-                         angle2xy(Ae['elevations']), 2).mean()
-                    loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
-                    loss_bias = torch.pow(Ae_jitter['biases'] - Ae['biases'], 2).mean()
-                    l_cam = loss_azim + loss_elev + loss_dist + loss_bias
+                    if opt.dis2>0:
+                        re = torchvision.transforms.RandomErasing(p=1)
+                        Ae_jitter = netE(re(Xa), need_feats=False, img_pth = img_path)
+                        if opt.chamfer:
+                            l_shape, _  = chamfer_distance(Ae_jitter['vertices'],  Ae['vertices'])
+                        else: #L2 loss
+                            l_shape = torch.norm(Ae_jitter['delta_vertices'].view(bnum,-1) - Ae['delta_vertices'].view(bnum,-1), p=2, dim=1).mean()
+                        loss_azim = torch.pow(angle2xy(Ae_jitter['azimuths']) -
+                             angle2xy(Ae['azimuths']), 2).mean()
+                        loss_elev = torch.pow(angle2xy(Ae_jitter['elevations']) -
+                             angle2xy(Ae['elevations']), 2).mean()
+                        loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
+                        loss_bias = torch.pow(Ae_jitter['biases'] - Ae['biases'], 2).mean()
+                        l_cam = loss_azim + loss_elev + loss_dist + loss_bias
                     #l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
-                    lossR_dis += opt.dis2 * (l_cam + l_shape)
-                else:
-                    lossR_dis = 0.0
+                        lossR_dis += opt.dis2 * (l_cam + l_shape)
 
                 # landmark consistency
                 if opt.lambda_lc>0:
