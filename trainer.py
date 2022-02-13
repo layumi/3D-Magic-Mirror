@@ -75,9 +75,9 @@ def trainer(opt, train_dataloader, test_dataloader):
 
     # netD: Discriminator rgb+seg
     if opt.gan_type == 'wgan':
-        netD = Discriminator(nc=3, nf=32)
+        netD = Discriminator(nc=3, nf=16)
     elif opt.gan_type == 'lsgan':
-        netD = MS_Discriminator(nc=3, nf=32)
+        netD = MS_Discriminator(nc=3, nf=16)
     else:
         print('unknow gan type. Only lsgan or wgan is accepted.')
 

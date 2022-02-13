@@ -202,7 +202,7 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
         retain_graph=True,
         only_inputs=True,
     )[0]
-    gradients = gradients.view(gradients.size(0), -1)
+    gradients = gradients.reshape(gradients.size(0), -1)
     gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
     return gradient_penalty
 

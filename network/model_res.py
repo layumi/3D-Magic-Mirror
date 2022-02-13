@@ -174,8 +174,8 @@ class CameraEncoder(nn.Module):
         # azimuths = 90.0 - self.atan2(azimuths_y, azimuths_x)
         azimuths = - self.atan2(azimuths_y, azimuths_x) / 360.0 * self.azi_scope
 
-        biases_x = torch.nn.functional.tanh(camera_output[:, 4]).unsqueeze(-1) # x from -1 to 1 #
-        biases_y = torch.nn.functional.tanh(camera_output[:, 5]).unsqueeze(-1) * self.ratio # y from -2 to 2
+        biases_x = torch.tanh(camera_output[:, 4]).unsqueeze(-1) # x from -1 to 1 #
+        biases_y = torch.tanh(camera_output[:, 5]).unsqueeze(-1) # * self.ratio # y from -2 to 2
         biases = torch.cat( (biases_x, biases_y), dim=1)
         # y from -2 to 2
         cameras = [azimuths, elevations, distances, biases]
@@ -274,7 +274,7 @@ class ShapeEncoder(nn.Module):
         x = self.encoder2(x.squeeze()) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
-        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.5, 0.5]
+        delta_vertices = torch.tanh(delta_vertices) # limit the bias within [-1, 1]
         #print(delta_vertices.shape)
         return delta_vertices.view(bnum, self.num_vertices, 3)
 

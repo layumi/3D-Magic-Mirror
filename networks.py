@@ -52,6 +52,12 @@ class MS_Discriminator(nn.Module):
             # 32 -> 16
             nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=self.use_bias), # 32 -> 64
             nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf*2, nf*2 , 3, 1, 1, bias=self.use_bias), # 64 -> 64
+            nn.LeakyReLU(0.2, inplace=True),
+
+            # 16 -> 8 
+            nn.Conv2d(nf*2, nf * 2, 3, 2, 1, bias=self.use_bias), # 64 -> 64
+            nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(nf * 2, nf * 2, 1, 1, 0, bias=self.use_bias), # 64 -> 64
             nn.LeakyReLU(0.2, inplace=True),
@@ -80,31 +86,46 @@ class MS_Discriminator(nn.Module):
         return reg
 
 class Discriminator(nn.Module):
-    def __init__(self, nc = 4, nf = 32, use_bias = False):
+    def __init__(self, nc = 3, nf = 16, use_bias = False):
         super(Discriminator, self).__init__()
         self.use_bias = use_bias
         self.main = nn.Sequential(
-            nn.Conv2d(nc, nf, 3, 1, 1, bias=self.use_bias), # 4 -> 32
-            nn.LeakyReLU(0.2, inplace=True),
             # 128 -> 64
-            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=self.use_bias), # 32 -> 64
+            nn.Conv2d(nc, nf, 1, 1, 0, bias=self.use_bias), # 3 -> 16  
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf, nf, 3, 1, 1, bias=self.use_bias), # 16 -> 16  
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf, nf * 2, 3, 2, 1, bias=self.use_bias), # 16 -> 32
             nn.LeakyReLU(0.2, inplace=True),
             # 64 -> 32
-            nn.Conv2d(nf * 2, nf * 4, 3, 2, 1, bias=self.use_bias), # 64 -> 128
+            nn.Conv2d(nf*2, nf*2, 3, 1, 1, bias=self.use_bias), # 32 -> 32  
             nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias), # 128 -> 128
+            nn.Conv2d(nf * 2, nf * 3, 3, 2, 1, bias=self.use_bias), # 32 -> 48
             nn.LeakyReLU(0.2, inplace=True),
             # 32 -> 16
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias), # 128 -> 128
+            nn.Conv2d(nf*3, nf*3, 3, 1, 1, bias=self.use_bias), # 32 -> 32
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf * 3, nf * 4, 3, 2, 1, bias=self.use_bias), # 48 -> 64
             nn.LeakyReLU(0.2, inplace=True),
             # 16 -> 8
-            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias), # 128 -> 128
+            nn.Conv2d(nf*4, nf*4, 3, 1, 1, bias=self.use_bias), # 64 -> 64
             nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(nf * 4, nf * 2, 1, 1, 0, bias=self.use_bias), # 128 -> 64
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias), # 64 -> 64
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias) # 64->1
+            # 8 -> 4
+            nn.Conv2d(nf*4, nf*4, 3, 1, 1, bias=self.use_bias), # 64 -> 64
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf * 4, nf * 4, 3, 2, 1, bias=self.use_bias), # 64 -> 64
+            nn.LeakyReLU(0.2, inplace=True),
+            # 4 ->2
+            nn.Conv2d(nf*4, nf*4, 3, 1, 1, bias=self.use_bias), # 64 -> 64
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf * 4, nf * 3, 3, 2, 1, bias=self.use_bias), # 64 -> 48
+            nn.LeakyReLU(0.2, inplace=True),
+            # if (128*64)-> 2*1
+            nn.Conv2d(nf * 3, nf * 2, 1, 1, 0, bias=self.use_bias), # 48 -> 32
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias) # 32->1
         )
         self.main.apply(weights_init)
     def forward(self, input):
