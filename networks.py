@@ -128,7 +128,7 @@ class Discriminator(nn.Module):
             nn.Conv2d(nf * 2, 1, 1, 1, 0, bias=self.use_bias) # 32->1
         )
         self.main.apply(weights_init)
-        cnn_x[-1].apply(weights_init_classifier)
+        self.main[-1].apply(weights_init_classifier)
     def forward(self, input):
         outputs = self.main(input).mean([2, 3])
         return outputs
