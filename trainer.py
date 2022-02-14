@@ -183,7 +183,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     rand[rand<0] = -1.0
                     rand[rand>=0] = 1.0
                     Ae90['azimuths'] *= rand
-
+                    print( Ae90['azimuths'])
                 rand_a = torch.randperm(batch_size)
                 rand_b = torch.randperm(batch_size)
                 Aa = deep_copy(Ae, rand_a)

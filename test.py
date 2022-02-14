@@ -34,7 +34,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import fliplr, mask, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 torch.autograd.set_detect_anomaly(True)
@@ -147,8 +147,8 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 if "MKT" in opt.name:
-    # train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold)
-    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold)
+    # train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
+    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     print('Market-1501')
     ratio = 2
 elif "ATR" in opt.name:
@@ -184,14 +184,8 @@ if __name__ == '__main__':
         epoch = checkpoint['epoch']
         
     latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
-    vertices = latest_template_file.vertices
-    vertices.requires_grad = False
-    vertices_max = vertices.max(0, True)[0]
-    vertices_min = vertices.min(0, True)[0]
-    vertices = (vertices - vertices_min) / (vertices_max - vertices_min)
-    vertices_init = vertices * 2.0 - 1.0 # (V, 3)
-    vertices_init[:,0] = vertices_init[:,0] / ratio  # width = 1/2 * height
-    vertices_init[:,2] = vertices_init[:,2] / (ratio**2) # depth = 1/4 * height
+    print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
+    vertices_init = latest_template_file.vertices
 
     print('Vertices Number:', template_file.vertices.shape[0]) #642
     print('Faces Number:', template_file.faces.shape[0])  #1280
@@ -269,6 +263,7 @@ if __name__ == '__main__':
             #Ae90_recon = netE(Xer90) 
             #print(Ae90_recon['azimuths'])
             #break
+            Xa = mask(Xa) # remove bg
                    
             for i in range(len(paths)):
                 path = paths[i]
