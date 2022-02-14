@@ -232,6 +232,7 @@ if __name__ == '__main__':
 
     netE.eval()
     dists = torch.tensor([]).cuda()
+    biases = torch.tensor([]).cuda()
     elevations = torch.tensor([]).cuda()
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
@@ -245,6 +246,7 @@ if __name__ == '__main__':
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
             dists = torch.cat((dists, Ae['distances']))
+            biases = torch.cat((biases, Ae['biases']))
             elevations = torch.cat((elevations, Ae['elevations']))
 
             Ai = deep_copy(Ae)
@@ -287,9 +289,12 @@ if __name__ == '__main__':
                 ori_path = os.path.join(ori_dir, image_name)
                 output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                 output_Xa.save(ori_path, 'JPEG', quality=100)
-    dist_result = 'Distance max: {}\nmin: {}\navg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
-    elev_result = 'Elevations max: {}\nmin: {}\navg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
+    dist_result = 'Distance max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
+    biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
+    biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
+    elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
     print(dist_result)
+    print(biases_result)
     print(elev_result)
     
     fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
