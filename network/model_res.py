@@ -362,27 +362,27 @@ class TextureEncoder(nn.Module):
             up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
 
         if self.makeup==1: # identify
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
-                                      #ResBlock(32, norm='in'), ResBlock(32, norm='in'),
-                                      #nn.Dropout2d(droprate/2),
+            self.make = nn.Sequential(*[nn.Dropout2d(droprate), # drop at the begin
+                                      Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
+                                      ResBlock(32, norm='in'), ResBlock(32, norm='in'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
         elif self.makeup==2: # dropout 1d
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
-                                      #ResBlock(32, norm='bn'), ResBlock(32, norm='bn'),
-                                      nn.Dropout(droprate/2),
+                                      ResBlock(32, norm='in'), ResBlock(32, norm='in'),
+                                      nn.Dropout2d(droprate), # drop in the last
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
         elif self.makeup==3: # ln
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='ln', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
                                       #ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
-                                      #nn.Dropout2d(droprate/2),
+                                      nn.Dropout2d(droprate),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
         elif self.makeup==4: # in 
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='in', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
                                       #ResBlock(32, norm='none'), ResBlock(32, norm='none'),
-                                      #nn.Dropout2d(droprate/2),
+                                      nn.Dropout2d(droprate),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
 
