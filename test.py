@@ -252,7 +252,7 @@ if __name__ == '__main__':
             elevations = torch.cat((elevations, Ae['elevations']))
             xyz_min = torch.cat((xyz_min, torch.min(Ae['vertices'], dim=1)[0]))
             xyz_max = torch.cat((xyz_max, torch.max(Ae['vertices'], dim=1)[0]))
-            xyz_mean = torch.cat((xyz_mean, torch.mean(Ae['vertices'], dim=1)))
+            xyz_mean = torch.cat((xyz_mean, torch.abs(torch.mean(Ae['vertices'], dim=1))))
 
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)

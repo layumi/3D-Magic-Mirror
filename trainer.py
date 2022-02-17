@@ -26,7 +26,7 @@ from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.swa_utils import AveragedModel, SWALR
 from torch.optim.lr_scheduler import CosineAnnealingLR
-
+from sklearn.cluster import DBSCAN
 from networks import MS_Discriminator, Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
 # import kaolin related
 import kaolin as kal
@@ -629,52 +629,62 @@ def trainer(opt, train_dataloader, test_dataloader):
         # only updating in the first 80% epoch and fix the template for the final shape updating
         if opt.em > 0 and epoch<int(0.8*opt.niter):
             print('===========Updating template===========')
-            count = 0.0
-            current_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
+            sample_number = len(train_dataloader.dataset)//opt.batchSize * opt.batchSize
+            current_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda() 
+            all_vertices = torch.zeros(sample_number, template_file.vertices.shape[0], 3) # all
+            all_delta_vertices = torch.zeros(sample_number, template_file.vertices.shape[0], 3) # all
             for iter, data in enumerate(train_dataloader):
                 Xa = Variable(data['data']['images']).cuda()
                 with torch.no_grad():
                     Ae = netE(Xa)
                     _, Ae0 = diffRender.render(**Ae)
-                    
-                    if opt.white:
-                        v = Ae0['vertices']
-                        Ae0['vertices'] -= torch.mean(v, dim=1, keepdim = True).repeat(1, v.shape[1], 1)
-                        va = Ae0['delta_vertices']
-                        Ae0['delta_vertices'] -= torch.mean(va, dim=1, keepdim = True).repeat(1, va.shape[1], 1)
-                        #vertice_mean = torch.mean(v, dim=1, keepdim = True) # N*1*3
-                        #vertice_mean = vertice_mean.repeat(1, v.shape[1], 1)
-                        #v -= vertice_mean 
-                        #y_max, _  = torch.max(v[:,:,1], dim=1, keepdim=True) # N*1
-                        #y_min, _  = torch.min(v[:,:,1], dim=1, keepdim=True) # N*1
-                        #std = y_max - y_min
-                        #std = std.unsqueeze(-1).repeat(1, v.shape[1], 3) # N * 642 * 3
-                        #Ae0['vertices'] = v/ std
-                        #Ae0['delta_vertices'] = Ae0['vertices'] - netE.vertices_init.repeat(batch_size,1,1)
 
-                    if opt.em == 2: # only poistive
-                        #good_index =  iou_pytorch(Xe0[:,3].detach(), Xt0[:, 3].detach()) >= opt.em
-                        good_index = torch.mean(Ae0['vertices'][:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
-                        delta_vertices = Ae0['delta_vertices']
-                        current_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
-                        count += torch.sum(good_index)
-                    elif opt.em == 3: # symmetry
-                        left = torch.sum(Ae0['vertices'][:,:,0]>0, dim=1)
-                        front =  torch.sum(Ae0['vertices'][:,:,2]>0, dim=1) 
-                        
-                        good_index1 = torch.abs( left - netE.num_vertices //2) < int(netE.num_vertices*0.1)
-                        good_index2 = torch.abs( front - netE.num_vertices //2) < int(netE.num_vertices*0.1)
-                        good_index = torch.logical_and(good_index1, good_index2) 
-                        delta_vertices = Ae0['delta_vertices']
-                        current_delta_vertices +=  torch.sum(delta_vertices[good_index],dim=0)
-                        count += torch.sum(good_index)
-                    else: # em==1
-                        current_delta_vertices +=  torch.sum(Ae0['delta_vertices'],dim=0)
-                        count += Xa.shape[0]
-            print('The template mesh fuses %d / %d meshes since last batch is droppped'%(count, len(train_dataloader.dataset)//opt.batchSize * opt.batchSize) )
+                if opt.white:
+                    v = Ae0['vertices']
+                    Ae0['vertices'] -= torch.mean(v, dim=1, keepdim = True).repeat(1, v.shape[1], 1)
+                    va = Ae0['delta_vertices']
+                    Ae0['delta_vertices'] -= torch.mean(va, dim=1, keepdim = True).repeat(1, va.shape[1], 1)
+
+                start  = iter * opt.batchSize
+                end = start + opt.batchSize
+                all_vertices[ start: end , :, :] = Ae0['vertices'].data.cpu()
+                all_delta_vertices[ start: end , :, :] = Ae0['vertices'].data.cpu()
+
+            if opt.em == 2: # only poistive
+                good_index = torch.mean(all_vertices[:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
+                current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
+                count = torch.sum(good_index)
+            elif opt.em == 3: # symmetry
+                left = torch.sum(all_vertices[:,:,0]>0, dim=1)
+                front =  torch.sum(all_vertices[:,:,2]>0, dim=1) 
+                good_index1 = torch.abs( left - netE.num_vertices //2) < int(netE.num_vertices*0.1)
+                good_index2 = torch.abs( front - netE.num_vertices //2) < int(netE.num_vertices*0.1)
+                good_index = torch.logical_and(good_index1, good_index2) 
+                current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
+                count = torch.sum(good_index)
+            elif opt.em == 4: # DBSCAN
+                #all_vertices = torch.rand(sample_number, template_file.vertices.shape[0], 3)
+                all_vertices = all_vertices.view(sample_number, -1)  
+                # white
+                all_vertices -= torch.mean(all_vertices, dim=1, keepdim = True)
+                all_vertices /= torch.std(all_vertices, dim=1, unbiased=True, keepdim=True) 
+                # L2 Norm
+                fnorm = torch.norm(all_vertices, p=2, dim=1, keepdim=True) + 1e-8
+                all_vertices = all_vertices.div(fnorm.expand_as(all_vertices))
+                # cluster
+                similarity_metric = (torch.mm(all_vertices, all_vertices.transpose(0,1)) + 1)/2
+                clustering = DBSCAN(eps=opt.eps, min_samples= int(sample_number*0.1), metric='precomputed').fit(similarity_metric.numpy())
+                good_index = np.argwhere( clustering.labels_ == 0)
+                current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
+                count = torch.sum(good_index)
+            else: # all average
+                current_delta_vertices =  torch.sum(all_delta_vertices,dim=0)
+                count = all_vertices.shape[0] 
+           
+            print('The template mesh fuses %d / %d meshes since last batch is droppped'%(count, sample_number) )
             if count > 1:
                 #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
-                last_delta_vertices = current_delta_vertices * 1.0 / count 
+                last_delta_vertices = current_delta_vertices.cuda() * 1.0 / count 
                 last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
                 last_delta_vertices[last_delta_vertices<-opt.clip] = - opt.clip # clip
                 new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
