@@ -260,7 +260,7 @@ class ShapeEncoder(nn.Module):
         bnum = x.shape[0]
         x = self.encoder1(x) # recommend a high resolution  8x4
         # template is 1x642x3, use location (x,y) to get local feature
-        print(x.shape)
+        #print(x.shape)
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
