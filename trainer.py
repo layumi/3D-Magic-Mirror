@@ -674,7 +674,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # cluster
                 similarity_metric = (torch.mm(all_vertices, all_vertices.transpose(0,1)) + 1)/2
                 clustering = DBSCAN(eps=opt.eps, min_samples= int(sample_number*0.1), metric='precomputed').fit(similarity_metric.numpy())
-                good_index = np.argwhere( clustering.labels_ == 0)
+                good_index = torch.FloatTensor( np.argwhere( clustering.labels_ == 0) )
                 current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
                 count = torch.sum(good_index)
             else: # all average
