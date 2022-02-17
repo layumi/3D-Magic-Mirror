@@ -189,17 +189,9 @@ class ShapeEncoder(nn.Module):
         self.mmpool = MMPool((1,1))
         if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
-            block1 = Conv2dBlock(nc, 36, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
-            block2 = [ResBlock_half(36, norm=norm), ResBlock(72, norm=norm)] #64 -> 32
-            block3 = [ResBlock_half(72, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm)]  #32 -> 16
-            block4 = [ResBlock_half(144, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
-            block5 = [ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
-
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
             #avgpool = MMPool((8,4))
-            all_blocks = [block1, *block2, *block3, *block4, *block5] #, avgpool]
-            self.encoder1 = nn.Sequential(*all_blocks)
-            self.encoder1.apply(weights_init)
+            self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
             in_dim = 288 
         elif pretrain=='res18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
@@ -448,6 +440,28 @@ class TextureEncoder(nn.Module):
         #print(torch.max(textures[:]), torch.min(textures[:]))
         return textures
 
+
+class Base_4C(nn.Module):
+    def __init__(self, nc=4, nk=5, norm = 'bn', coordconv=True):
+        super(Base_4C, self).__init__()
+        # 2-4-4-3 = 12 resblocks = 24 conv
+        block1 = Conv2dBlock(nc, 36, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
+        block2 = [ResBlock_half(36, norm=norm), ResBlock(72, norm=norm)] #64 -> 32
+        block3 = [ResBlock_half(72, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm)]  #32 -> 16
+        block4 = [ResBlock_half(144, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
+        block5 = [ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
+
+        #avgpool = nn.AdaptiveAvgPool2d((4,2))
+        #avgpool = MMPool((8,4))
+        all_blocks = [block1, *block2, *block3, *block4] #, avgpool]
+        self.layer4 = nn.Sequential(*all_blocks)
+        self.layer5 = nn.Sequential(*block5)
+         
+        self.layer4.apply(weights_init)
+        self.layer5.apply(weights_init)
+    def forward(self, x):
+        x = self.layer4(x)
+        return x + self.layer5(x)
 
 class Resnet_4C(nn.Module):
     def __init__(self, pretrain):

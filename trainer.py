@@ -653,7 +653,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             if opt.em == 2: # only poistive
                 good_index = torch.mean(all_vertices[:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
                 current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
-                count = torch.sum(good_index)
+                count = len(good_index)
             elif opt.em == 3: # symmetry
                 left = torch.sum(all_vertices[:,:,0]>0, dim=1)
                 front =  torch.sum(all_vertices[:,:,2]>0, dim=1) 
@@ -661,7 +661,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 good_index2 = torch.abs( front - netE.num_vertices //2) < int(netE.num_vertices*0.1)
                 good_index = torch.logical_and(good_index1, good_index2) 
                 current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
-                count = torch.sum(good_index)
+                count = len(good_index)
             elif opt.em == 4: # DBSCAN
                 #all_vertices = torch.rand(sample_number, template_file.vertices.shape[0], 3)
                 all_vertices = all_vertices.view(sample_number, -1)  
@@ -672,11 +672,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 fnorm = torch.norm(all_vertices, p=2, dim=1, keepdim=True) + 1e-8
                 all_vertices = all_vertices.div(fnorm.expand_as(all_vertices))
                 # cluster
-                similarity_metric = (torch.mm(all_vertices, all_vertices.transpose(0,1)) + 1)/2
-                clustering = DBSCAN(eps=opt.eps, min_samples= int(sample_number*0.1), metric='precomputed').fit(similarity_metric.numpy())
+                similarity_metric = torch.mm(all_vertices, all_vertices.transpose(0,1)) 
+                dist_metric = 2 - 2*similarity_metric
+                clustering = DBSCAN(eps=opt.eps, min_samples= int(sample_number*0.1), metric='precomputed', algorithm='auto').fit(dist_metric.numpy())
                 good_index = torch.LongTensor( np.argwhere( clustering.labels_ == 0) )
+                
                 current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
-                count = torch.sum(good_index)
+                count = len(good_index)
             else: # all average
                 current_delta_vertices =  torch.sum(all_delta_vertices,dim=0)
                 count = all_vertices.shape[0] 
