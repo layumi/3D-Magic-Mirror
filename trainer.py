@@ -673,6 +673,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 all_vertices = all_vertices.div(fnorm.expand_as(all_vertices))
                 # cluster
                 similarity_metric = torch.mm(all_vertices, all_vertices.transpose(0,1)) 
+                similarity_metric[similarity_metric>1] = 1  #due to the epsilon
                 dist_metric = 2 - 2*similarity_metric
                 clustering = DBSCAN(eps=opt.eps, min_samples= int(sample_number*0.1), metric='precomputed', algorithm='auto').fit(dist_metric.numpy())
                 good_index = torch.LongTensor( np.argwhere( clustering.labels_ == 0) )
