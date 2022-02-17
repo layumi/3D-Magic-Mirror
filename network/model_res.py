@@ -203,7 +203,7 @@ class ShapeEncoder(nn.Module):
             in_dim = 288 
         elif pretrain=='res18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            avgpool = MMPool((8,4))
+            #avgpool = MMPool((8,4))
             #self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
@@ -215,7 +215,7 @@ class ShapeEncoder(nn.Module):
             in_dim = 2048 
         elif pretrain=='hr18':
             #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            avgpool = MMPool((8,4))
+            #avgpool = MMPool((8,4))
             #self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
             self.encoder1 = HRnet_4C()
             in_dim = 2048 
@@ -260,6 +260,7 @@ class ShapeEncoder(nn.Module):
         bnum = x.shape[0]
         x = self.encoder1(x) # recommend a high resolution  8x4
         # template is 1x642x3, use location (x,y) to get local feature
+        print(x.shape)
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
@@ -366,7 +367,7 @@ class TextureEncoder(nn.Module):
         # 256*256
         up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
         if droprate >0:
-            up6 = [nn.Dropout2d(droprate/2)] + up6 # small drop for dense prediction
+            up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
 
         if self.makeup==1: # identify
             self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
@@ -458,7 +459,7 @@ class Resnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = model.conv1.weight[:, 0]
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1)
 
         model.layer4[0].downsample[0].stride = (1,1)
         model.layer4[0].conv1.stride = (1,1)
@@ -482,7 +483,7 @@ class HRnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = model.conv1.weight[:, 0]
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) #model.conv1.weight[:, 0]
         self.model = model
     def forward(self, x):
         x = self.model.forward_features(x)
