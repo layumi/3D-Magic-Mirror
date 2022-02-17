@@ -443,7 +443,7 @@ class TextureEncoder(nn.Module):
         # zzd: Here we need a network to make up the hole via re-fining.
         # back may be differ from front.
         if self.makeup:
-            textures = self.make(textures)
+            textures = textures + self.make(textures)
             textures = torch.clamp(textures, min=0.0, max=1.0)
         #print(torch.max(textures[:]), torch.min(textures[:]))
         return textures
