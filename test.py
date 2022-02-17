@@ -234,20 +234,25 @@ if __name__ == '__main__':
     dists = torch.tensor([]).cuda()
     biases = torch.tensor([]).cuda()
     elevations = torch.tensor([]).cuda()
+    xyz_min = torch.tensor([]).cuda()
+    xyz_mean = torch.tensor([]).cuda()
+    xyz_max = torch.tensor([]).cuda()
+    filename = []
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
         paths = data['data']['path']
-
         # Xa = fliplr(Xa)
         with torch.no_grad():
             Ae = netE(Xa)
-            #print(Ae['azimuths'])
             Xer, Ae = diffRender.render(**Ae)
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
             dists = torch.cat((dists, Ae['distances']))
             biases = torch.cat((biases, Ae['biases']))
             elevations = torch.cat((elevations, Ae['elevations']))
+            xyz_min = torch.cat((xyz_min, torch.min(Ae['vertices'], dim=1)[0]))
+            xyz_max = torch.cat((xyz_max, torch.max(Ae['vertices'], dim=1)[0]))
+            xyz_mean = torch.cat((xyz_mean, torch.mean(Ae['vertices'], dim=1)))
 
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)
@@ -269,6 +274,7 @@ if __name__ == '__main__':
                    
             for i in range(len(paths)):
                 path = paths[i]
+                filename.append(path)
                 image_name = os.path.basename(path)
                 rec_path = os.path.join(rec_dir, image_name)
                 output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
@@ -293,9 +299,15 @@ if __name__ == '__main__':
     biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
     biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
     elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
+    xyz_result = 'XYZ max: {}\t min: {}\t avg: {}'.format(torch.max(xyz_max, dim=0)[0], torch.min(xyz_min, dim = 0)[0], torch.mean(xyz_mean, dim=0))
+
+    max_index = torch.max(xyz_max, dim=0)[1]
+    print( filename[max_index[0].data] )
+
     print(dist_result)
     print(biases_result)
     print(elev_result)
+    print(xyz_result)
     
     fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
     print('Test recon fid: %0.2f' % fid_recon ) 
