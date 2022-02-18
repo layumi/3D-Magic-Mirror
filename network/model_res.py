@@ -189,26 +189,18 @@ class ShapeEncoder(nn.Module):
         self.mmpool = MMPool((1,1))
         if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
-            #avgpool = nn.AdaptiveAvgPool2d((4,2)) 
-            #avgpool = MMPool((8,4))
             self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
             in_dim = 288 
+        elif pretrain=='unet': #unet from scratch 
+            self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            in_dim = 32
         elif pretrain=='res18':
-            #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            #avgpool = MMPool((8,4))
-            #self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
         elif pretrain=='res50':
-            #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            #avgpool = MMPool((8,4))
-            #self.encoder1 = nn.Sequential(*[Resnet_4C(pretrain), avgpool])
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048 
         elif pretrain=='hr18':
-            #avgpool = nn.AdaptiveAvgPool2d((4,2)) # MMPool()
-            #avgpool = MMPool((8,4))
-            #self.encoder1 = nn.Sequential(*[HRnet_4C(), avgpool])
             self.encoder1 = HRnet_4C()
             in_dim = 2048 
         else: 
@@ -467,6 +459,56 @@ class Base_4C(nn.Module):
         x4 = self.layer4(x3)
         x5 = self.layer5(x4) 
         return x4 + x5
+
+class UNet_4C(nn.Module):
+    def __init__(self, nc=4, nk=5, norm = 'bn', coordconv=True):
+        super(UNet_4C, self).__init__()
+        # 2-4-4-3 = 12 resblocks = 24 conv
+        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
+        block2 = [ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)] #64 -> 32
+        block3 = [ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]  #32 -> 16
+        block4 = [ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)] #16 -> 8
+        block5 = [ResBlock_half(256, norm=norm), ResBlock(512, norm=norm), ResBlock(512, norm=norm)] #8->4
+
+        all_blocks = [block1, *block2, ] #, avgpool]
+        self.layer2 = nn.Sequential(*all_blocks)
+        self.layer3 = nn.Sequential(*block3)
+        self.layer4 = nn.Sequential(*block4)
+        self.layer5 = nn.Sequential(*block5)
+        # 4*2*512
+        up1 = [Conv2dBlock(512, 256, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(256), nn.Upsample(scale_factor=2)]
+        # 8*4*256 + 8*4*256 
+        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(128), nn.Upsample(scale_factor=2)]
+        # 32*32*128 + 32*32*128 =  32*32*256
+        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(64), nn.Upsample(scale_factor=2)]
+        up4 = [Conv2dBlock(128, 32, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), ResBlock(32)]
+
+        self.layer2.apply(weights_init)
+        self.layer3.apply(weights_init)
+        self.layer4.apply(weights_init)
+        self.layer5.apply(weights_init)
+        self.up1 = nn.Sequential(*up1)
+        self.up2 = nn.Sequential(*up2)
+        self.up3 = nn.Sequential(*up3)
+        self.up4 = nn.Sequential(*up4)
+        self.up1.apply(weights_init)
+        self.up2.apply(weights_init)
+        self.up3.apply(weights_init)
+        self.up4.apply(weights_init)
+
+
+    def forward(self, x):
+        x2 = self.layer3(x) # 64 channel
+        x3 = self.layer3(x2)
+        x4 = self.layer4(x3)
+        x5 = self.layer5(x4) 
+        y = self.up1(x5) # 256 channel
+        y = self.up2(torch.cat((y,x4),dim=1)) # 128 channel
+        y = self.up3(torch.cat((y,x3),dim=1)) # 64 channel
+        y = self.up4(torch.cat((y,x2),dim=1)) # 32 channel
+
+        return y
+
 
 class Resnet_4C(nn.Module):
     def __init__(self, pretrain):
