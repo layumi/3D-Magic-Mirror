@@ -648,7 +648,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 start  = iter * opt.batchSize
                 end = start + opt.batchSize
                 all_vertices[ start: end , :, :] = Ae0['vertices'].data.cpu()
-                all_delta_vertices[ start: end , :, :] = Ae0['vertices'].data.cpu()
+                all_delta_vertices[ start: end , :, :] = Ae0['delta_vertices'].data.cpu()
 
             if opt.em == 2: # only poistive
                 good_index = torch.mean(all_vertices[:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
