@@ -385,7 +385,10 @@ class TextureEncoder(nn.Module):
                                       nn.Dropout2d(droprate),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
-
+        elif self.makeup==5: # identity mapping
+            self.make = nn.Sequential()
+            # remove the last tahnh
+            up6 = up6[:-1]
 
         self.up1 = nn.Sequential(*up1)
         self.up2 = nn.Sequential(*up2)
@@ -451,17 +454,19 @@ class Base_4C(nn.Module):
         block4 = [ResBlock_half(144, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
         block5 = [ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
 
-        #avgpool = nn.AdaptiveAvgPool2d((4,2))
-        #avgpool = MMPool((8,4))
-        all_blocks = [block1, *block2, *block3, *block4] #, avgpool]
-        self.layer4 = nn.Sequential(*all_blocks)
+        all_blocks = [block1, *block2, *block3] #, avgpool]
+        self.layer3 = nn.Sequential(*all_blocks)
+        self.layer4 = nn.Sequential(*block4)
         self.layer5 = nn.Sequential(*block5)
-         
+        # 8*8*512
+        self.layer3.apply(weights_init)
         self.layer4.apply(weights_init)
         self.layer5.apply(weights_init)
     def forward(self, x):
-        x = self.layer4(x)
-        return x + self.layer5(x)
+        x3 = self.layer3(x)
+        x4 = self.layer4(x3)
+        x5 = self.layer5(x4) 
+        return x4 + x5
 
 class Resnet_4C(nn.Module):
     def __init__(self, pretrain):
