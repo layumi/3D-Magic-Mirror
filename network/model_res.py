@@ -498,7 +498,7 @@ class UNet_4C(nn.Module):
 
 
     def forward(self, x):
-        x2 = self.layer3(x) # 64 channel
+        x2 = self.layer2(x) # 64 channel
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
         x5 = self.layer5(x4) 
