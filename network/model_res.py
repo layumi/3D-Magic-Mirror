@@ -97,7 +97,7 @@ class BackgroundEncoder(nn.Module):
         return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
-    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn', ratio=1):
+    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn', ratio=1, pretrain='none'):
         super(CameraEncoder, self).__init__()
 
         self.azi_scope = float(azi_scope)
@@ -110,24 +110,32 @@ class CameraEncoder(nn.Module):
         self.dist_min = float(dist_range[0])
         self.dist_max = float(dist_range[1])
 
-        # 2-4-4-2
-        block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, coordconv=coordconv)
-        block2 = [ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)] #64 -> 32 
-        block3 = [ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]  #32 -> 16
-        block4 = [ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)] #16 -> 8
-        block5 = [ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)] #8->4
+        if pretrain=='none':
+            # 2-4-4-3 = 12 resblocks = 24 conv
+            self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            self.encoder1.apply(weights_init)
+            in_dim = 288
+        elif pretrain=='unet': #unet from scratch
+            self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            in_dim = 32
+        elif pretrain=='res18':
+            self.encoder1 = Resnet_4C(pretrain)
+            in_dim = 512
+        elif pretrain=='res50':
+            self.encoder1 = Resnet_4C(pretrain)
+            in_dim = 2048
+        elif 'hr18' in pretrain:
+            self.encoder1 = HRnet_4C(pretrain)
+            in_dim = 2048
+        else:
+            print('unknown network')
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
-        avgpool = MMPool()
+        self.avgpool = MMPool()
 
-        linear1 = self.linearblock(512, 128, relu = False)
+        linear1 = self.linearblock(in_dim, 128, relu = False)
         #linear2 = self.linearblock(32, 32, relu=False)
         self.linear3 = nn.Linear(128, 6)
-
-        #################################################
-        all_blocks = [block1, *block2, *block3, *block4, *block5, avgpool]
-
-        self.encoder1 = nn.Sequential(*all_blocks)
 
         all_blocks = linear1 #+ linear2
         if droprate>0:
@@ -135,12 +143,8 @@ class CameraEncoder(nn.Module):
         self.encoder2 = nn.Sequential(*all_blocks)
 
         # Initialize with Xavier Glorot
-        self.encoder1.apply(weights_init)
         self.encoder2.apply(weights_init)
         self.linear3.apply(weights_init_classifier)
-
-        # Free some memory
-        del all_blocks, block1, block2, block3, linear1 
 
     def linearblock(self, indim, outdim, relu=True):
         block2 = [
@@ -160,6 +164,7 @@ class CameraEncoder(nn.Module):
     def forward(self, x):
         bnum = x.shape[0]
         x = self.encoder1(x)
+        x = self.avgpool(x)
         x = x.view(bnum, -1)
         x = self.encoder2(x)
 
@@ -190,6 +195,7 @@ class ShapeEncoder(nn.Module):
         if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
             self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            self.encoder1.apply(weights_init)
             in_dim = 288 
         elif pretrain=='unet': #unet from scratch 
             self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
