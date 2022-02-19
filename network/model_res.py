@@ -540,7 +540,7 @@ class Resnet_4C(nn.Module):
 class HRnet_4C(nn.Module):
     def __init__(self):
         super(HRnet_4C, self).__init__()
-        model = timm.create_model('hrnet_w18', pretrained=True)
+        model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
@@ -576,7 +576,7 @@ class ResBlock(nn.Module):
     def forward(self, x):
         residual = x
         out = self.model(x)
-        out += residual
+        out += 0.2 * residual # to help initial learning
         return out
 
 class ResBlock_half(nn.Module):
