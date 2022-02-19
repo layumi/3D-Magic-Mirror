@@ -200,8 +200,8 @@ class ShapeEncoder(nn.Module):
         elif pretrain=='res50':
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048 
-        elif pretrain=='hr18':
-            self.encoder1 = HRnet_4C()
+        elif 'hr18' in pretrain:
+            self.encoder1 = HRnet_4C(pretrain)
             in_dim = 2048 
         else: 
             print('unknown network')
@@ -538,9 +538,14 @@ class Resnet_4C(nn.Module):
         return x 
 
 class HRnet_4C(nn.Module):
-    def __init__(self):
+    def __init__(self, pretrain):
         super(HRnet_4C, self).__init__()
-        model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
+        if pretrain == 'hr18':
+            model = timm.create_model('hrnet_w18', pretrained=True)
+        elif pretrain == 'hr18sv2':
+            model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
+        elif pretrain == 'hr18sv1':
+            model = timm.create_model('hrnet_w18_small', pretrained=True)
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
