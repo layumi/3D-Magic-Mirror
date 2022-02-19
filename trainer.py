@@ -380,8 +380,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR, lossR_fake, lossR_reg, lossR_data,
                         lossR_IC, lossR_dis
                         )
-                )
-
+                ) 
+                del lossD, lossD_real, lossD_fake, lossD_gp, lossR, lossR_fake, lossR_reg, lossR_data, lossR_IC, lossR_dis 
         if opt.swa and epoch >= opt.swa_start:
             swa_modelE.update_parameters(netE)
             swa_schedulerE.step()
@@ -391,18 +391,18 @@ def trainer(opt, train_dataloader, test_dataloader):
 
         if epoch % 5 == 0:  
             print('===========Saving JPEG===========')
-            summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
-            summary_writer.add_scalar('Train/lossD', lossD, epoch)
-            summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
-            summary_writer.add_scalar('Train/lossD_fake', lossD_fake, epoch)
-            summary_writer.add_scalar('Train/lossD_gp', lossD_gp, epoch)
-            summary_writer.add_scalar('Train/lossR', lossR, epoch)
-            summary_writer.add_scalar('Train/lossR_fake', lossR_fake, epoch)
-            summary_writer.add_scalar('Train/lossR_reg', lossR_reg, epoch)
-            summary_writer.add_scalar('Train/lossR_data', lossR_data, epoch)
-            summary_writer.add_scalar('Train/lossR_IC', lossR_IC, epoch)
-            summary_writer.add_scalar('Train/lossR_LC', lossR_LC, epoch)
-            summary_writer.add_scalar('Train/lossR_flip', lossR_flip, epoch)
+            #summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
+            #summary_writer.add_scalar('Train/lossD', lossD, epoch)
+            #summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
+            #summary_writer.add_scalar('Train/lossD_fake', lossD_fake, epoch)
+            #summary_writer.add_scalar('Train/lossD_gp', lossD_gp, epoch)
+            #summary_writer.add_scalar('Train/lossR', lossR, epoch)
+            #summary_writer.add_scalar('Train/lossR_fake', lossR_fake, epoch)
+            #summary_writer.add_scalar('Train/lossR_reg', lossR_reg, epoch)
+            #summary_writer.add_scalar('Train/lossR_data', lossR_data, epoch)
+            #summary_writer.add_scalar('Train/lossR_IC', lossR_IC, epoch)
+            #summary_writer.add_scalar('Train/lossR_LC', lossR_LC, epoch)
+            #summary_writer.add_scalar('Train/lossR_flip', lossR_flip, epoch)
             textures = Ae['textures']
 
             Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)

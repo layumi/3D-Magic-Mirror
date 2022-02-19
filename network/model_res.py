@@ -169,7 +169,6 @@ class CameraEncoder(nn.Module):
         x = self.encoder2(x)
 
         camera_output = self.linear3(x)
-
         # cameras
         distances = self.dist_min + torch.sigmoid(camera_output[:, 0]) * (self.dist_max - self.dist_min)
         elevations = self.elev_min + torch.sigmoid(camera_output[:, 1]) * (self.elev_max - self.elev_min)
