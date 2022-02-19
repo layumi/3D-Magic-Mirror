@@ -199,6 +199,7 @@ class ShapeEncoder(nn.Module):
             in_dim = 288 
         elif pretrain=='unet': #unet from scratch 
             self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            self.encoder1.apply(weights_init)
             in_dim = 32
         elif pretrain=='res18':
             self.encoder1 = Resnet_4C(pretrain)
