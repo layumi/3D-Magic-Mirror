@@ -110,25 +110,25 @@ class CameraEncoder(nn.Module):
         self.dist_min = float(dist_range[0])
         self.dist_max = float(dist_range[1])
 
-        if pretrain=='none':
+        #if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
-            self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
-            self.encoder1.apply(weights_init)
-            in_dim = 288
-        elif pretrain=='unet': #unet from scratch
-            self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
-            in_dim = 32
-        elif pretrain=='res18':
-            self.encoder1 = Resnet_4C(pretrain)
-            in_dim = 512
-        elif pretrain=='res50':
-            self.encoder1 = Resnet_4C(pretrain)
-            in_dim = 2048
-        elif 'hr18' in pretrain:
-            self.encoder1 = HRnet_4C(pretrain)
-            in_dim = 2048
-        else:
-            print('unknown network')
+        self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+        self.encoder1.apply(weights_init)
+        in_dim = 288
+        #elif pretrain=='unet': #unet from scratch
+        #    self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+        #    in_dim = 32
+        #elif pretrain=='res18':
+        #    self.encoder1 = Resnet_4C(pretrain)
+        #    in_dim = 512
+        #elif pretrain=='res50':
+        #    self.encoder1 = Resnet_4C(pretrain)
+        #    in_dim = 2048
+        #elif 'hr18' in pretrain:
+        #    self.encoder1 = HRnet_4C(pretrain = 'hr18sv1') # set as small hrnet for fast inference.
+        #    in_dim = 2048
+        #else:
+        #    print('unknown network')
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         self.avgpool = MMPool()
