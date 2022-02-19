@@ -677,16 +677,18 @@ def trainer(opt, train_dataloader, test_dataloader):
                 dist_metric = 2 - 2*similarity_metric
                 clustering = DBSCAN(eps=opt.eps, min_samples= int(sample_number*0.1), metric='precomputed', algorithm='auto').fit(dist_metric.numpy())
                 # most frequent 
-                valid_cluster = clustering.labels_[clustering.labels_ != -1]
+                valid_cluster = clustering.labels_[ np.argwhere(clustering.labels_ != -1) ]
                 if len(valid_cluster)>0:
                     val,counts = np.unique(valid_cluster, return_counts=True)
                     most_fre_index = np.argmax(counts) 
                     good_index = torch.LongTensor( np.argwhere( clustering.labels_ == val[most_fre_index]) )
                     print('Cluster %d is selected!'% val[most_fre_index] )
+                    current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
+                    count = len(good_index)
                 else: 
-                    print('No good clusters are found! please use larger eps')
-                current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
-                count = len(good_index)
+                    print('No good clusters are found! Use all data to update.')
+                    current_delta_vertices =  torch.sum(all_delta_vertices,dim=0)
+                    count = all_vertices.shape[0]
             else: # all average
                 current_delta_vertices =  torch.sum(all_delta_vertices,dim=0)
                 count = all_vertices.shape[0] 
