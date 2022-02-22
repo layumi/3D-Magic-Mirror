@@ -698,6 +698,9 @@ def trainer(opt, train_dataloader, test_dataloader):
             if count > 1:
                 #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
                 last_delta_vertices = current_delta_vertices.cuda() * 1.0 / count 
+                if opt.smooth:
+                    delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix, last_delta_vertices)
+                    last_delta_vertices += delta_vertices_laplacian/2 # move to the middle point of the neighbor
                 last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
                 last_delta_vertices[last_delta_vertices<-opt.clip] = - opt.clip # clip
                 new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
@@ -706,11 +709,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                # 1*642*3
                 if opt.white:
                     new_template -= torch.mean(new_template, dim=1, keepdim = True) # 1*1*3
-                    #y_max, _  = torch.max(new_template[:,:,1], dim=1, keepdim=True) # 1*1
-                    #y_min, _  = torch.min(new_template[:,:,1], dim=1, keepdim=True) # 1*1
-                    #std = y_max - y_min
-                    #std = std.unsqueeze(-1).repeat(1, v.shape[1], 3) # 1 * 642 * 3
-                    #new_template /= std
+
                 netE.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay
         netE.train()
