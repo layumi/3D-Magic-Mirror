@@ -433,11 +433,13 @@ class TextureEncoder(nn.Module):
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
         # zzd: Here we need a network to make up the hole via re-fining.
-        # back may be differ from front.
+        # back is different from front, but here we fix the back = front for optimization.
         if self.makeup:
-            hole_mask = torch.sum(textures, dim = 1, keepdim=True)
-            hole_mask[hole_mask>0] = 1.0 # hole is 0, good is 1.
-            textures = hole_mask * textures + (1 - hole_mask) * self.make( torch.cat((textures, textures.flip([3])), dim=1) )
+            #hole_mask = torch.sum(textures, dim = 1, keepdim=True)
+            #hole_mask[hole_mask>0] = 1.0 # hole is 0, good is 1.
+            #print(torch.sum(1-hole_mask))
+            #textures = hole_mask * textures + (1 - hole_mask) * self.make( torch.cat((textures, textures.flip([3])), dim=1) )
+            textures = textures + self.make( torch.cat((textures, textures.flip([3])), dim=1) )
             textures = torch.clamp(textures, min=0.0, max=1.0)
         #print(torch.max(textures[:]), torch.min(textures[:]))
         textures_flip = textures.flip([2])
