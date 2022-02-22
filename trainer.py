@@ -41,7 +41,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import angle2xy,  iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import angle2xy, white, iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
     #chamferDist = ChamferDistance()
@@ -638,12 +638,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 with torch.no_grad():
                     Ae = netE(Xa)
                     _, Ae0 = diffRender.render(**Ae)
-
-                if opt.white:
-                    v = Ae0['vertices']
-                    Ae0['vertices'] -= torch.mean(v, dim=1, keepdim = True).repeat(1, v.shape[1], 1)
-                    va = Ae0['delta_vertices']
-                    Ae0['delta_vertices'] -= torch.mean(va, dim=1, keepdim = True).repeat(1, va.shape[1], 1)
+                    Ae = netE(fliplr(Xa))
+                    _, Ae1 = diffRender.render(**Ae)
+                    if opt.white:
+                        Ae0 = white(Ae0)
+                        Ae1 = white(Ae1)
+                    Ae0['vertices'] = (Ae0['vertices'] + Ae1['vertices']) / 2.0
+                    Ae0['delta_vertices'] = (Ae0['delta_vertices'] + Ae1['delta_vertices']) / 2.0
 
                 start  = iter * opt.batchSize
                 end = start + opt.batchSize

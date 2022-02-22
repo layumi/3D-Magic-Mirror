@@ -10,6 +10,14 @@ from torch.autograd import Variable
 
 SMOOTH = 1e-6
 
+
+def white(Ae0):
+    v = Ae0['vertices']
+    Ae0['vertices'] -= torch.mean(v, dim=1, keepdim = True).repeat(1, v.shape[1], 1)
+    va = Ae0['delta_vertices']
+    Ae0['delta_vertices'] -= torch.mean(va, dim=1, keepdim = True).repeat(1, va.shape[1], 1)
+    return Ae0
+
 def angle2xy(angle):
     angle = angle * math.pi / 180.0
     x = torch.cos(angle)
