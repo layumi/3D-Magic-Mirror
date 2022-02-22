@@ -437,7 +437,7 @@ class TextureEncoder(nn.Module):
         if self.makeup:
             hole_mask = torch.sum(textures, dim = 1, keep_dim=True)
             hole_mask[hole_mask>0] = 1.0 # hole is 0, good is 1.
-            textures = hole_mask * textures + (1 - hole_mask) * self.make( torch.cat((textures, textures.flip([3]), dim=1) )
+            textures = hole_mask * textures + (1 - hole_mask) * self.make( torch.cat((textures, textures.flip([3])), dim=1) )
             textures = torch.clamp(textures, min=0.0, max=1.0)
         #print(torch.max(textures[:]), torch.min(textures[:]))
         textures_flip = textures.flip([2])
