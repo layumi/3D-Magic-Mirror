@@ -361,24 +361,24 @@ class TextureEncoder(nn.Module):
 
         if self.makeup==1: # identify
             self.make = nn.Sequential(*[nn.Dropout2d(droprate), # drop at the begin
-                                      Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
+                                      Conv2dBlock(6, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
         elif self.makeup==2: # dropout 1d
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(6, 32, 5, 1, 2, norm='none', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
                                       ResBlock(32, norm='in'), ResBlock(32, norm='in'),
                                       nn.Dropout2d(droprate), # drop in the last
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
         elif self.makeup==3: # ln
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='ln', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(6, 32, 5, 1, 2, norm='ln', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
                                       #ResBlock(32, norm='ln'), ResBlock(32, norm='ln'),
                                       nn.Dropout2d(droprate),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
                                       ])
         elif self.makeup==4: # in 
-            self.make = nn.Sequential(*[Conv2dBlock(3, 32, 5, 1, 2, norm='in', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
+            self.make = nn.Sequential(*[Conv2dBlock(6, 32, 5, 1, 2, norm='in', activation = 'lrelu', padding_mode='zeros', coordconv = coordconv),
                                       #ResBlock(32, norm='none'), ResBlock(32, norm='none'),
                                       nn.Dropout2d(droprate),
                                       Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
@@ -432,14 +432,16 @@ class TextureEncoder(nn.Module):
         del x1,x2,x3,x4,x5,y
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
-        textures_flip = textures.flip([2])
-        textures = torch.cat([textures, textures_flip], dim=2)
         # zzd: Here we need a network to make up the hole via re-fining.
         # back may be differ from front.
         if self.makeup:
-            textures = textures + self.make(textures)
+            hole_mask = torch.sum(textures, dim = 1, keep_dim=True)
+            hole_mask[hole_mask>0] = 1.0 # hole is 0, good is 1.
+            textures = hole_mask * textures + (1 - hole_mask) * self.make( torch.cat((textures, textures.flip([3]), dim=1) )
             textures = torch.clamp(textures, min=0.0, max=1.0)
         #print(torch.max(textures[:]), torch.min(textures[:]))
+        textures_flip = textures.flip([2])
+        textures = torch.cat([textures, textures_flip], dim=2)
         return textures
 
 
