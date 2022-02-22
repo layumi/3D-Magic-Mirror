@@ -699,7 +699,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 #last_delta_vertices = 0.9*last_delta_vertices + 0.1*current_delta_vertices * 1.0 / count 
                 last_delta_vertices = current_delta_vertices.cuda() * 1.0 / count 
                 if opt.smooth:
-                    delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix, last_delta_vertices)
+                    delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), last_delta_vertices)
                     last_delta_vertices += delta_vertices_laplacian/2 # move to the middle point of the neighbor
                 last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
                 last_delta_vertices[last_delta_vertices<-opt.clip] = - opt.clip # clip
