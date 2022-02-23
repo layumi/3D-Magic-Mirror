@@ -690,6 +690,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                     print('No good clusters are found! Use all data to update.')
                     current_delta_vertices =  torch.sum(all_delta_vertices,dim=0)
                     count = all_vertices.shape[0]
+            elif opt.em ==5: 
+                #Eucledian dist
+                dist = torch.sum(all_delta_vertices.view(sample_number, -1)**2, dim=1)
+                # good_index
+                index = np.argsort(dist.cpu().numpy())  #from small to large
+                good_index = index[0: int(sample_number*0.1)] 
+                current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
+                count = len(good_index) 
             else: # all average
                 current_delta_vertices =  torch.sum(all_delta_vertices,dim=0)
                 count = all_vertices.shape[0] 
