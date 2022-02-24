@@ -28,6 +28,10 @@ from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 
+# draw
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
 
 # import from folder
 from fid_score import calculate_fid_given_paths
@@ -217,7 +221,7 @@ if __name__ == '__main__':
                 .format(resume_path, checkpoint['epoch']))
 
     ori_dir = os.path.join(opt.outf, 'fid/ori')
-    rec_dir = os.path.join(opt.outf, 'fid/rec')
+    rec_dir = os.path.join(opt.outf, 'fid/rec_tmp') # open one new
     inter_dir = os.path.join(opt.outf, 'fid/inter')
     inter90_dir = os.path.join(opt.outf, 'fid/inter90')
     # ckpt_dir = os.path.join(opt.outf, 'ckpts')
@@ -226,12 +230,14 @@ if __name__ == '__main__':
     os.makedirs(inter_dir, exist_ok=True)
     os.makedirs(inter90_dir, exist_ok=True)
     # os.makedirs(ckpt_dir, exist_ok=True)
+    os.system('rm -r %s/*'%rec_dir)
 
     # summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
 
     netE.eval()
     dists = torch.tensor([]).cuda()
+    azimuths = torch.tensor([]).cuda()
     biases = torch.tensor([]).cuda()
     elevations = torch.tensor([]).cuda()
     xyz_min = torch.tensor([]).cuda()
@@ -247,8 +253,9 @@ if __name__ == '__main__':
             Xer, Ae = diffRender.render(**Ae)
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
-            dists = torch.cat((dists, Ae['distances']))
+            azimuths = torch.cat((azimuths, Ae['azimuths']))
             biases = torch.cat((biases, Ae['biases']))
+            dists = torch.cat((dists, Ae['distances']))
             elevations = torch.cat((elevations, Ae['elevations']))
             xyz_min = torch.cat((xyz_min, torch.min(Ae['vertices'], dim=1)[0]))
             xyz_max = torch.cat((xyz_max, torch.max(Ae['vertices'], dim=1)[0]))
@@ -275,7 +282,7 @@ if __name__ == '__main__':
             for i in range(len(paths)):
                 path = paths[i]
                 filename.append(path)
-                image_name = os.path.basename(path)
+                image_name = os.path.basename(path) + 'A%.2f'%Ae['azimuths'][i] + '.jpg'
                 rec_path = os.path.join(rec_dir, image_name)
                 output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
                 output_Xer.save(rec_path, 'JPEG', quality=100)
@@ -295,17 +302,30 @@ if __name__ == '__main__':
                 ori_path = os.path.join(ori_dir, image_name)
                 output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                 output_Xa.save(ori_path, 'JPEG', quality=100)
-    dist_result = 'Distance max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
+    azimuths_result = 'Azimuths max: {}\tmin: {}\tavg: {}'.format(torch.max(azimuths), torch.min(azimuths), torch.mean(azimuths))
     biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
     biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
+    dist_result = 'Distances max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
     elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
     xyz_result = 'XYZ max: {}\t min: {}\t avg: {}'.format(torch.max(xyz_max, dim=0)[0], torch.min(xyz_min, dim = 0)[0], torch.mean(xyz_mean, dim=0))
 
+
+    fig = plt.figure()
+    ax0 = fig.add_subplot(221, title="Azimuths")
+    ax1 = fig.add_subplot(222, title="Biases-Y")
+    ax2 = fig.add_subplot(223, title="Distances")
+    ax3 = fig.add_subplot(224, title="Elevations")
+    ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax1.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax2.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax3.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    fig.savefig("hist.png")
     max_index = torch.max(xyz_max, dim=0)[1]
     print( filename[max_index[0].data] )
 
-    print(dist_result)
+    print(azimuths_result)
     print(biases_result)
+    print(dist_result)
     print(elev_result)
     print(xyz_result)
     
