@@ -695,7 +695,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 dist = torch.sum(all_delta_vertices.view(sample_number, -1)**2, dim=1)
                 # good_index
                 index = np.argsort(dist.cpu().numpy())  #from small to large
-                good_index = index[0: int(sample_number*0.1)] 
+                good_index = index[0: int(sample_number*opt.topK)] 
                 current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
                 count = len(good_index) 
             else: # all average
