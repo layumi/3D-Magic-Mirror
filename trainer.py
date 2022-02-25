@@ -201,7 +201,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                     Ai['elevations'] = torch.empty((batch_size), dtype=torch.float32).uniform_(netE.camera_enc.elev_min, netE.camera_enc.elev_max).cuda()
                     Ai['distances'] = torch.empty((batch_size), dtype=torch.float32).uniform_(netE.camera_enc.dist_min, netE.camera_enc.dist_max).cuda()
-                    Ai['biases'] = torch.empty((batch_size, 2), dtype=torch.float32).uniform_(-0.5, 0.5).cuda()
+                    Ai['biases'] = torch.empty((batch_size, 2), dtype=torch.float32).uniform_(-opt.bias_range, opt.bias_range).cuda()
                     # texture & shape interpolation
                     if opt.beta>0:
                         beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
