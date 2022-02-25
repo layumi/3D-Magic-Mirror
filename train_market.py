@@ -99,7 +99,7 @@ parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
 parser.add_argument('--topK', type=float, default=0.01, help='topK for em5')
 parser.add_argument('--eps', type=float, default=0.2, help='parameter for DBSCAN only')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
-parser.add_argument('--elev_range', type=str, default="-25~25", help='~ elevantion')
+parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
 parser.add_argument('--hard_range', type=int, default=0, help='~ range from x to 180-x. x<90')
 parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
 

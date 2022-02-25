@@ -131,20 +131,31 @@ class CameraEncoder(nn.Module):
         #    print('unknown network')
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
-        self.avgpool = MMPool()
+        self.avgpool = MMPool((2,2))
+        in_dim *=4
+        # Dist + Ele
+        self.linear1 = nn.Sequential(
+                    *self.linearblock(in_dim, 128, relu = False),
+                    nn.Dropout(p=droprate),
+                    nn.Linear(128, 2))
+        self.linear1.apply(weights_init)
+        self.linear1[-1].apply(weights_init_classifier)
 
-        linear1 = self.linearblock(in_dim, 128, relu = False)
-        #linear2 = self.linearblock(32, 32, relu=False)
-        self.linear3 = nn.Linear(128, 6)
+        # Azi
+        self.linear2 = nn.Sequential(
+                    *self.linearblock(in_dim, 128, relu = False),
+                    nn.Dropout(p=droprate),
+                    nn.Linear(128, 2))
+        self.linear2.apply(weights_init)
+        self.linear2[-1].apply(weights_init_classifier)
 
-        all_blocks = linear1 #+ linear2
-        if droprate>0:
-            all_blocks += [nn.Dropout(p=droprate)]
-        self.encoder2 = nn.Sequential(*all_blocks)
-
-        # Initialize with Xavier Glorot
-        self.encoder2.apply(weights_init)
-        self.linear3.apply(weights_init_classifier)
+        # Bias
+        self.linear3 = nn.Sequential(
+                    *self.linearblock(in_dim, 128, relu = False),
+                    nn.Dropout(p=droprate),
+                    nn.Linear(128, 2))
+        self.linear3.apply(weights_init)
+        self.linear3[-1].apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
         block2 = [
@@ -166,20 +177,20 @@ class CameraEncoder(nn.Module):
         x = self.encoder1(x)
         x = self.avgpool(x)
         x = x.view(bnum, -1)
-        x = self.encoder2(x)
-
-        camera_output = self.linear3(x)
-        # cameras
-        distances = self.dist_min + torch.sigmoid(camera_output[:, 0]) * (self.dist_max - self.dist_min)
-        elevations = self.elev_min + torch.sigmoid(camera_output[:, 1]) * (self.elev_max - self.elev_min)
-
-        azimuths_x = camera_output[:, 2]
-        azimuths_y = camera_output[:, 3]
+        Dist_output = self.linear1(x)
+        Azim_output = self.linear2(x)
+        Bias_output = self.linear3(x)
+        # Dist
+        distances = self.dist_min + torch.sigmoid(Dist_output[:, 0]) * (self.dist_max - self.dist_min)
+        elevations = self.elev_min + torch.sigmoid(Dist_output[:, 1]) * (self.elev_max - self.elev_min)
+        # Azim
+        azimuths_x = Azim_output[:, 0]
+        azimuths_y = Azim_output[:, 1]
         # azimuths = 90.0 - self.atan2(azimuths_y, azimuths_x)
         azimuths = - self.atan2(azimuths_y, azimuths_x) / 360.0 * self.azi_scope
-
-        biases_x = torch.tanh(camera_output[:, 4]).unsqueeze(-1) # x from -1 to 1 #
-        biases_y = torch.tanh(camera_output[:, 5]).unsqueeze(-1) # * self.ratio # y from -2 to 2
+        # Bias
+        biases_x = torch.tanh(Bias_output[:, 0]).unsqueeze(-1) # x from -1 to 1 #
+        biases_y = torch.tanh(Bias_output[:, 1]).unsqueeze(-1) # * self.ratio # y from -2 to 2
         biases = torch.cat( (biases_x, biases_y), dim=1)
         # y from -2 to 2
         cameras = [azimuths, elevations, distances, biases]
@@ -445,7 +456,6 @@ class TextureEncoder(nn.Module):
         textures_flip = textures.flip([2])
         textures = torch.cat([textures, textures_flip], dim=2)
         return textures
-
 
 class Base_4C(nn.Module):
     def __init__(self, nc=4, nk=5, norm = 'bn', coordconv=True):

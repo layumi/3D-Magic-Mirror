@@ -347,7 +347,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                              angle2xy(Ae['elevations']), 2).mean()
                         loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
                         loss_bias = torch.pow(Ae_jitter['biases'] - Ae['biases'], 2).mean()
-                        l_cam = loss_azim + loss_elev + loss_dist + loss_bias
+                        l_cam = 10 * loss_azim + loss_elev + loss_dist + loss_bias
                     #l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
                         lossR_dis += opt.dis2 * (l_cam + l_shape)
 

@@ -311,14 +311,16 @@ if __name__ == '__main__':
 
 
     fig = plt.figure()
-    ax0 = fig.add_subplot(221, title="Azimuths")
-    ax1 = fig.add_subplot(222, title="Biases-Y")
-    ax2 = fig.add_subplot(223, title="Distances")
-    ax3 = fig.add_subplot(224, title="Elevations")
+    ax0 = fig.add_subplot(231, title="Azimuths")
+    ax1 = fig.add_subplot(232, title="Biases-X")
+    ax2 = fig.add_subplot(233, title="Biases-Y")
+    ax3 = fig.add_subplot(234, title="Distances")
+    ax4 = fig.add_subplot(235, title="Elevations")
     ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax1.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax2.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax3.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax1.hist( biases[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax2.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax3.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax4.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     fig.savefig("hist.png")
     max_index = torch.max(xyz_max, dim=0)[1]
     print( filename[max_index[0].data] )

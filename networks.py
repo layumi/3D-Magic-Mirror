@@ -339,7 +339,7 @@ class DiffRender(object):
                      angle2xy(target_att['elevations']), 2).mean()
             loss_dist = torch.pow(pred_att['distances'] - target_att['distances'], 2).mean()
             loss_bias = torch.pow(pred_att['biases'] - target_att['biases'], 2).mean()
-            loss_cam = loss_azim + loss_elev + loss_dist
+            loss_cam = 10 * loss_azim + loss_elev + loss_dist
             if chamfer:
                 loss_shape, _  = chamfer_distance(pred_att['vertices'], target_att['vertices'])
             else:
