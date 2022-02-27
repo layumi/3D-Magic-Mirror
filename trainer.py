@@ -638,13 +638,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 with torch.no_grad():
                     Ae = netE(Xa)
                     _, Ae0 = diffRender.render(**Ae)
-                    Ae = netE(fliplr(Xa))
-                    _, Ae1 = diffRender.render(**Ae)
+                    #Ae = netE(fliplr(Xa))
+                    #_, Ae1 = diffRender.render(**Ae)
                     if opt.white:
                         Ae0 = white(Ae0)
-                        Ae1 = white(Ae1)
-                    Ae0['vertices'] = (Ae0['vertices'] + Ae1['vertices']) / 2.0
-                    Ae0['delta_vertices'] = (Ae0['delta_vertices'] + Ae1['delta_vertices']) / 2.0
+                    #    Ae1 = white(Ae1)
+                    #Ae0['vertices'] = (Ae0['vertices'] + Ae1['vertices']) / 2.0
+                    #Ae0['delta_vertices'] = (Ae0['delta_vertices'] + Ae1['delta_vertices']) / 2.0
 
                 start  = iter * opt.batchSize
                 end = start + opt.batchSize
