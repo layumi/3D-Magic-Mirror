@@ -194,10 +194,6 @@ def trainer(opt, train_dataloader, test_dataloader):
                     # camera interpolation
                     alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
                     Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-                    #Ai['elevations'] = alpha_camera * Aa['elevations'] + (1-alpha_camera) * Ab['elevations']
-                    #Ai['distances'] = alpha_camera * Aa['distances'] + (1-alpha_camera) * Ab['distances']
-                    #alpha_camera2 = alpha_camera.unsqueeze(-1).repeat(1, 2)
-                    #Ai['biases'] = alpha_camera2 * Aa['biases'] + (1-alpha_camera2) * Ab['biases']
 
                     Ai['elevations'] = torch.empty((batch_size), dtype=torch.float32).uniform_(netE.camera_enc.elev_min, netE.camera_enc.elev_max).cuda()
                     Ai['distances'] = torch.empty((batch_size), dtype=torch.float32).uniform_(netE.camera_enc.dist_min, netE.camera_enc.dist_max).cuda()
