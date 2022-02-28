@@ -203,6 +203,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                         beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
                         alpha = torch.FloatTensor(np.random.beta(beta, beta, batch_size))
                         alpha_texture = alpha.view(batch_size, 1, 1, 1).cuda()
+                        alpha = torch.FloatTensor(np.random.beta(beta, beta, batch_size))
                         alpha_shape = alpha.view(batch_size, 1, 1 ).cuda()
                     else:
                         alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
