@@ -476,25 +476,33 @@ class AttributeEncoder(nn.Module):
         #self.feat_enc = VGG19()
         #self.feat_enc.eval()
 
-    def forward(self, input_img, need_feats=False, img_pth = None, train_shape = True):
+    def forward(self, input_img, need_feats=False, img_pth = None, train_shape = 0):
         if type(input_img) == dict: # for swa update_bn function
             input_img = Variable( input_img['data']['images']).cuda().detach()
 
         device = input_img.device
         batch_size = input_img.shape[0]
 
-        # cameras
-        cameras = self.camera_enc(input_img) 
-        azimuths, elevations, distances, biases = cameras # 32, 32, 32
-
-        # vertex
-        if train_shape:
-            #print("Train the shape encoder.")
+        # camera + vertex 
+        if train_shape == 2:
+            print("Train Shape Encoder. Fix Camera Ecnoder")
+            camera_enc_copy = copy.deepcopy(self.camera_enc)
+            with torch.no_grad():
+                cameras = camera_enc_copy(input_img) 
+            azimuths, elevations, distances, biases = cameras # 32, 32, 32
             delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
-        else: 
-            #print("Fix the shape encoder.")
+        elif train_shape == 1: 
+            print("Fix Shape Encoder. Train Camera Encoder")
+            cameras = self.camera_enc(input_img) 
+            azimuths, elevations, distances, biases = cameras # 32, 32, 32
             shape_enc_copy = copy.deepcopy(self.shape_enc)
-            delta_vertices = shape_enc_copy(input_img, template = self.vertices_init, lpl = self.lpl)
+            with torch.no_grad():
+                delta_vertices = shape_enc_copy(input_img, template = self.vertices_init, lpl = self.lpl)
+        else: 
+           print("Train both")
+           cameras = self.camera_enc(input_img)
+           azimuths, elevations, distances, biases = cameras # 32, 32, 32
+           delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
 
         if self.romp and img_path is not None:
             vertices = self.romp_enc.run(file_list=img_pth).to(device) 
