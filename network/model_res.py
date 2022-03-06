@@ -131,11 +131,12 @@ class CameraEncoder(nn.Module):
         #    print('unknown network')
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
-        self.avgpool = MMPool((2,2))
+        self.avgpool1 = MMPool((2,2))
+        self.avgpool2 = MMPool((2,2))
         in_dim *=4
         # Dist + Ele
         self.linear1 = nn.Sequential(
-                    *self.linearblock(in_dim, 128, relu = False),
+                    *self.linearblock(in_dim*2, 128, relu = False),
                     nn.Dropout(p=droprate),
                     nn.Linear(128, 2))
         self.linear1.apply(weights_init)
@@ -143,7 +144,7 @@ class CameraEncoder(nn.Module):
 
         # Azi
         self.linear2 = nn.Sequential(
-                    *self.linearblock(in_dim, 128, relu = False),
+                    *self.linearblock(in_dim*2, 128, relu = False),
                     nn.Dropout(p=droprate),
                     nn.Linear(128, 2))
         self.linear2.apply(weights_init)
@@ -151,7 +152,7 @@ class CameraEncoder(nn.Module):
 
         # Bias
         self.linear3 = nn.Sequential(
-                    *self.linearblock(in_dim, 128, relu = False),
+                    *self.linearblock(in_dim*2, 128, relu = False),
                     nn.Dropout(p=droprate),
                     nn.Linear(128, 2))
         self.linear3.apply(weights_init)
@@ -172,10 +173,15 @@ class CameraEncoder(nn.Module):
         # -180 ~ 180
         return phi
 
-    def forward(self, x):
+    def forward(self, x, template):
         bnum = x.shape[0]
         x = self.encoder1(x)
-        x = self.avgpool(x)
+        num_vertices = template.shape[1]
+        current_position = template.repeat(bnum,1,1).view(bnum, num_vertices, 1 , 3) # 32x642x1x3
+        uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
+        # extract local feature according to template
+        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x in_dim x 642x1
+        x = torch.cat( (self.avgpool1(x), self.avgpool2(local)), dim=1)
         x = x.view(bnum, -1)
         Dist_output = self.linear1(x)
         Azim_output = self.linear2(x)
@@ -258,6 +264,7 @@ class ShapeEncoder(nn.Module):
         return block2
 
     def forward(self, x, template, lpl):
+        # 3D shape bias is conditioned on 3D template.
         bnum = x.shape[0]
         x = self.encoder1(x) # recommend a high resolution  8x4
         # template is 1x642x3, use location (x,y) to get local feature
@@ -265,7 +272,7 @@ class ShapeEncoder(nn.Module):
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
-        # extract local 
+        # extract local feature according to template
         local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 288 x642x1
         glob = self.mmpool(x) # mean + max pool
         glob = glob.repeat(1,1,self.num_vertices,1)

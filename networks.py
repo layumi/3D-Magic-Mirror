@@ -488,19 +488,19 @@ class AttributeEncoder(nn.Module):
             print("Train Shape Encoder. Fix Camera Ecnoder")
             camera_enc_copy = copy.deepcopy(self.camera_enc)
             with torch.no_grad():
-                cameras = camera_enc_copy(input_img) 
+                cameras = camera_enc_copy(input_img, template = self.vertices_init) 
             azimuths, elevations, distances, biases = cameras # 32, 32, 32
             delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
         elif train_shape == 1: 
             print("Fix Shape Encoder. Train Camera Encoder")
-            cameras = self.camera_enc(input_img) 
+            cameras = self.camera_enc(input_img, template = self.vertices_init) 
             azimuths, elevations, distances, biases = cameras # 32, 32, 32
             shape_enc_copy = copy.deepcopy(self.shape_enc)
             with torch.no_grad():
                 delta_vertices = shape_enc_copy(input_img, template = self.vertices_init, lpl = self.lpl)
         else: 
            print("Train both")
-           cameras = self.camera_enc(input_img)
+           cameras = self.camera_enc(input_img, template = self.vertices_init)
            azimuths, elevations, distances, biases = cameras # 32, 32, 32
            delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
 
