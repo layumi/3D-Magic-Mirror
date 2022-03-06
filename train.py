@@ -74,7 +74,7 @@ parser.add_argument('--flipL1', action='store_true', default=False, help='using 
 parser.add_argument('--coordconv', action='store_false', default=True, help='using coordconv for texture mapping.')
 parser.add_argument('--unmask', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
-parser.add_argument('--swa', action='store_true', default=False, help='using swa.')
+parser.add_argument('--swa', action='store_true', default=True, help='using swa.')
 parser.add_argument('--em', type=float, default=1.0, help='update template')
 parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
 parser.add_argument('--update_shape', type=int, default=1, help='train shape every XX iteration')
