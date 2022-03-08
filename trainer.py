@@ -818,6 +818,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10)))
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
             for delta_azimuth in loop:
+                batch_size = Xa.shape[0]
                 Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
                 predictions, _ = diffRender.render(**Ae)
                 predictions = predictions[:, :3]
