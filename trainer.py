@@ -264,6 +264,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                 #outs0 = netD(Ma.detach().clone()) # real
                 #outs1 = netD(Mer90.detach().clone()) # fake - recon?
                 #outs2 = netD(Mir.detach().clone()) # fake - inter?
+                ##########################
+                # Since no batch norm is used in Discriminator, there will be no side effect to 
+                # forward Ma, Ner90, Mir together
+                ##########################
                 outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
                 lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0
  
