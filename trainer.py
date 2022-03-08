@@ -74,10 +74,15 @@ def trainer(opt, train_dataloader, test_dataloader):
         netL = netL.cuda()
 
     # netD: Discriminator rgb+seg
+    if opt.unmask == 2: # four channel 
+        dis_nc = 4 
+    else: 
+        dis_nc = 3
+
     if opt.gan_type == 'wgan':
-        netD = Discriminator(nc=3, nf=16)
+        netD = Discriminator(nc=dis_nc, nf=16)
     elif opt.gan_type == 'lsgan':
-        netD = MS_Discriminator(nc=3, nf=16)
+        netD = MS_Discriminator(nc=dis_nc, nf=16)
     else:
         print('unknow gan type. Only lsgan or wgan is accepted.')
 
@@ -244,14 +249,18 @@ def trainer(opt, train_dataloader, test_dataloader):
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
 
                 # discriminate loss
-                if opt.unmask:
+                if opt.unmask == 1: 
                     Ma = Xa[:,:3]
                     Mer90 = Xer90[:,:3]
                     Mir = Xir[:,:3]
-                else:
+                elif opt.unmask == 0:
                     Ma = mask(Xa)
                     Mer90 = mask(Xer90)
                     Mir = mask(Xir)
+                elif opt.unmask == 2:
+                    Ma, Mer90, Mir = Xa, Xer90, Xir
+                else:
+                    print('Please specify unmask')
                 #outs0 = netD(Ma.detach().clone()) # real
                 #outs1 = netD(Mer90.detach().clone()) # fake - recon?
                 #outs2 = netD(Mir.detach().clone()) # fake - inter?
