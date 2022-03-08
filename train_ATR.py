@@ -73,7 +73,7 @@ parser.add_argument('--hard', action='store_true', default=False, help='using Xe
 parser.add_argument('--L1', action='store_true', default=False, help='using L1 for ic loss.')
 parser.add_argument('--flipL1', action='store_true', default=False, help='using flipL1 for flipz loss.')
 parser.add_argument('--coordconv', action='store_false', default=True, help='using coordconv for texture mapping.')
-parser.add_argument('--unmask', action='store_true', default=False, help='using L1 for ic loss.')
+parser.add_argument('--unmask', type=int, default=0, help='0 remove background, 1 for rgb only, 2 for four channel')
 parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
 parser.add_argument('--swa', action='store_true', default=True, help='using swa.')
 parser.add_argument('--em', type=float, default=1.0, help='update template')
