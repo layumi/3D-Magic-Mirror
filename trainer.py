@@ -268,7 +268,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # forward Ma, Ner90, Mir together
                 ##########################
                 outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
-                lossD, lossD_real, lossD_fake, lossD_gp  = 0, 0, 0, 0, 0
+                lossD, lossD_real, lossD_fake, lossD_gp  = 0, 0, 0, 0
  
                 if opt.gan_type == 'wgan': # WGAN-GP
                     outs0, outs1,outs2 = torch.split(outs, batch_size, dim= 0)
