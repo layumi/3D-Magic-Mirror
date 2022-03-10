@@ -9,7 +9,7 @@ import numpy as np
 import trimesh
 import yaml
 import copy
-
+from multiprocessing import Pool
 # import torch related
 import torch
 import torch.nn as nn
@@ -42,6 +42,11 @@ from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
 from smr_utils import angle2xy, white, iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+
+def save(output_name):
+    output, name = output_name
+    output.save(name, 'JPEG', quality=100)
+    return
 
 def trainer(opt, train_dataloader, test_dataloader):
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
@@ -575,24 +580,28 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Xir2, Ai2 = diffRender.render(**Ai2)
                     Xer90, Ae90 = diffRender.render(**Ae90)
 
+
+                    # multiprocess to save image
+                    X_all = []
+                    path_all = []
                     for i in range(len(paths)):
                         path = paths[i]
                         image_name = os.path.basename(path)
                         rec_path = os.path.join(rec_dir, image_name)
                         output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
-                        output_Xer.save(rec_path, 'JPEG', quality=100)
+                        #output_Xer.save(rec_path, 'JPEG', quality=100)
 
                         inter_path = os.path.join(inter_dir, image_name)
                         output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                        output_Xir.save(inter_path, 'JPEG', quality=100)
+                        #output_Xir.save(inter_path, 'JPEG', quality=100)
 
                         inter_path2 = os.path.join(inter_dir, '2+'+image_name)
                         output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
-                        output_Xir2.save(inter_path2, 'JPEG', quality=100)
+                        #output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
                         inter90_path = os.path.join(inter90_dir, image_name)
                         output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
-                        output_Xer90.save(inter90_path, 'JPEG', quality=100)
+                        #output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
                         if epoch==0:
                             ori_path = os.path.join(ori_dir, image_name)
@@ -601,7 +610,16 @@ def trainer(opt, train_dataloader, test_dataloader):
                                 gt_mask = Xa[:, 3]
                                 Xa[:, :3] = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
                             output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
-                            output_Xa.save(ori_path, 'JPEG', quality=100)
+                            #output_Xa.save(ori_path, 'JPEG', quality=100)
+                            X_all.append(output_Xa)
+                            path_all.append(ori_path)
+
+                        X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90])
+                        path_all.extend([rec_path, inter_path, inter_path2, inter90_path])
+            # save image
+            with Pool(4) as p:
+                p.map(save_img, zip(X_all, path_all) )        
+
 
             print('===========Evaluating FID Score===========')
             fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
