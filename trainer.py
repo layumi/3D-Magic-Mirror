@@ -268,14 +268,14 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # forward Ma, Ner90, Mir together
                 ##########################
                 outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
-                lossD, lossD_real, lossD_fake, lossD_gp, reg  = 0, 0, 0, 0, 0
+                lossD, lossD_real, lossD_fake, lossD_gp  = 0, 0, 0, 0, 0
  
                 if opt.gan_type == 'wgan': # WGAN-GP
                     outs0, outs1,outs2 = torch.split(outs, batch_size, dim= 0)
                     lossD_real = opt.lambda_gan * torch.mean(outs0)
                     lossD_fake = opt.lambda_gan * ( torch.mean(outs1) + opt.ganw*torch.mean(outs2)) / (1.0+opt.ganw)
 
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty(netD, Ma.data, Mer90.data) + \
+                    lossD_gp = opt.gan_reg * opt.lambda_gan * (compute_gradient_penalty(netD, Ma.data, Mer90.data) + \
                                         opt.ganw*compute_gradient_penalty(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     lossD = lossD_fake - lossD_real + lossD_gp
                 elif opt.gan_type == 'lsgan':
@@ -283,10 +283,9 @@ def trainer(opt, train_dataloader, test_dataloader):
                         out0, out1,out2 = torch.split(out, batch_size, dim= 0)
                         lossD_real += opt.lambda_gan * torch.mean((out0 - 1)**2)
                         lossD_fake += opt.lambda_gan * (torch.mean((out1 - 0)**2) + opt.ganw*torch.mean((out2 - 0)**2)) /(1.0+opt.ganw)
-                    lossD_gp = 10.0 * opt.lambda_gan * (compute_gradient_penalty_list(netD, Ma.data, Mer90.data) + \
+                    lossD_gp = opt.gan_reg * opt.lambda_gan * (compute_gradient_penalty_list(netD, Ma.data, Mer90.data) + \
                                     opt.ganw*compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     lossD = lossD_fake + lossD_real + lossD_gp 
-                lossD  += reg 
                 lossD *= warm_up
                 lossD.backward()
                 optimizerD.step()
@@ -651,7 +650,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         mean_elev = (elev_max + elev_min) /2
         mean_dist = (dist_max + dist_min) /2
         # only updating in the first 80% epoch and fix the template for the final shape updating
-        if opt.em > 0 and epoch<int(0.8*opt.niter):
+        if opt.em > 0 and epoch%opt.em_gap == 0 and epoch<int(0.8*opt.niter):
             print('===========Updating template===========')
             sample_number = len(train_dataloader.dataset)//opt.batchSize * opt.batchSize
             current_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
