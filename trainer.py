@@ -636,9 +636,9 @@ def trainer(opt, train_dataloader, test_dataloader):
         if opt.em > 0 and epoch<int(0.8*opt.niter):
             print('===========Updating template===========')
             sample_number = len(train_dataloader.dataset)//opt.batchSize * opt.batchSize
-            current_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda() 
-            all_vertices = torch.zeros(sample_number, template_file.vertices.shape[0], 3) # all
-            all_delta_vertices = torch.zeros(sample_number, template_file.vertices.shape[0], 3) # all
+            current_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
+            all_vertices = torch.zeros(sample_number, diffRender.vertices_init.shape[0], 3) # all
+            all_delta_vertices = torch.zeros(sample_number, diffRender.vertices_init.shape[0], 3) # all
             for iter, data in enumerate(train_dataloader):
                 Xa = Variable(data['data']['images']).cuda()
                 with torch.no_grad():
@@ -670,7 +670,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 current_delta_vertices =  torch.sum(all_delta_vertices[good_index],dim=0)
                 count = len(good_index)
             elif opt.em == 4: # DBSCAN
-                #all_vertices = torch.rand(sample_number, template_file.vertices.shape[0], 3)
+                #all_vertices = torch.rand(sample_number, diffRender.vertices_init.shape[0], 3)
                 all_vertices = all_vertices.view(sample_number, -1)  
                 # white
                 all_vertices -= torch.mean(all_vertices, dim=1, keepdim = True)
