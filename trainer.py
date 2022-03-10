@@ -44,13 +44,7 @@ from datasets.atr import ATRDataset
 from smr_utils import angle2xy, white, iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def trainer(opt, train_dataloader, test_dataloader):
-    #chamferDist = ChamferDistance()
-    # differentiable renderer need uv and face_uvs_idx
-    template_file = kal.io.obj.import_mesh(opt.template_path, with_materials=True)
-    #print(template_file.uvs, template_file.face_uvs_idx)
-    print('Vertices Number:', template_file.vertices.shape[0]) #642
-    print('Faces Number:', template_file.faces.shape)  #1280
-    diffRender = DiffRender(mesh=template_file, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
+    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
     #save_mesh('init.obj', diffRender.vertices_init, template_file.faces, template_file.uvs)
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture

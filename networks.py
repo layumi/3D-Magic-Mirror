@@ -163,7 +163,7 @@ def deep_copy(att, index=None, detach=False):
 
 
 class DiffRender(object):
-    def __init__(self, mesh, image_size, ratio=1, image_weight=0.1):
+    def __init__(self, mesh_name, image_size, ratio=1, image_weight=0.1):
         self.image_size = image_size
         self.image_weight = image_weight
         self.ratio = ratio
@@ -172,6 +172,9 @@ class DiffRender(object):
         # here ratio=width/height
         self.cam_proj = generate_perspective_projection(camera_fovy, ratio=1/ratio)
 
+        mesh = kal.io.obj.import_mesh(mesh_name, with_materials=True)
+        print('Vertices Number:', mesh.vertices.shape[0]) #642
+        print('Faces Number:', mesh.faces.shape)  #1280
         # https://github.com/NVIDIAGameWorks/kaolin/blob/master/examples/tutorial/dibr_tutorial.ipynb
         # get vertices_init
         vertices = mesh.vertices
@@ -180,8 +183,9 @@ class DiffRender(object):
         vertices_min = vertices.min(0, True)[0]
         vertices = (vertices - vertices_min) / (vertices_max - vertices_min)
         vertices_init = vertices * 2.0 - 1.0 # (V, 3)
-        vertices_init[:,0] = vertices_init[:,0] / ratio  # width = 1/2 * height
-        vertices_init[:,2] = vertices_init[:,2] / (ratio**2) # depth = 1/4 * height
+        if 'ellipsoid' in mesh_name:
+            vertices_init[:,0] = vertices_init[:,0] / 2  # width = 1/2 * height
+            vertices_init[:,2] = vertices_init[:,2] / 4 # depth = 1/4 * height
 
         # get face_uvs
         faces = mesh.faces
