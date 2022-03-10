@@ -43,7 +43,7 @@ from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
 from smr_utils import angle2xy, white, iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
-def save(output_name):
+def save_img(output_name):
     output, name = output_name
     output.save(name, 'JPEG', quality=100)
     return
