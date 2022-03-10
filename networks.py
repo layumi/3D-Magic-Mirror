@@ -184,6 +184,7 @@ class DiffRender(object):
         vertices = (vertices - vertices_min) / (vertices_max - vertices_min)
         vertices_init = vertices * 2.0 - 1.0 # (V, 3)
         if 'ellipsoid' in mesh_name:
+            print('using the ellipsoid template')
             vertices_init[:,0] = vertices_init[:,0] / 2  # width = 1/2 * height
             vertices_init[:,2] = vertices_init[:,2] / 4 # depth = 1/4 * height
 
