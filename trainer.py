@@ -58,7 +58,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
     # init template delta
-    last_delta_vertices = torch.zeros(template_file.vertices.shape[0], 3).cuda()
+    last_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
     # netL: for Landmark Consistency
     # print(diffRender.num_faces) # 1280
     if opt.lambda_lc>0:
