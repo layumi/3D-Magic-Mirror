@@ -75,7 +75,7 @@ parser.add_argument('--coordconv', action='store_true', default=True, help='usin
 parser.add_argument('--unmask', type=int, default=0, help='0 remove background, 1 for rgb only, 2 for four channel')
 parser.add_argument('--romp', action='store_true', default=False, help='using romp.')
 parser.add_argument('--swa', action='store_true', default=True, help='using swa.')
-parser.add_argument('--smooth', action='store_true', default=True, help='using smooth template.')
+parser.add_argument('--smooth', type=float, default=0.5, help='using smooth template.')
 parser.add_argument('--em', type=float, default=0.0, help='update template')
 parser.add_argument('--em_gap', type=int, default=1, help='update template evey xx epoch ')
 parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
