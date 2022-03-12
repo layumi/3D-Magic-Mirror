@@ -198,7 +198,7 @@ if __name__ == '__main__':
     print('Faces Number:', template_file.faces.shape[0])  #1280
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
-    netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=vertices_init, 
+    netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
                             pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
