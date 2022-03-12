@@ -559,6 +559,8 @@ def trainer(opt, train_dataloader, test_dataloader):
         if epoch % 20 == 0: # and epoch > 0:
             print('===========Generating Test Images===========')
             netE.eval()
+            X_all = []
+            path_all = []
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
                 Xa = Variable(data['data']['images']).cuda()
                 paths = data['data']['path']
@@ -581,8 +583,6 @@ def trainer(opt, train_dataloader, test_dataloader):
 
 
                     # multiprocess to save image
-                    X_all = []
-                    path_all = []
                     for i in range(len(paths)):
                         path = paths[i]
                         image_name = os.path.basename(path)
