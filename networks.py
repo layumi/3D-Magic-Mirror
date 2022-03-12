@@ -316,7 +316,7 @@ class DiffRender(object):
         attributes['visiable_faces'] = face_normals[:, :, -1] > 0.1
         return rgbs, attributes
 
-    def recon_att(self, pred_att, target_att, L1 = False, chamfer = False):
+    def recon_att(self, pred_att, target_att, L1 = False, chamfer = False, azim=1):
         def angle2xy(angle):
             angle = angle * math.pi / 180.0
             x = torch.cos(angle)
@@ -330,7 +330,7 @@ class DiffRender(object):
                      angle2xy(target_att['elevations'])).mean()
             loss_dist = torch.abs(pred_att['distances'] - target_att['distances']).mean()
             loss_bias = torch.abs(pred_att['biases'] - target_att['biases']).mean()
-            loss_cam = loss_azim + loss_elev + loss_dist
+            loss_cam = azim * loss_azim + loss_elev + loss_dist
             if chamfer:
                 loss_shape, _  = chamfer_distance(pred_att['vertices'], target_att['vertices'])
             else:
@@ -344,7 +344,7 @@ class DiffRender(object):
                      angle2xy(target_att['elevations']), 2).mean()
             loss_dist = torch.pow(pred_att['distances'] - target_att['distances'], 2).mean()
             loss_bias = torch.pow(pred_att['biases'] - target_att['biases'], 2).mean()
-            loss_cam = 10 * loss_azim + loss_elev + loss_dist
+            loss_cam = azim * loss_azim + loss_elev + loss_dist
             if chamfer:
                 loss_shape, _  = chamfer_distance(pred_att['vertices'], target_att['vertices'])
             else:

@@ -324,7 +324,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # interpolated cycle consistency. IC need warmup
                 #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                loss_cam, loss_shape, loss_texture, loss_light, loss_bias = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1, chamfer = opt.chamfer)
+                loss_cam, loss_shape, loss_texture, loss_light, loss_bias = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1, chamfer = opt.chamfer, azim = opt.azim)
                 lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light+loss_bias)
 
                 # disentangle regularization
@@ -357,7 +357,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                              angle2xy(Ae['elevations']), 2).mean()
                         loss_dist = torch.pow(Ae_jitter['distances'] - Ae['distances'], 2).mean()
                         loss_bias = torch.pow(Ae_jitter['biases'] - Ae['biases'], 2).mean()
-                        l_cam = 10 * loss_azim + loss_elev + loss_dist + loss_bias
+                        l_cam = opt.azim * loss_azim + loss_elev + loss_dist + loss_bias
                     #l_light = 0.1  * torch.pow(Ae_jitter['lights'] - Ae['lights'], 2).mean()
                         lossR_dis += opt.dis2 * (l_cam + l_shape)
 
