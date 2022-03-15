@@ -319,6 +319,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # point not too close
                 if opt.lambda_edge>0:
                     lossR_reg += opt.lambda_edge * (diffRender.calc_reg_edge(Ae['vertices']) +  diffRender.calc_reg_edge(Ai['vertices'])) / 2.0
+                if opt.lambda_depth>0:
+                    lossR_reg += opt.lambda_depth * (diffRender.calc_reg_depth(Ae['vertices']) +  diffRender.calc_reg_depth(Ai['vertices'])) / 2.0
                 if opt.lambda_deform>0:
                     lossR_reg += opt.lambda_deform* (diffRender.calc_reg_deform(Ae['delta_vertices']) +  diffRender.calc_reg_deform(Ai['delta_vertices'])) / 2.0
 

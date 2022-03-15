@@ -416,6 +416,11 @@ class DiffRender(object):
         loss_edge = edge_weight*torch.mean(torch.norm(bias_length, p=2, dim=1) ) # have to be mse , otherwise sparse L1 case.
         return loss_edge
 
+    def calc_reg_depth(self, pred): # pred is  att['vertices']
+        # L2 regularization on depth 
+        loss_depth = torch.mean(pred[:,:,2]**2 ) 
+        return loss_depth
+
     def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
         batchsize = pred.shape[0] 
         pred = pred.reshape(-1, pred.size(2)) # ((B*N)*3)
