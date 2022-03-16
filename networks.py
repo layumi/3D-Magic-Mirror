@@ -163,9 +163,11 @@ def deep_copy(att, index=None, detach=False):
 
 
 class DiffRender(object):
-    def __init__(self, mesh_name, image_size, ratio=1, image_weight=0.1):
+    def __init__(self, mesh_name, image_size, ratio=1, image_weight=0.1, lambda_lpl = 0.1, lambda_flat = 0.001):
         self.image_size = image_size
         self.image_weight = image_weight
+        self.lambda_lpl = lambda_lpl
+        self.lambda_flat = lambda_flat
         self.ratio = ratio
         # camera projection matrix
         camera_fovy = np.arctan(1.0 / 2.5) * 2
@@ -384,8 +386,8 @@ class DiffRender(object):
         return loss_norm
 
     def calc_reg_loss(self, att):
-        laplacian_weight = 0.1
-        flat_weight = 0.001
+        laplacian_weight = self.lambda_lpl #0.1
+        flat_weight = self.lambda_flat #0.001
 
         # laplacian loss
         delta_vertices = att['delta_vertices']

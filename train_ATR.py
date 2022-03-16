@@ -91,6 +91,8 @@ parser.add_argument('--lambda_deform', type=float, default=0.1, help='parameter'
 parser.add_argument('--lambda_flipz', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
 parser.add_argument('--lambda_ic', type=float, default=1, help='parameter')
+parser.add_argument('--lambda_lpl', type=float, default=0.1, help='parameter for laplacian loss')
+parser.add_argument('--lambda_flat', type=float, default=0.001, help='parameter for flatten loss')
 parser.add_argument('--dis1', type=float, default=0, help='parameter')
 parser.add_argument('--dis2', type=float, default=0, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0, help='parameter')

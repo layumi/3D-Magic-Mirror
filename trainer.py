@@ -49,7 +49,7 @@ def save_img(output_name):
     return
 
 def trainer(opt, train_dataloader, test_dataloader):
-    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight) #for market
+    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight, lambda_lpl = opt.lambda_lpl, lambda_flat = opt.lambda_flat) #for market
     #save_mesh('init.obj', diffRender.vertices_init, template_file.faces, template_file.uvs)
 
     # netE: 3D attribute encoder: Camera, Light, Shape, and Texture
