@@ -20,11 +20,11 @@ $ pip install timm prettytable h5py imgaug smplx munkres joblib pycocotools lap 
 $ pip install ipywidgets keyboard transforms3d chumpy
 ```
 
-* Update your gcc 
+* Update your gcc if your gcc is too old  and you do not have sudo rights.
 ```
 $ conda config --add channels conda-forge # add conda forge channel
-$ conda install gcc_linux-64=11.2.0 gcc_impl_linux-64=11.2.0
-$ conda install gxx_linux-64=11.2.0 gxx_impl_linux-64=11.2.0
+$ conda install gcc_linux-64=9.4.0 gcc_impl_linux-64=9.4.0
+$ conda install gxx_linux-64=9.4.0 gxx_impl_linux-64=9.4.0
 $ ln x86_64-conda-linux-gnu-gcc gcc # cd bin
 $  ln x86_64-conda-linux-gnu-g++ g++ 
 ```
