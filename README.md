@@ -22,8 +22,9 @@ $ pip install ipywidgets keyboard transforms3d chumpy
 
 * Update your gcc 
 ```
-$ conda install gcc_linux-64=9.3.0 gcc_impl_linux-64=9.3.0
-$ conda install gxx_linux-64=9.3.0 gxx_impl_linux-64=9.3.0
+$ conda config --add channels conda-forge # add conda forge channel
+$ conda install gcc_linux-64=11.2.0 gcc_impl_linux-64=11.2.0
+$ conda install gxx_linux-64=11.2.0 gxx_impl_linux-64=11.2.0
 $ ln x86_64-conda-linux-gnu-gcc gcc # cd bin
 $  ln x86_64-conda-linux-gnu-g++ g++ 
 ```
