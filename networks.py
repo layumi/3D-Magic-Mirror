@@ -496,25 +496,37 @@ class AttributeEncoder(nn.Module):
         batch_size = input_img.shape[0]
 
         # camera + vertex 
-        if train_shape == 2:
-            print("Train Shape Encoder. Fix Camera Ecnoder")
-            camera_enc_copy = copy.deepcopy(self.camera_enc)
-            with torch.no_grad():
-                cameras = camera_enc_copy(input_img, template = self.vertices_init) 
-            azimuths, elevations, distances, biases = cameras # 32, 32, 32
-            delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
-        elif train_shape == 1: 
-            print("Fix Shape Encoder. Train Camera Encoder")
-            cameras = self.camera_enc(input_img, template = self.vertices_init) 
-            azimuths, elevations, distances, biases = cameras # 32, 32, 32
+        if train_shape == 1 or train_shape ==4 or train_shape ==5: 
+            print("Fix Shape Encoder", end=', ')
             shape_enc_copy = copy.deepcopy(self.shape_enc)
             with torch.no_grad():
                 delta_vertices = shape_enc_copy(input_img, template = self.vertices_init, lpl = self.lpl)
-        else: 
-           print("Train both")
-           cameras = self.camera_enc(input_img, template = self.vertices_init)
-           azimuths, elevations, distances, biases = cameras # 32, 32, 32
-           delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
+        else:
+            print("Train Shape Encoder", end=', ') 
+            delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
+
+        if train_shape == 2 or train_shape == 3 or train_shape == 4:
+            print("Fix Camera Encoder", end=', ')
+            camera_enc_copy = copy.deepcopy(self.camera_enc)
+            with torch.no_grad():
+                cameras = camera_enc_copy(input_img, template = self.vertices_init)
+            azimuths, elevations, distances, biases = cameras # 32, 32, 32
+        else:
+            print("Train Camera Encoder", end=', ')
+            cameras = self.camera_enc(input_img, template = self.vertices_init)
+            azimuths, elevations, distances, biases = cameras # 32, 32, 32
+
+        if train_shape == 3 or train_shape == 5:
+            print("Fix Texture Encoder")
+            texture_enc_copy = copy.deepcopy(self.texture_enc)
+            light_enc_copy = copy.deepcopy(self.light_enc)
+            with torch.no_grad():
+                textures = texture_enc_copy(input_img) # 32x3x512x256
+                lights = light_enc_copy(input_img) # 32x9
+        else:
+            print("Train Texture Encoder")
+            textures = self.texture_enc(input_img) # 32x3x512x256
+            lights = self.light_enc(input_img) # 32x9
 
         if self.romp and img_path is not None:
             vertices = self.romp_enc.run(file_list=img_pth).to(device) 
@@ -522,9 +534,6 @@ class AttributeEncoder(nn.Module):
             vertices += delta_vertices # 32 x 6890 x 3
         else:
             vertices = self.vertices_init + delta_vertices
-        # textures
-        textures = self.texture_enc(input_img) # 32x3x512x256
-        lights = self.light_enc(input_img) # 32x9
 
         # background
         if self.bg:

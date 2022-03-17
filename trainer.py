@@ -173,6 +173,15 @@ def trainer(opt, train_dataloader, test_dataloader):
                 train_shape = 1 # fix shape train camera
                 if iter % opt.update_shape == 0:
                     train_shape = 2 # fix camera train shape
+
+                if opt.update_shape ==-1: #a new em policy
+                     if iter % 3 == 0:
+                         train_shape = 3 # fix camera + texture,  train shape
+                     elif iter % 3 == 1:
+                         train_shape = 4 # fix camera + shape, train texture
+                     elif iter % 3 == 2:
+                         train_shape = 5 # fix shape + texture, train camera
+
                 Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
                 Xer, Ae = diffRender.render(**Ae, no_mask = opt.bg)
 
