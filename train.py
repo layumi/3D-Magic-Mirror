@@ -109,7 +109,7 @@ parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated l
 opt = parser.parse_args()
 opt.outf = './log/'+ opt.name
 print(opt)
-
+os.makedirs('./log', exist_ok=True)
 if not os.path.isdir(opt.outf):
     os.mkdir(opt.outf)
 
