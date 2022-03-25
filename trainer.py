@@ -535,7 +535,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             dist_range = opt.dist_range.split('~')
             dist_min = int(dist_range[0])
             dist_max = int(dist_range[1])
-            loop = tqdm.tqdm(list(range(dist_min, dist_max, 1))) # 1, 7
+            loop = tqdm.tqdm(list(range(dist_min, dist_max+1, 1))) # 1, 7
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_dist)')
             for delta_dist in loop:
                 Ae['distances'] = - torch.tensor([delta_dist], dtype=torch.float32).repeat(batch_size).cuda()
