@@ -126,7 +126,6 @@ opt.template_path = config['template_path']
 opt.name = config['name']
 opt.dataroot = config['dataroot']
 opt.gan_type = config['gan_type']
-opt.template_path = config['template_path']
 opt.category = config['category']
 opt.workers = config['workers']
 opt.batchSize = config['batchSize']
@@ -207,7 +206,6 @@ if __name__ == '__main__':
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
-    netE.eval()
 
     # restore from latest_ckpt.path
     # start_iter = 0
@@ -223,6 +221,8 @@ if __name__ == '__main__':
 
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
+
+    netE = netE.eval()
 
     ori_dir = os.path.join(opt.outf, 'fid/ori')
     rec_dir = os.path.join(opt.outf, 'fid/rec_tmp') # open one new
