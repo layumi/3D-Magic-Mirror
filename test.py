@@ -153,7 +153,7 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 if "MKT" in opt.name:
-    # train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
+    train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     print('Market-1501')
     ratio = 2
@@ -169,9 +169,9 @@ else:
     ratio = 1
 
 torch.set_num_threads(int(opt.workers)*2)
-# train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
-#                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
-#                                          prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
+train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
+                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
+                                          prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
                                          shuffle=False, pin_memory=True,
                                          num_workers=int(opt.workers), prefetch_factor=2)
@@ -207,6 +207,7 @@ if __name__ == '__main__':
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
+    netE.eval()
 
     # restore from latest_ckpt.path
     # start_iter = 0
@@ -233,12 +234,14 @@ if __name__ == '__main__':
     os.makedirs(inter_dir, exist_ok=True)
     os.makedirs(inter90_dir, exist_ok=True)
     # os.makedirs(ckpt_dir, exist_ok=True)
+    os.system('rm -r %s/*'%ori_dir)
     os.system('rm -r %s/*'%rec_dir)
+    os.system('rm -r %s/*'%inter_dir)
+    os.system('rm -r %s/*'%inter90_dir)
 
     # summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
 
-    netE.eval()
     dists = torch.tensor([]).cuda()
     azimuths = torch.tensor([]).cuda()
     biases = torch.tensor([]).cuda()
@@ -248,6 +251,7 @@ if __name__ == '__main__':
     xyz_max = torch.tensor([]).cuda()
     filename = []
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
+    #for i, data in tqdm.tqdm(enumerate(train_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
         paths = data['data']['path']
         # Xa = fliplr(Xa)
@@ -256,13 +260,16 @@ if __name__ == '__main__':
             Xer, Ae = diffRender.render(**Ae)
 
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
+            # clamp 
+            Ae['vertices'] = torch.clamp(Ae['vertices'], min = torch.FloatTensor([-1, -2, -1]).cuda())
+            
             azimuths = torch.cat((azimuths, Ae['azimuths']))
             biases = torch.cat((biases, Ae['biases']))
             dists = torch.cat((dists, Ae['distances']))
             elevations = torch.cat((elevations, Ae['elevations']))
-            xyz_min = torch.cat((xyz_min, torch.min(Ae['vertices'], dim=1)[0]))
-            xyz_max = torch.cat((xyz_max, torch.max(Ae['vertices'], dim=1)[0]))
-            xyz_mean = torch.cat((xyz_mean, torch.abs(torch.mean(Ae['vertices'], dim=1))))
+            xyz_min = torch.cat((xyz_min, torch.min(Ae['delta_vertices'], dim=1)[0]))
+            xyz_max = torch.cat((xyz_max, torch.max(Ae['delta_vertices'], dim=1)[0]))
+            xyz_mean = torch.cat((xyz_mean, torch.abs(torch.mean(Ae['delta_vertices'], dim=1))))
 
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)
@@ -319,11 +326,13 @@ if __name__ == '__main__':
     ax2 = fig.add_subplot(233, title="Biases-Y")
     ax3 = fig.add_subplot(234, title="Distances")
     ax4 = fig.add_subplot(235, title="Elevations")
+    ax5 = fig.add_subplot(236, title="Shape Biase Max")
     ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax1.hist( biases[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax2.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax3.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax4.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax5.hist( xyz_max[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     fig.savefig("hist.png")
     max_index = torch.max(xyz_max, dim=0)[1]
     print( filename[max_index[0].data] )
