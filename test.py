@@ -8,7 +8,7 @@ import imageio
 import numpy as np
 import trimesh
 import yaml
-
+from multiprocessing import Pool
 # import torch related
 import torch
 import torch.nn as nn
@@ -40,6 +40,13 @@ from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
 from smr_utils import fliplr, mask, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
+
+
+def save_img(output_name):
+    output, name = output_name
+    output.save(name, 'JPEG', quality=100)
+    return
+
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -250,6 +257,8 @@ if __name__ == '__main__':
     xyz_mean = torch.tensor([]).cuda()
     xyz_max = torch.tensor([]).cuda()
     filename = []
+    X_all = []
+    path_all = []
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
     #for i, data in tqdm.tqdm(enumerate(train_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
@@ -295,23 +304,30 @@ if __name__ == '__main__':
                 image_name = os.path.basename(path) + 'A%.2f'%Ae['azimuths'][i] + '.jpg'
                 rec_path = os.path.join(rec_dir, image_name)
                 output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
-                output_Xer.save(rec_path, 'JPEG', quality=100)
+                #output_Xer.save(rec_path, 'JPEG', quality=100)
 
                 inter_path = os.path.join(inter_dir, image_name)
                 output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                output_Xir.save(inter_path, 'JPEG', quality=100)
+                #output_Xir.save(inter_path, 'JPEG', quality=100)
 
                 inter_path2 = os.path.join(inter_dir, '2+'+image_name)
                 output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
-                output_Xir2.save(inter_path2, 'JPEG', quality=100)
+                #output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
                 inter90_path = os.path.join(inter90_dir, image_name)
                 output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
-                output_Xer90.save(inter90_path, 'JPEG', quality=100)
+                #output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
                 ori_path = os.path.join(ori_dir, image_name)
                 output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
-                output_Xa.save(ori_path, 'JPEG', quality=100)
+                #output_Xa.save(ori_path, 'JPEG', quality=100)
+                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa])
+                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path])
+
+    with Pool(4) as p:
+        p.map(save_img, zip(X_all, path_all) )
+
+
     azimuths_result = 'Azimuths max: {}\tmin: {}\tavg: {}'.format(torch.max(azimuths), torch.min(azimuths), torch.mean(azimuths))
     biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
     biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
