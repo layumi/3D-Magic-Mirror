@@ -21,6 +21,12 @@ def default_loader(path):
         img = Image.open(f)
         return img.convert('RGB')
 
+def seg_loader(path):
+    with open(path, 'rb') as f:
+        seg = Image.open(f).convert('L')
+        seg = seg.point(lambda p: p > 160 and 255)
+        return seg
+
 class CUBDataset(data.Dataset):
     def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, bg = False):
         super(CUBDataset, self).__init__()
@@ -35,6 +41,7 @@ class CUBDataset(data.Dataset):
 
         self.transform = transform
         self.loader = loader
+        self.seg_loader = seg_loader
 
         self.imgs = [(im_path, self.class_dir.index(os.path.dirname(im_path))) for
                      im_path in self.im_list]
@@ -53,7 +60,7 @@ class CUBDataset(data.Dataset):
         # image and its flipped image
         seg_path = img_path.replace('.jpg', '.png')
         img = self.loader(img_path)
-        seg = Image.open(seg_path)
+        seg = self.seg_loader(seg_path) # Pillow Image Behavior is not stable. So the convert is neccessary. 
         W, H = img.size
 
         if self.train:
