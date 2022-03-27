@@ -157,13 +157,13 @@ if "MKT" in opt.name:
     print('Market-1501')
     ratio = 2
 elif "ATR" in opt.name:
-    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True)
-    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False)
+    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
+    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
     print('ATR-human')
     ratio = 1
 else:
-    train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True)
-    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False)
+    train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
+    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
     print('CUB')
     ratio = 1
 
@@ -217,7 +217,7 @@ if __name__ == '__main__':
         # start_epoch = checkpoint['epoch']
         # start_iter = 0
         #netD.load_state_dict(checkpoint['netD'])
-        netE.load_state_dict(checkpoint['netE'], strict=False)
+        netE.load_state_dict(checkpoint['netE'], strict=True)
 
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
