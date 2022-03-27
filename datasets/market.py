@@ -85,10 +85,12 @@ class MarketDataset(data.Dataset):
 
         if self.train:
             # resize 128x64 (the effective part is 128x64)
-            ratio_h = random.uniform(1.0, 1.2)
-            ratio_w = random.uniform(1.0, 1.2)
-            img = img.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)))
-            seg = seg.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)), Image.NEAREST)
+            #ratio_h = random.uniform(1.0, 1.1)
+            #ratio_w = random.uniform(1.0, 1.1)
+            #img = img.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)))
+            #seg = seg.resize((int(target_width*ratio_w), int(target_width*ratio_h*2)), Image.NEAREST)
+            img = img.resize((target_width, target_width*2))
+            seg = seg.resize((target_width, target_width*2), Image.NEAREST)
             seg = seg.point(lambda p: p > 160 and 255)
 
             #padding 10

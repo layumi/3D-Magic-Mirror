@@ -66,9 +66,13 @@ class ATRDataset(data.Dataset):
             if random.uniform(0, 1) < 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 seg = seg.transpose(Image.FLIP_LEFT_RIGHT)
-
-            h = random.randint(int(0.90 * H), int(0.99 * H))
-            w = random.randint(int(0.90 * W), int(0.99 * W))
+            # pad 10
+            img = ImageOps.expand(img, 10)
+            seg = ImageOps.expand(seg, 10)
+            W, H = W + 20, H+20
+            # random crop mask & img
+            w = random.randint(int(0.95 * W), int(0.99 * W))
+            h = random.randint(int(0.95 * H), int(0.99 * H))
             left = random.randint(0, W-w)
             upper = random.randint(0, H-h)
             right = random.randint(w - left, W)
