@@ -271,6 +271,7 @@ if __name__ == '__main__':
             #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
             # clamp 
             #Ae['vertices'] = torch.clamp(Ae['vertices'], min = torch.FloatTensor([-1, -2, -1]).cuda())
+            #Ae['vertices'] = torch.clamp(Ae['vertices'], max = torch.FloatTensor([1, 2, 1]).cuda())
             
             azimuths = torch.cat((azimuths, Ae['azimuths']))
             biases = torch.cat((biases, Ae['biases']))

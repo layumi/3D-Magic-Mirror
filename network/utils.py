@@ -21,7 +21,7 @@ def weights_init_classifier(m):
     classname = m.__class__.__name__
     if classname.find('Block') == -1 and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
         init.xavier_uniform_(m.weight.data)
-        init.normal_(m.weight.data, std=0.001)
+        init.normal_(m.weight.data, std=0.00001) 
     if hasattr(m, 'bias') and m.bias is not None:
         init.constant_(m.bias.data, 0.0)
 
