@@ -57,6 +57,7 @@ parser.add_argument('--lr', type=float, default=0.0001, help='leaning rate, defa
 parser.add_argument('--azim', type=float, default=1.0, help='recon weight for azim. default=1.0')
 parser.add_argument('--clip', type=float, default=0.05, help='the clip for template update.')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--wd', type=float, default=1e-4, help='weight decay for adam. default=1e-4')
 parser.add_argument('--droprate', type=float, default=0.2, help='dropout in encoders. default=0.2')
 parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
 parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')

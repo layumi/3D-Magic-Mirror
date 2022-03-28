@@ -253,7 +253,8 @@ class ShapeEncoder(nn.Module):
             indim = indim + 1
         block2 = [
             nn.Conv1d(indim, outdim, kernel_size=1),
-            nn.BatchNorm1d(outdim),
+            #nn.BatchNorm1d(outdim),
+            nn.InstanceNorm1d(outdim),
         ]
         if relu:
             block2.append(nn.LeakyReLU(0.2, inplace=True))
@@ -280,7 +281,7 @@ class ShapeEncoder(nn.Module):
         neighbor_diff = neighbor_diff.view(bnum, -1, self.num_vertices, 1)
         # Per-Point: local + global + neighbor_diff + xyz
         x = torch.cat( (local, glob, neighbor_diff, current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
-        x = self.encoder2(x.squeeze()) # 32x3x642
+        x = self.encoder2(x.squeeze(dim=3)) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
         delta_vertices = 0.4 * torch.tanh(delta_vertices) # limit the bias within [-0.4, 0.4]

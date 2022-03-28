@@ -90,11 +90,11 @@ def trainer(opt, train_dataloader, test_dataloader):
     netD = netD.cuda()
 
     # setup optimizer
-    optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
+    optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=True)
     if opt.lambda_lc>0:
-        optimizerE = optim.Adam(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
+        optimizerE = optim.Adam(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=True)
     else:
-        optimizerE = optim.Adam(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), amsgrad=True)
+        optimizerE = optim.Adam(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=True)
 
     # setup learning rate scheduler
     schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)
