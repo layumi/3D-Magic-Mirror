@@ -253,8 +253,8 @@ class ShapeEncoder(nn.Module):
             indim = indim + 1
         block2 = [
             nn.Conv1d(indim, outdim, kernel_size=1),
-            #nn.BatchNorm1d(outdim),
-            nn.InstanceNorm1d(outdim),
+            nn.BatchNorm1d(outdim),
+            #nn.InstanceNorm1d(outdim),
         ]
         if relu:
             block2.append(nn.LeakyReLU(0.2, inplace=True))
