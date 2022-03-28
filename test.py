@@ -179,7 +179,7 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
                                           shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
                                           prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=True, pin_memory=True,
+                                         shuffle=False, pin_memory=True,
                                          num_workers=int(opt.workers), prefetch_factor=2)
 
 
