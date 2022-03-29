@@ -229,10 +229,11 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
+        insnorm = nn.InstanceNorm1d(in_dim*3 + 3)
         linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=True )
         linear2 = self.Conv1d(256, 3, relu = False)
 
-        all_blocks = linear1 + linear2
+        all_blocks = insnorm + linear1 + linear2
         self.encoder2 = nn.Sequential(*all_blocks)
         self.encoder2.apply(weights_init)
         #################################################
@@ -254,7 +255,7 @@ class ShapeEncoder(nn.Module):
         block2 = [
             nn.Conv1d(indim, outdim, kernel_size=1),
             nn.BatchNorm1d(outdim),
-            #nn.InstanceNorm1d(outdim),
+            #nn.InstanceNorm1d(outdim, affine=True),
         ]
         if relu:
             block2.append(nn.LeakyReLU(0.2, inplace=True))

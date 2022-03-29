@@ -198,8 +198,23 @@ def trainer(opt, train_dataloader, test_dataloader):
                     rand[rand>=0] = 1.0
                     Ae90['azimuths'] *= rand
                     #print( Ae90['azimuths'])
-                rand_a = torch.randperm(batch_size)
-                rand_b = torch.randperm(batch_size)
+
+                # bad case
+                mean_delta = torch.mean(torch.abs(Ae['delta_vertices'])[:,-1], dim = 1)
+                #bad_case = torch.argwhere(mean_delta>0.2) 
+                bad_index = np.argwhere(mean_delta.data.cpu().numpy()>0.4) 
+                print(bad_index)
+                rand_a = np.random.permutation(batch_size)
+                rand_b = np.random.permutation(batch_size)
+                good_index = np.setdiff1d( np.arange(batch_size), bad_index) 
+                for i in bad_index: 
+                    bad_indexa = np.argwhere(rand_a == i)
+                    rand_a[bad_indexa] = np.random.choice(good_index, 1)
+                    bad_indexb = np.argwhere(rand_b == i)
+                    rand_b[bad_indexb] = np.random.choice(good_index, 1)
+                rand_a = torch.LongTensor(rand_a)
+                rand_b = torch.LongTensor(rand_b)
+                print(rand_a)
                 Aa = deep_copy(Ae, rand_a)
                 Ab = deep_copy(Ae, rand_b)
                 Ai = {}
@@ -684,6 +699,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 end = start + opt.batchSize
                 all_vertices[ start: end , :, :] = Ae0['vertices'].data.cpu()
                 all_delta_vertices[ start: end , :, :] = Ae0['delta_vertices'].data.cpu()
+
+            # delete base case with extreme large change
+            mean_delta = torch.mean(torch.abs(all_delta_vertices)[:, -1], dim = 1)
+            good_index = np.argwhere(mean_delta.data.cpu().numpy()<=0.4)
+            all_vertices = all_vertices[good_index, :, :]
+            all_delta_vertices = all_delta_vertices[good_index, :, :]
+            print('Extreme Bad Case: %d'% (sample_number - len(good_index)) )
 
             if opt.em == 2: # only poistive
                 good_index = torch.mean(all_vertices[:,:,2], dim=1) >= 0.001 # hand is in front of the human by depth.
