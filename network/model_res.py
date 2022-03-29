@@ -229,7 +229,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
         #################################################
-        insnorm = nn.InstanceNorm1d(in_dim*3 + 3)
+        insnorm = [nn.InstanceNorm1d(in_dim*3 + 3)]
         linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=True )
         linear2 = self.Conv1d(256, 3, relu = False)
 
