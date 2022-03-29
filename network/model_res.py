@@ -284,7 +284,7 @@ class ShapeEncoder(nn.Module):
         x = self.encoder2(x.squeeze(dim=3)) # 32x3x642
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
         delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
-        delta_vertices = 0.4 * torch.tanh(delta_vertices) # limit the bias within [-0.4, 0.4]
+        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.4, 0.4]
         #print(delta_vertices.shape)
         return delta_vertices.view(bnum, self.num_vertices, 3)
 
