@@ -273,13 +273,10 @@ class ShapeEncoder(nn.Module):
     def forward(self, x, template, lpl):
         # 3D shape bias is conditioned on 3D template.
         bnum = x.shape[0]
-        print(torch.max(x[0, 0, :]))
-        print(torch.max(x[0, 3, :]))
         x = self.encoder1(x) # recommend a high resolution  8x4
         x = self.bn(x)
         #################### Fusion of Global and Local
         # template is 1x642x3, use location (x,y) to get local feature
-        print(x.shape, x)
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3).detach() # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
@@ -564,7 +561,7 @@ class Resnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1)
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) *0.001
 
         model.layer4[0].downsample[0].stride = (1,1)
         model.layer4[0].conv1.stride = (1,1)
@@ -593,7 +590,7 @@ class HRnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) #model.conv1.weight[:, 0]
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) *0.001 #model.conv1.weight[:, 0]
         self.model = model
     def forward(self, x):
         x = self.model.forward_features(x)
