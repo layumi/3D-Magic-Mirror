@@ -190,7 +190,7 @@ class DiffRender(object):
             print('using the ellipsoid template')
             vertices_init[:,0] = vertices_init[:,0] / 2  # width = 1/2 * height
             vertices_init[:,2] = vertices_init[:,2] / 2 # depth = 1/4 * height
-
+        vertices_init *= 0.9 # scale a little small
         # get face_uvs
         faces = mesh.faces
         uvs = mesh.uvs.unsqueeze(0)
