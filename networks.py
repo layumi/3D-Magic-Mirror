@@ -427,9 +427,7 @@ class DiffRender(object):
     def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
         batchsize = pred.shape[0] 
         pred = pred.reshape(-1, pred.size(2)) # ((B*N)*3)
-        loss_deform = torch.mean(torch.norm(pred, p=2, dim=1)) # have to be mse , otherwise sparse L1 case.
-        #print('Deform;%f'%loss_deform)
-        return loss_deform
+        return torch.mean(torch.norm(pred, p=2, dim=1))
 
 # network of landmark consistency
 class Landmark_Consistency(nn.Module):
