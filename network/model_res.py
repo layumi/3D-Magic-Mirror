@@ -273,11 +273,13 @@ class ShapeEncoder(nn.Module):
     def forward(self, x, template, lpl):
         # 3D shape bias is conditioned on 3D template.
         bnum = x.shape[0]
+        print(torch.max(x[0, 0, :]))
+        print(torch.max(x[0, 3, :]))
         x = self.encoder1(x) # recommend a high resolution  8x4
         x = self.bn(x)
         #################### Fusion of Global and Local
         # template is 1x642x3, use location (x,y) to get local feature
-        #print(x.shape)
+        print(x.shape, x)
         current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3).detach() # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1

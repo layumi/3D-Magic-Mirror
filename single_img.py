@@ -246,8 +246,10 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    seg_path = '../Market/hq/seg_hmr/query/0345/0345_c6s1_079326_00.jpg_0.39.png'
-    img_path = '../Market/hq/pytorch/query/0345/0345_c6s1_079326_00.jpg.png'
+    #seg_path = '../Market/hq/seg_hmr/query/0345/0345_c6s1_079326_00.jpg_0.39.png'
+    #img_path = '../Market/hq/pytorch/query/0345/0345_c6s1_079326_00.jpg.png'
+    seg_path = '../Market/hq/seg_hmr/query/1064/1064_c5s2_143149_00.jpg_0.27.png'
+    img_path = '../Market/hq/pytorch/query/1064/1064_c5s2_143149_00.jpg.png'
     img = Image.open(img_path).convert('RGB')
     seg = Image.open(seg_path).convert('L').point(lambda p: p > 0 and 255)
     target_width = opt.imageSize
@@ -319,15 +321,15 @@ if __name__ == '__main__':
 
     fig = plt.figure()
     ax0 = fig.add_subplot(231, title="Azimuths")
-    ax1 = fig.add_subplot(232, title="Biases-X")
-    ax2 = fig.add_subplot(233, title="Biases-Y")
-    ax3 = fig.add_subplot(234, title="Distances")
+    ax1 = fig.add_subplot(232, title="X")
+    ax2 = fig.add_subplot(233, title="Y")
+    ax3 = fig.add_subplot(234, title="Z")
     ax4 = fig.add_subplot(235, title="Elevations")
     ax5 = fig.add_subplot(236, title="Shape Biase Max")
     ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax1.hist( biases[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax2.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax3.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax1.hist( x.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
+    ax2.hist( y.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
+    ax3.hist( z.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
     ax4.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax5.hist( x.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     fig.savefig("demo_single/hist.png")
