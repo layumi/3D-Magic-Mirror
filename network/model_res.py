@@ -7,10 +7,16 @@ from .utils import weights_init, weights_init_classifier
 import math
 import timm
 
-def normalize_batch(batch):
+def normalize_batch_3C(batch):
     # normalize using imagenet mean and std
     mean = batch.new_tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
     std = batch.new_tensor([0.229, 0.224, 0.225]).view(-1, 1, 1)
+    return (batch - mean) / std
+
+def normalize_batch_4C(batch):
+    # normalize using imagenet mean and std
+    mean = batch.new_tensor([0.485, 0.456, 0.406, 0.5]).view(-1, 1, 1)
+    std = batch.new_tensor([0.229, 0.224, 0.225, 1]).view(-1, 1, 1)
     return (batch - mean) / std
 
 ######################################################################
@@ -64,7 +70,7 @@ class VGG19(torch.nn.Module):
 
     def forward(self, X):
         B, C, H, W = X.shape
-        X = normalize_batch(X[:, :3])
+        X = normalize_batch_3C(X[:, :3])
         h_relu1 = self.slice1(X)
         h_relu2 = self.slice2(h_relu1)
         h_relu3 = self.slice3(h_relu2)
@@ -175,6 +181,7 @@ class CameraEncoder(nn.Module):
 
     def forward(self, x, template):
         bnum = x.shape[0]
+        x = normalize_batch_4C(x)
         x = self.encoder1(x)
         num_vertices = template.shape[1]
         current_position = template.repeat(bnum,1,1).view(bnum, num_vertices, 1 , 3) # 32x642x1x3
@@ -273,6 +280,9 @@ class ShapeEncoder(nn.Module):
     def forward(self, x, template, lpl):
         # 3D shape bias is conditioned on 3D template.
         bnum = x.shape[0]
+        ################### PreProcessing
+        x = normalize_batch_4C(x) 
+        #################### Backbone
         x = self.encoder1(x) # recommend a high resolution  8x4
         x = self.bn(x)
         #################### Fusion of Global and Local
@@ -346,6 +356,7 @@ class LightEncoder(nn.Module):
 
     def forward(self, x):
         bnum = x.shape[0]
+        x = normalize_batch_4C(x)
         x = self.encoder1(x)
         x = x.view(bnum, -1)
         x = self.encoder2(x)
@@ -445,6 +456,7 @@ class TextureEncoder(nn.Module):
 
     def forward(self, x):
         img = x[:, :3]
+        x = normalize_batch_4C(x)
         batch_size = x.shape[0]
         # down
         x1 = self.block1(x)
