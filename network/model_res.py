@@ -228,22 +228,27 @@ class ShapeEncoder(nn.Module):
             in_dim = 2048 
         else: 
             print('unknown network')
-        #################################################
-        insnorm = [nn.InstanceNorm1d(in_dim*3 + 3)]
-        linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=True )
+        ################################################# Compress 2D 
+        norm = [] #[nn.InstanceNorm1d(in_dim*3 + 3, affine=True)]
+        self.bn = nn.BatchNorm2d(in_dim)
+        linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=False )
         linear2 = self.Conv1d(256, 3, relu = False)
 
-        all_blocks = insnorm + linear1 + linear2
+        all_blocks = linear1 + linear2
         self.encoder2 = nn.Sequential(*all_blocks)
         self.encoder2.apply(weights_init)
-        #################################################
+        ################################################# To 1D
+        #encoder3 = self.linearblock(self.num_vertices * 3, self.num_vertices * 3, relu=False)
+        #self.encoder3 = nn.Sequential(*encoder3)
+        #self.encoder3.apply(weights_init)
         self.linear3 = nn.Linear(self.num_vertices * 3, self.num_vertices * 3)
         self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
         block2 = [
             nn.Linear(indim, outdim),
-            nn.BatchNorm1d(outdim),
+            #nn.BatchNorm1d(outdim)
+            nn.GroupNorm(3, outdim),
         ]
         if relu:
             block2.append(nn.ReLU(inplace=True))
@@ -269,25 +274,32 @@ class ShapeEncoder(nn.Module):
         # 3D shape bias is conditioned on 3D template.
         bnum = x.shape[0]
         x = self.encoder1(x) # recommend a high resolution  8x4
+        x = self.bn(x)
+        #################### Fusion of Global and Local
         # template is 1x642x3, use location (x,y) to get local feature
         #print(x.shape)
-        current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3) # 32x642x1x3
+        current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3).detach() # 32x642x1x3
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
         # extract local feature according to template
-        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x 288 x642x1
+        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=True, padding_mode="zeros") # 32 x 288 x642x1
         glob = self.mmpool(x) # mean + max pool
         glob = glob.repeat(1,1,self.num_vertices,1)
         neighbor_diff = torch.mm(local.view(-1, self.num_vertices), lpl.cuda()) # 32x288x642 * 642x642
         neighbor_diff = neighbor_diff.view(bnum, -1, self.num_vertices, 1)
         # Per-Point: local + global + neighbor_diff + xyz
-        x = torch.cat( (local, glob, neighbor_diff, current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
+        x = torch.cat( (local, glob,  neighbor_diff, current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
         x = self.encoder2(x.squeeze(dim=3)) # 32x3x642
+        ##################   Linear
         delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
+        #delta_vertices = self.encoder3(delta_vertices) # all points. init is close to 0
         delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.4, 0.4]
-        #print(delta_vertices.shape)
-        return delta_vertices.view(bnum, self.num_vertices, 3)
+        delta_vertices = delta_vertices.view(bnum, self.num_vertices, 3) 
+        # - mean xyz
+        delta_vertices_mean= torch.mean(delta_vertices, dim=1, keepdim=True)
+        delta_vertices -= delta_vertices_mean.repeat(1, self.num_vertices,1)
+        return delta_vertices
 
 
 class LightEncoder(nn.Module):

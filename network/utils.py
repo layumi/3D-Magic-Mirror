@@ -8,7 +8,7 @@ def weights_init(m):
     if classname.find('Block') == -1 and classname.find('Conv') != -1:
         init.kaiming_normal_(m.weight.data, a=0, mode='fan_in') # For old pytorch, you may use kaiming_normal.
     elif classname.find('Linear') != -1:
-        init.kaiming_normal_(m.weight.data, a=0, mode='fan_out')
+        init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
     elif classname.find('BatchNorm') != -1: 
         init.normal_(m.weight.data, 1.0, 0.02)
     elif classname.find('InstanceNorm') != -1:
