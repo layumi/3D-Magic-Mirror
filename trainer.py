@@ -93,11 +93,18 @@ def trainer(opt, train_dataloader, test_dataloader):
     optimizer = optim.Adam
     if opt.adamw:
         optimizer = optim.AdamW
-    optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=True)
+
+    ignored_params = list(map(id, netE.shape_enc.encoder1.parameters() ))
+    add_params = filter(lambda p: id(p) not in ignored_params, netE.parameters())
+    pre_params = netE.shape_enc.encoder1.parameters()
+    optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
     if opt.lambda_lc>0:
-        optimizerE = optimizer(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=True)
+        optimizerE = optimizer(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
     else:
-        optimizerE = optimizer(netE.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=True)
+        optimizerE = optimizer([             
+             {'params': pre_params, 'lr': 0.1*opt.lr},
+             {'params': add_params, 'lr': opt.lr}
+              ], betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
 
     # setup learning rate scheduler
     schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)

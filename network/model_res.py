@@ -16,7 +16,7 @@ def normalize_batch_3C(batch):
 def normalize_batch_4C(batch):
     # normalize using imagenet mean and std
     mean = batch.new_tensor([0.485, 0.456, 0.406, 0.5]).view(-1, 1, 1)
-    std = batch.new_tensor([0.229, 0.224, 0.225, 1]).view(-1, 1, 1)
+    std = batch.new_tensor([0.229, 0.224, 0.225, 5]).view(-1, 1, 1) # mask will be [-0.1, 0.1]
     return (batch - mean) / std
 
 ######################################################################
@@ -283,6 +283,7 @@ class ShapeEncoder(nn.Module):
         ################### PreProcessing
         x = normalize_batch_4C(x) 
         #################### Backbone
+        #with torch.no_grad():
         x = self.encoder1(x) # recommend a high resolution  8x4
         x = self.bn(x)
         #################### Fusion of Global and Local
