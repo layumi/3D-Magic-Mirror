@@ -17,5 +17,5 @@ for f in os.listdir(root):
                 os.remove(dir_name+'/'+ff)
 
 
-for dir_name in dir_list:
-    os.system('rm -r %s'%dir_name)
+#for dir_name in dir_list:
+#    os.system('rm -r %s'%dir_name)
