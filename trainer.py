@@ -657,8 +657,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                             ori_mask_path = os.path.join(ori_mask_dir, image_name)
                             output_ori_mask =  to_pil_image(Xa[i, 3].detach().cpu())
                             #output_Xa.save(ori_path, 'JPEG', quality=100)
-                            X_all.append(output_Xa, output_ori_mask)
-                            path_all.append(ori_path, ori_mask_path)
+                            X_all.extend([output_Xa, output_ori_mask])
+                            path_all.extend([ori_path, ori_mask_path])
 
                         X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_rec_mask])
                         path_all.extend([rec_path, inter_path, inter_path2, inter90_path, rec_mask_path])
@@ -705,6 +705,8 @@ def trainer(opt, train_dataloader, test_dataloader):
             print('Epoch %03d Test rotat90 fid: %0.2f' % (epoch, fid_90))
             summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
             with open(output_txt, 'a') as fp:
+                fp.write('Epoch %03d recon ssim: %0.3f\n' % (epoch, np.mean(ssim_score)))
+                fp.write('Epoch %03d recon MaskIoU: %0.3f\n' % (epoch, np.mean(mask_score)))
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
                 fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
