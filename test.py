@@ -16,6 +16,7 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
+import torchvision
 from torchvision.transforms.functional import to_pil_image
 import torchvision.utils as vutils
 import torch.nn.functional as F
@@ -24,10 +25,13 @@ from torch.utils.tensorboard import SummaryWriter
 from networks import MS_Discriminator, Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
 # import kaolin related
 import kaolin as kal
+from kaolin.metrics.render import mask_iou
 from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
-
+from PIL import Image
+from pytorch_msssim import ssim
+#from skimage.metrics import structural_similarity as ssim
 # draw
 import matplotlib
 matplotlib.use('agg')
@@ -179,7 +183,7 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
                                           shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
                                           prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=False, pin_memory=True,
+                                         shuffle=True, pin_memory=True,
                                          num_workers=int(opt.workers), prefetch_factor=2)
 
 
@@ -229,20 +233,27 @@ if __name__ == '__main__':
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
 
+
     netE = netE.eval()
 
     ori_dir = os.path.join(opt.outf, 'fid/ori')
+    ori_mask_dir = os.path.join(opt.outf, 'fid/ori_mask')
     rec_dir = os.path.join(opt.outf, 'fid/rec_tmp') # open one new
+    rec_mask_dir = os.path.join(opt.outf, 'fid/rec_mask') 
     inter_dir = os.path.join(opt.outf, 'fid/inter')
     inter90_dir = os.path.join(opt.outf, 'fid/inter90')
     # ckpt_dir = os.path.join(opt.outf, 'ckpts')
     os.makedirs(ori_dir, exist_ok=True)
+    os.makedirs(ori_mask_dir, exist_ok=True)
     os.makedirs(rec_dir, exist_ok=True)
+    os.makedirs(rec_mask_dir, exist_ok=True)
     os.makedirs(inter_dir, exist_ok=True)
     os.makedirs(inter90_dir, exist_ok=True)
     # os.makedirs(ckpt_dir, exist_ok=True)
     os.system('rm -r %s/*'%ori_dir)
+    os.system('rm -r %s/*'%ori_mask_dir)
     os.system('rm -r %s/*'%rec_dir)
+    os.system('rm -r %s/*'%rec_mask_dir)
     os.system('rm -r %s/*'%inter_dir)
     os.system('rm -r %s/*'%inter90_dir)
 
@@ -297,6 +308,7 @@ if __name__ == '__main__':
             #Ae90_recon = netE(Xer90) 
             #print(Ae90_recon['azimuths'])
             #break
+            Maska = Xa[:,3,:,:].unsqueeze(1)
             Xa = mask(Xa) # remove bg
                    
             for i in range(len(paths)):
@@ -322,8 +334,15 @@ if __name__ == '__main__':
                 ori_path = os.path.join(ori_dir, image_name)
                 output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                 #output_Xa.save(ori_path, 'JPEG', quality=100)
-                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa])
-                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path])
+
+                ori_mask_path = os.path.join(ori_mask_dir, image_name)
+                output_ori_mask = to_pil_image(Maska[i].detach().cpu())
+
+                rec_mask_path = os.path.join(rec_mask_dir, image_name)
+                output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
+
+                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa, output_ori_mask, output_rec_mask])
+                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path, ori_mask_path, rec_mask_path])
 
     with Pool(4) as p:
         p.map(save_img, zip(X_all, path_all) )
@@ -359,17 +378,43 @@ if __name__ == '__main__':
     print(dist_result)
     print(elev_result)
     print(xyz_result)
-    
+    # Recon SSIM
+    ssim_score = []
+    mask_score = []
+    for root, dirs, files in os.walk(ori_dir, topdown=True):
+        for name in files:
+            if not name[-3:]=='jpg':
+                continue
+            # SSIM
+            ori_path = ori_dir + '/' + name
+            rec_path = rec_dir + '/' + name
+            ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
+            rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
+            ssim_score.append(ssim(ori, rec, data_range=1))
+            # Mask IoU
+            ori_path = ori_mask_dir + '/' + name
+            rec_path = rec_mask_dir + '/' + name
+            ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            ori = torchvision.transforms.functional.to_tensor(ori)
+            rec = torchvision.transforms.functional.to_tensor(rec)
+            mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
+
+    print('\033[1mTest recon ssim: %0.3f \033[0m' % np.mean(ssim_score) )
+    print('\033[1mTest recon MaskIoU: %0.3f\033[0m' % np.mean(mask_score) )
     fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
-    print('Test recon fid: %0.2f' % fid_recon ) 
+    print('\033[1mTest recon fid: %0.2f\033[0m' % fid_recon ) 
     fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
-    print('Test rotation fid: %0.2f' %  fid_inter)
+    print('\033[1mTest rotation fid: %0.2f\033[0m' %  fid_inter)
     fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
-    print('Test rotat90 fid: %0.2f' % fid_90 ) 
+    print('\033[1mTest rotat90 fid: %0.2f\033[0m' % fid_90 ) 
 
     with open(output_txt, 'a') as fp:
         fp.write(dist_result+'\n')
         fp.write(elev_result + '\n')
+        fp.write('Test recon ssim: %0.2f\n' % np.mean(ssim_score))
         fp.write('Test recon fid: %0.2f\n' % (fid_recon))
         fp.write('Test rotation fid: %0.2f\n' % (fid_inter))
         fp.write('Test rotate90 fid: %0.2f\n' % (fid_90))
