@@ -383,7 +383,7 @@ if __name__ == '__main__':
     mask_score = []
     for root, dirs, files in os.walk(ori_dir, topdown=True):
         for name in files:
-            if not name[-3:]=='jpg':
+            if not ( name[-3:]=='png' or name[-3:]=='jpg'):
                 continue
             # SSIM
             ori_path = ori_dir + '/' + name
