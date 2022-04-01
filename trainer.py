@@ -34,6 +34,7 @@ from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 
+from PIL import Image
 from pytorch_msssim import ssim
 from kaolin.metrics.render import mask_iou
 from pytorch3d.loss import chamfer_distance
