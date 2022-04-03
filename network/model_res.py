@@ -103,9 +103,10 @@ class BackgroundEncoder(nn.Module):
         return self.encoder(bg)
 
 class CameraEncoder(nn.Module):
-    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn', ratio=1, pretrain='none'):
+    def __init__(self, nc, nk, azi_scope, elev_range, dist_range, droprate = 0.0, coordconv=False, norm = 'bn', ratio=1, pretrain='none', nolpl = False):
         super(CameraEncoder, self).__init__()
 
+        self.nolpl = nolpl
         self.azi_scope = float(azi_scope)
         self.ratio = ratio
         elev_range = elev_range.split('~')
@@ -139,7 +140,10 @@ class CameraEncoder(nn.Module):
         #avgpool = nn.AdaptiveAvgPool2d(1)
         self.avgpool1 = MMPool((2,2))
         self.avgpool2 = MMPool((2,2))
-        in_dim *=4
+        if nolpl: 
+            in_dim *= 2  #only use global feature
+        else:
+            in_dim *=4 # global + local feature
         # Dist + Ele
         self.linear1 = nn.Sequential(
                     *self.linearblock(in_dim*2, 128, relu = False),
@@ -161,6 +165,7 @@ class CameraEncoder(nn.Module):
                     *self.linearblock(in_dim*2, 128, relu = False),
                     nn.Dropout(p=droprate),
                     nn.Linear(128, 2))
+        
         self.linear3.apply(weights_init)
         self.linear3[-1].apply(weights_init_classifier)
 
@@ -188,7 +193,10 @@ class CameraEncoder(nn.Module):
         uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
         # extract local feature according to template
         local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x in_dim x 642x1
-        x = torch.cat( (self.avgpool1(x), self.avgpool2(local)), dim=1)
+        if self.nolpl:
+            x = self.avgpool1(x) # only use global
+        else:
+            x = torch.cat( (self.avgpool1(x), self.avgpool2(local)), dim=1)
         x = x.view(bnum, -1)
         Dist_output = self.linear1(x)
         Azim_output = self.linear2(x)
@@ -211,10 +219,11 @@ class CameraEncoder(nn.Module):
 
 
 class ShapeEncoder(nn.Module):
-    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False, norm = 'bn'):
+    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False, norm = 'bn', nolpl = False):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.mmpool = MMPool((1,1))
+        self.nolpl = nolpl
         if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
             self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
@@ -237,7 +246,6 @@ class ShapeEncoder(nn.Module):
             print('unknown network')
         ################################################# Compress 2D 
         norm = [] #[nn.InstanceNorm1d(in_dim*3 + 3, affine=True)]
-        self.bn = nn.BatchNorm2d(in_dim)
         linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=False )
         linear2 = self.Conv1d(256, 3, relu = False)
 
@@ -249,6 +257,10 @@ class ShapeEncoder(nn.Module):
         #self.encoder3 = nn.Sequential(*encoder3)
         #self.encoder3.apply(weights_init)
         self.linear3 = nn.Linear(self.num_vertices * 3, self.num_vertices * 3)
+        if nolpl:
+            self.bn = nn.BatchNorm2d(in_dim)
+            self.linear3 = nn.Linear(in_dim, self.num_vertices * 3)
+
         self.linear3.apply(weights_init_classifier)
 
     def linearblock(self, indim, outdim, relu=True):
@@ -285,25 +297,29 @@ class ShapeEncoder(nn.Module):
         #################### Backbone
         #with torch.no_grad():
         x = self.encoder1(x) # recommend a high resolution  8x4
-        #x = self.bn(x)
-        #################### Fusion of Global and Local
-        # template is 1x642x3, use location (x,y) to get local feature
-        current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3).detach() # 32x642x1x3
-        uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
-        # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
-        # extract local feature according to template
-        local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=True, padding_mode="zeros") # 32 x 288 x642x1
-        glob = self.mmpool(x) # mean + max pool
-        glob = glob.repeat(1,1,self.num_vertices,1)
-        neighbor_diff = torch.mm(local.view(-1, self.num_vertices), lpl.cuda()) # 32x288x642 * 642x642
-        neighbor_diff = neighbor_diff.view(bnum, -1, self.num_vertices, 1)
-        # Per-Point: local + global + neighbor_diff + xyz
-        x = torch.cat( (local, glob,  neighbor_diff, current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
-        x = self.encoder2(x.squeeze(dim=3)) # 32x3x642
-        ##################   Linear
-        delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
-        #delta_vertices = self.encoder3(delta_vertices) # all points. init is close to 0
-        delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
+        if self.nolpl:
+            x = self.mmpool(x) # 32 x dim x 1 x 1
+            x = self.bn(x)
+            delta_vertices = self.linear3(x.view(bnum, -1))
+        else:
+            #################### Fusion of Global and Local
+            # template is 1x642x3, use location (x,y) to get local feature
+            current_position = template.repeat(bnum,1,1).view(bnum, self.num_vertices, 1 , 3).detach() # 32x642x1x3
+            uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
+            # depth = current_position[:,:,:,2].cuda().detach() # 32 x642x1
+            # extract local feature according to template
+            local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=True, padding_mode="zeros") # 32 x 288 x642x1
+            glob = self.mmpool(x) # mean + max pool
+            glob = glob.repeat(1,1,self.num_vertices,1)
+            neighbor_diff = torch.mm(local.view(-1, self.num_vertices), lpl.cuda()) # 32x288x642 * 642x642
+            neighbor_diff = neighbor_diff.view(bnum, -1, self.num_vertices, 1)
+            # Per-Point: local + global + neighbor_diff + xyz
+            x = torch.cat( (local, glob,  neighbor_diff, current_position.permute(0,3,1,2)), dim = 1 ) # 32x (288*3+3) x642x1
+            x = self.encoder2(x.squeeze(dim=3)) # 32x3x642
+            ##################   Linear
+            delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
+            #delta_vertices = self.encoder3(delta_vertices) # all points. init is close to 0
+            delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
         delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.4, 0.4]
         delta_vertices = delta_vertices.view(bnum, self.num_vertices, 3) 
         # - mean xyz

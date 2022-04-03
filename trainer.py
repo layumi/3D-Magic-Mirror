@@ -60,7 +60,8 @@ def trainer(opt, train_dataloader, test_dataloader):
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
                             pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
-                            coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix) # height = 2 * width
+                            coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix,
+                            nolpl = opt.nolpl) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
