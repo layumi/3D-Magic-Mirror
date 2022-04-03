@@ -254,8 +254,8 @@ class ShapeEncoder(nn.Module):
     def linearblock(self, indim, outdim, relu=True):
         block2 = [
             nn.Linear(indim, outdim),
-            #nn.BatchNorm1d(outdim)
-            nn.GroupNorm(3, outdim),
+            nn.BatchNorm1d(outdim)
+            #nn.GroupNorm(3, outdim),
         ]
         if relu:
             block2.append(nn.ReLU(inplace=True))
@@ -574,7 +574,7 @@ class Resnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) *0.001
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) * 1e-5
 
         model.layer4[0].downsample[0].stride = (1,1)
         model.layer4[0].conv1.stride = (1,1)
