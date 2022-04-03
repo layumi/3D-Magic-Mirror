@@ -106,7 +106,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         optimizerE = optimizer(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
     else:
         optimizerE = optimizer([             
-             {'params': pre_params, 'lr': 0.1 * opt.lr},
+             {'params': pre_params, 'lr': 0.01 * opt.lr},
              {'params': add_params, 'lr': opt.lr}
               ], betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
 

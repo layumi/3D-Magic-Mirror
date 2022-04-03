@@ -16,7 +16,7 @@ def normalize_batch_3C(batch):
 def normalize_batch_4C(batch):
     # normalize using imagenet mean and std
     mean = batch.new_tensor([0.485, 0.456, 0.406, 0.5]).view(-1, 1, 1)
-    std = batch.new_tensor([0.229, 0.224, 0.225, 10]).view(-1, 1, 1) # mask will be [-0.05, 0.05]
+    std = batch.new_tensor([0.229, 0.224, 0.225, 50]).view(-1, 1, 1) # mask will be [-0.01, 0.01]
     return (batch - mean) / std
 
 ######################################################################
