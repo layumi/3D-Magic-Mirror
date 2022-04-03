@@ -105,7 +105,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         optimizerE = optimizer(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
     else:
         optimizerE = optimizer([             
-             {'params': pre_params, 'lr': 0.05 * opt.lr},
+             {'params': pre_params, 'lr': 0.2 * opt.lr},
              {'params': add_params, 'lr': opt.lr}
               ], betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
 
@@ -187,11 +187,14 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # encode real
                 # 0 for train both camera and shape
-                train_shape = 1 # fix shape train camera
-                if iter % opt.update_shape == 0:
-                    train_shape = 2 # fix camera train shape
+                if opt.update_shape >0:
+                    train_shape = 1 # fix shape train camera
+                    if iter % opt.update_shape == 0:
+                        train_shape = 2 # fix camera train shape
+                else: 
+                    train_shape = 0 # train all encoders
 
-                if opt.update_shape ==-1: #a new em policy
+                if opt.update_shape ==-1: #a new encoder updating policy
                      if iter % 3 == 0:
                          train_shape = 3 # fix camera + texture,  train shape
                      elif iter % 3 == 1:
