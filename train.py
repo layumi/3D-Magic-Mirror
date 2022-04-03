@@ -61,7 +61,7 @@ parser.add_argument('--droprate', type=float, default=0.2, help='dropout in enco
 parser.add_argument('--cuda', default=1, type=int, help='enables cuda')
 parser.add_argument('--manualSeed', type=int, default=0, help='manual seed')
 parser.add_argument('--start_epoch', type=int, default=0, help='start epoch')
-parser.add_argument('--warm_epoch', type=int, default=20, help='warm epoch')
+parser.add_argument('--warm_epoch', type=int, default=40, help='warm epoch')
 parser.add_argument('--multigpus', action='store_true', default=False, help='whether use multiple gpus mode')
 parser.add_argument('--resume', action='store_true', default=False, help='whether resume ckpt')
 parser.add_argument('--chamfer', action='store_true', default=False, help='use chamfer loss for vertices')

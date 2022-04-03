@@ -106,7 +106,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         optimizerE = optimizer(list(netE.parameters()) + list(netL.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
     else:
         optimizerE = optimizer([             
-             {'params': pre_params, 'lr': 0.01 * opt.lr},
+             {'params': pre_params, 'lr': 0.1 * opt.lr},
              {'params': add_params, 'lr': opt.lr}
               ], betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
 
@@ -166,14 +166,14 @@ def trainer(opt, train_dataloader, test_dataloader):
 
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
-    warm_up = 0.1 # We start from the 0.1*lrRate
+    warm_up = 0.01 # We start from the 0.01*lrRate
     warm_up_ic = 0.1 # We start from the 0.1*lrRate for ic loss
     warm_iteration = len(train_dataloader)*opt.warm_epoch # first 20 epoch
     print('Model will warm up in %d iterations'%warm_iteration)
     for epoch in range(start_epoch, opt.niter+1):
         for iter, data in enumerate(train_dataloader):
             if epoch<opt.warm_epoch: # 0-19
-                warm_up = min(1.0, warm_up + 0.9 / warm_iteration)
+                warm_up = min(1.0, warm_up + 0.99 / warm_iteration)
             with Timer("Elapsed time in update: %f"):
                 ############################
                 # (1) Update D network
