@@ -16,7 +16,7 @@ def normalize_batch_3C(batch):
 def normalize_batch_4C(batch):
     # normalize using imagenet mean and std
     mean = batch.new_tensor([0.485, 0.456, 0.406, 0.5]).view(-1, 1, 1)
-    std = batch.new_tensor([0.229, 0.224, 0.225, 50]).view(-1, 1, 1) # mask will be [-0.01, 0.01]
+    std = batch.new_tensor([0.229, 0.224, 0.225, 5]).view(-1, 1, 1) # mask will be [-0.1, 0.1]
     return (batch - mean) / std
 
 ######################################################################
@@ -590,7 +590,7 @@ class Resnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) * 1e-5
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) * 0.1
 
         model.layer4[0].downsample[0].stride = (1,1)
         model.layer4[0].conv1.stride = (1,1)
