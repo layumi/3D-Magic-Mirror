@@ -164,6 +164,9 @@ def trainer(opt, train_dataloader, test_dataloader):
     os.makedirs(ori_mask_dir, exist_ok=True)
     os.makedirs(rec_mask_dir, exist_ok=True)
 
+    # fid for save
+    best_fid = 9999
+
     summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
     warm_up = 0.01 # We start from the 0.01*lrRate
@@ -585,24 +588,6 @@ def trainer(opt, train_dataloader, test_dataloader):
             current_rotate_path = os.path.join(opt.outf, 'current_rotation_dist.gif')
             shutil.copyfile(rotate_path, current_rotate_path)
 
-        if epoch % 20 == 0 and epoch > 0:
-            print('===========Saving Snapshot===========')
-            epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
-            latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
-            state_dict = {
-                'epoch': epoch,
-                'netE': netE.state_dict(),
-                'netD': netD.state_dict(),
-                #'optimizerE': optimizerE.state_dict(),
-                #'optimizerD': optimizerD.state_dict()
-            }
-            if opt.swa and epoch >= opt.swa_start:
-                state_dict.update({
-                    'swa_modelE': swa_modelE.state_dict(),
-                    #'swa_schedulerE': swa_schedulerE.state_dict(),
-                })
-            torch.save(state_dict, latest_name)
-
         if epoch % 20 == 0: # and epoch > 0:
             print('===========Generating Test Images===========')
             netE.eval()
@@ -715,6 +700,30 @@ def trainer(opt, train_dataloader, test_dataloader):
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
                 fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
+
+        if epoch % 20 == 0:
+            print('===========Saving Snapshot===========')
+            epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
+            latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
+            best_name = os.path.join(ckpt_dir, 'best_ckpt.pth')
+            best_mesh_name = os.path.join(ckpt_dir, 'best_mesh.obj')
+            state_dict = {
+                'epoch': epoch,
+                'netE': netE.state_dict(),
+                'netD': netD.state_dict(),
+                #'optimizerE': optimizerE.state_dict(),
+                #'optimizerD': optimizerD.state_dict()
+            }
+            if opt.swa and epoch >= opt.swa_start:
+                state_dict.update({
+                    'swa_modelE': swa_modelE.state_dict(),
+                    #'swa_schedulerE': swa_schedulerE.state_dict(),
+                })
+            torch.save(state_dict, latest_name)
+            if fid_inter < best_fid:
+                torch.save(state_dict, best_name)
+                save_mesh(best_mesh_name, netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+                best_fid = fid_inter 
 
         ############################
         # (3) Update Template
