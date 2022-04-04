@@ -616,7 +616,7 @@ class HRnet_4C(nn.Module):
             model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
         elif pretrain == 'hr18sv1':
             model = timm.create_model('hrnet_w18_small', pretrained=True)
-        print(model) # bias?
+        #print(model) # bias?
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight

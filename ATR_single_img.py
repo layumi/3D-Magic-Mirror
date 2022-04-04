@@ -24,14 +24,12 @@ from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 from networks import MS_Discriminator, Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
 # import kaolin related
+from PIL import Image, ImageFilter, ImageOps
 import kaolin as kal
-from kaolin.metrics.render import mask_iou
 from kaolin.render.camera import generate_perspective_projection
 from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
-from PIL import Image
-from pytorch_msssim import ssim
-#from skimage.metrics import structural_similarity as ssim
+
 # draw
 import matplotlib
 matplotlib.use('agg')
@@ -219,6 +217,7 @@ if __name__ == '__main__':
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
 
+    os.makedirs('demo_single', exist_ok=True)
     # restore from latest_ckpt.path
     # start_iter = 0
     # start_epoch = 0
@@ -229,69 +228,66 @@ if __name__ == '__main__':
         # start_epoch = checkpoint['epoch']
         # start_iter = 0
         #netD.load_state_dict(checkpoint['netD'])
-        netE.load_state_dict(checkpoint['netE'], strict=True)
+        netE.load_state_dict(checkpoint['netE'], strict=False)
 
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
 
-
     netE = netE.eval()
 
-    ori_dir = os.path.join(opt.outf, 'fid/ori')
-    ori_mask_dir = os.path.join(opt.outf, 'fid/ori_mask')
-    rec_dir = os.path.join(opt.outf, 'fid/rec_tmp') # open one new
-    rec_mask_dir = os.path.join(opt.outf, 'fid/rec_mask') 
-    inter_dir = os.path.join(opt.outf, 'fid/inter')
-    inter90_dir = os.path.join(opt.outf, 'fid/inter90')
-    # ckpt_dir = os.path.join(opt.outf, 'ckpts')
-    os.makedirs(ori_dir, exist_ok=True)
-    os.makedirs(ori_mask_dir, exist_ok=True)
-    os.makedirs(rec_dir, exist_ok=True)
-    os.makedirs(rec_mask_dir, exist_ok=True)
-    os.makedirs(inter_dir, exist_ok=True)
-    os.makedirs(inter90_dir, exist_ok=True)
-    # os.makedirs(ckpt_dir, exist_ok=True)
-    os.system('rm -r %s/*'%ori_dir)
-    os.system('rm -r %s/*'%ori_mask_dir)
-    os.system('rm -r %s/*'%rec_dir)
-    os.system('rm -r %s/*'%rec_mask_dir)
-    os.system('rm -r %s/*'%inter_dir)
-    os.system('rm -r %s/*'%inter90_dir)
-
-    # summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
-    output_txt = './log/%s/result.txt'%opt.name
 
     dists = torch.tensor([]).cuda()
     azimuths = torch.tensor([]).cuda()
     biases = torch.tensor([]).cuda()
     elevations = torch.tensor([]).cuda()
-    xyz_min = torch.tensor([]).cuda()
-    xyz_mean = torch.tensor([]).cuda()
-    xyz_max = torch.tensor([]).cuda()
+    x = torch.tensor([]).cuda()
+    y = torch.tensor([]).cuda()
+    z = torch.tensor([]).cuda()
     filename = []
     X_all = []
     path_all = []
-    for i, data in tqdm.tqdm(enumerate(test_dataloader)):
-    #for i, data in tqdm.tqdm(enumerate(train_dataloader)):
-        Xa = Variable(data['data']['images']).cuda()
-        paths = data['data']['path']
-        # Xa = fliplr(Xa)
-        with torch.no_grad():
+
+    img_path = '../ATR/humanparsing/JPEGImages/997_95.jpg'
+    #img_path = '../ATR/humanparsing/JPEGImages/dataset10k_673.jpg'
+    seg_path = img_path.replace('JPEGImages', 'SegmentationClassAug').replace('jpg', 'png')
+    img = Image.open(img_path).convert('RGB')
+    seg = Image.open(seg_path).convert('L').point(lambda p: p > 0 and 255)
+
+    # Padding
+    W, H = img.size
+    desired_size = max(W, H)
+    delta_w = desired_size - W
+    delta_h = desired_size - H
+    padding = (delta_w//2, delta_h//2, delta_w-(delta_w//2), delta_h-(delta_h//2))
+    img = ImageOps.expand(img, padding)
+    seg = ImageOps.expand(seg, padding)
+
+
+    target_width = opt.imageSize
+    img = img.resize((int(target_width), int(target_width)))
+    seg = seg.resize((int(target_width), int(target_width)), Image.NEAREST)
+    seg = seg.point(lambda p: p > 160 and 255)
+    img = torchvision.transforms.functional.to_tensor(img)
+    seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
+    if opt.bg:
+        rgb = img
+    else:
+        rgb = img * seg + torch.ones_like(img) * (1 - seg)
+
+    rgbs = torch.cat([rgb, seg], dim=0)
+    Xa = Variable(torch.unsqueeze(rgbs, 0) ).cuda()
+    with torch.no_grad():
+            print(Xa.shape)
             Ae = netE(Xa)
             Xer, Ae = diffRender.render(**Ae)
-
-            #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
-            # clamp 
-            #Ae['vertices'] = torch.clamp(Ae['vertices'], min = torch.FloatTensor([-1, -2, -1]).cuda())
-            #Ae['vertices'] = torch.clamp(Ae['vertices'], max = torch.FloatTensor([1, 2, 1]).cuda())
             
             azimuths = torch.cat((azimuths, Ae['azimuths']))
             biases = torch.cat((biases, Ae['biases']))
             dists = torch.cat((dists, Ae['distances']))
             elevations = torch.cat((elevations, Ae['elevations']))
-            xyz_min = torch.cat((xyz_min, torch.min(Ae['delta_vertices'], dim=1)[0]))
-            xyz_max = torch.cat((xyz_max, torch.max(Ae['delta_vertices'], dim=1)[0]))
-            xyz_mean = torch.cat((xyz_mean, torch.abs(torch.mean(Ae['delta_vertices'], dim=1))))
+            x = torch.cat((x, Ae['delta_vertices'][:,:,0]))
+            y = torch.cat((y, Ae['delta_vertices'][:,:,1]))
+            z = torch.cat((z, Ae['delta_vertices'][:,:,2]))
 
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)
@@ -309,41 +305,19 @@ if __name__ == '__main__':
             #Ae90_recon = netE(Xer90) 
             #print(Ae90_recon['azimuths'])
             #break
-            Maska = Xa[:,3,:,:].unsqueeze(1)
             Xa = mask(Xa) # remove bg
                    
-            for i in range(len(paths)):
-                path = paths[i]
-                filename.append(path)
-                image_name = os.path.basename(path) + 'A%.2f'%Ae['azimuths'][i] + '.jpg'
-                rec_path = os.path.join(rec_dir, image_name)
-                output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
-                #output_Xer.save(rec_path, 'JPEG', quality=100)
-
-                inter_path = os.path.join(inter_dir, image_name)
-                output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                #output_Xir.save(inter_path, 'JPEG', quality=100)
-
-                inter_path2 = os.path.join(inter_dir, '2+'+image_name)
-                output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
-                #output_Xir2.save(inter_path2, 'JPEG', quality=100)
-
-                inter90_path = os.path.join(inter90_dir, image_name)
-                output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
-                #output_Xer90.save(inter90_path, 'JPEG', quality=100)
-
-                ori_path = os.path.join(ori_dir, image_name)
-                output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
-                #output_Xa.save(ori_path, 'JPEG', quality=100)
-
-                ori_mask_path = os.path.join(ori_mask_dir, image_name)
-                output_ori_mask = to_pil_image(Maska[i].detach().cpu())
-
-                rec_mask_path = os.path.join(rec_mask_dir, image_name)
-                output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
-
-                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa, output_ori_mask, output_rec_mask])
-                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path, ori_mask_path, rec_mask_path])
+            path = img_path
+            filename.append(path)
+            image_name = os.path.basename(path) + '.jpg'
+            rec_path = 'demo_single/rec_'+ image_name
+            output_Xer = to_pil_image(Xer[0, :3].detach().cpu())
+            inter_path = 'demo_single/inter_'+ image_name
+            output_Xir = to_pil_image(Xir[0, :3].detach().cpu())
+            ori_path = 'demo_single/ori_'+ image_name
+            output_Xa = to_pil_image(Xa[0, :3].detach().cpu())
+            X_all.extend([output_Xer, output_Xir, output_Xa])
+            path_all.extend([rec_path, inter_path, ori_path])
 
     with Pool(4) as p:
         p.map(save_img, zip(X_all, path_all) )
@@ -354,69 +328,28 @@ if __name__ == '__main__':
     biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
     dist_result = 'Distances max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
     elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
-    xyz_result = 'XYZ max: {}\t min: {}\t avg: {}'.format(torch.max(xyz_max, dim=0)[0], torch.min(xyz_min, dim = 0)[0], torch.mean(xyz_mean, dim=0))
+    xyz_result = 'X max: {}\t min: {}\t avg: {}'.format(torch.max(x, dim=1)[0], torch.min(x, dim = 1)[0], torch.mean(x, dim=1))
 
 
     fig = plt.figure()
     ax0 = fig.add_subplot(231, title="Azimuths")
-    ax1 = fig.add_subplot(232, title="Biases-X")
-    ax2 = fig.add_subplot(233, title="Biases-Y")
-    ax3 = fig.add_subplot(234, title="Distances")
+    ax1 = fig.add_subplot(232, title="X")
+    ax2 = fig.add_subplot(233, title="Y")
+    ax3 = fig.add_subplot(234, title="Z")
     ax4 = fig.add_subplot(235, title="Elevations")
     ax5 = fig.add_subplot(236, title="Shape Biase Max")
     ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax1.hist( biases[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax2.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax3.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    ax1.hist( x.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
+    ax2.hist( y.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
+    ax3.hist( z.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
     ax4.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax5.hist( xyz_max[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    fig.savefig("hist.png")
-    max_index = torch.max(xyz_max, dim=0)[1]
-    print( filename[max_index[0].data] )
+    ax5.hist( x.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+    fig.savefig("demo_single/hist.png")
 
     print(azimuths_result)
     print(biases_result)
     print(dist_result)
     print(elev_result)
     print(xyz_result)
-    # Recon SSIM
-    ssim_score = []
-    mask_score = []
-    for root, dirs, files in os.walk(ori_dir, topdown=True):
-        for name in files:
-            if not ( name[-3:]=='png' or name[-3:]=='jpg'):
-                continue
-            # SSIM
-            ori_path = ori_dir + '/' + name
-            rec_path = rec_dir + '/' + name
-            ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
-            rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
-            ssim_score.append(ssim(ori, rec, data_range=1))
-            # Mask IoU
-            ori_path = ori_mask_dir + '/' + name
-            rec_path = rec_mask_dir + '/' + name
-            ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            ori = torchvision.transforms.functional.to_tensor(ori)
-            rec = torchvision.transforms.functional.to_tensor(rec)
-            mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
-
-    print('\033[1mTest recon ssim: %0.3f \033[0m' % np.mean(ssim_score) )
-    print('\033[1mTest recon MaskIoU: %0.3f\033[0m' % np.mean(mask_score) )
-    fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
-    print('\033[1mTest recon fid: %0.2f\033[0m' % fid_recon ) 
-    fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
-    print('\033[1mTest rotation fid: %0.2f\033[0m' %  fid_inter)
-    fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
-    print('\033[1mTest rotat90 fid: %0.2f\033[0m' % fid_90 ) 
-
-    with open(output_txt, 'a') as fp:
-        fp.write(dist_result+'\n')
-        fp.write(elev_result + '\n')
-        fp.write('Test recon ssim: %0.2f\n' % np.mean(ssim_score))
-        fp.write('Test recon fid: %0.2f\n' % (fid_recon))
-        fp.write('Test rotation fid: %0.2f\n' % (fid_inter))
-        fp.write('Test rotate90 fid: %0.2f\n' % (fid_90))
+    
 
