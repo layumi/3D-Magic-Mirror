@@ -16,7 +16,7 @@ def normalize_batch_3C(batch):
 def normalize_batch_4C(batch):
     # normalize using imagenet mean and std
     mean = batch.new_tensor([0.485, 0.456, 0.406, 0.5]).view(-1, 1, 1)
-    std = batch.new_tensor([0.229, 0.224, 0.225, 5]).view(-1, 1, 1) # mask will be [-0.1, 0.1]
+    std = batch.new_tensor([0.229, 0.224, 0.225, 1]).view(-1, 1, 1) # mask will be [-0.5, 0.5]
     return (batch - mean) / std
 
 ######################################################################
@@ -620,7 +620,7 @@ class HRnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) * 1e-5 #model.conv1.weight[:, 0]
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1)  #model.conv1.weight[:, 0]
         self.model = model
     def forward(self, x):
         x = self.model.forward_features(x)
