@@ -183,8 +183,14 @@ if "MKT" in opt.name:
     print('Market-1501')
     ratio = 2
 elif "ATR" in opt.name:
-    selected_index = np.arange(0, 16000, 16000//opt.batchSize) 
+    selected_index = np.arange(70, 16000, 16000//opt.batchSize) 
     print(selected_index)
+    selected_index[0] = 13596
+    selected_index[4] = 11001
+    selected_index[11] = 8004
+    selected_index[13] = 1005
+    selected_index[14] = 14080
+    selected_index[15] = 13580
     train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
     test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg,  selected_index = selected_index)
     print('ATR-human: %d'% len(test_dataset))
