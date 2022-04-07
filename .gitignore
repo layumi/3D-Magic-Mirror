@@ -2,6 +2,7 @@
 *.pth
 *.png
 *.jpg
+*.gif
 *.ply
 *.yaml
 PR*

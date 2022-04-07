@@ -221,9 +221,7 @@ if __name__ == '__main__':
     netE = netE.cuda()
 
     # restore from latest_ckpt.path
-    # start_iter = 0
-    # start_epoch = 0
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
     if os.path.exists(resume_path):
         # Map model to be loaded to specified single gpu.
         # checkpoint has been loaded
