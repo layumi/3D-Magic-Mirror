@@ -160,18 +160,34 @@ opt.ratio = config['ratio']
 
 print(opt)
 
+
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
 if "MKT" in opt.name:
+    selected_index = np.arange(1, 3368, int(3368//opt.batchSize)) 
+    print(selected_index) 
+    # more challenge cases
+    selected_index[0] = 2415
+    #selected_index[6] = 3315
+    selected_index[10] = 3315
+    selected_index[12] = 1175
+    selected_index[14] = 802
+    selected_index[18] = 527
+    selected_index[19] = 1794
+    selected_index[25] = 244
+    selected_index[26] = 777 
+    selected_index[28] = 1456
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
-    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
+    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, selected_index = selected_index)
     print('Market-1501')
     ratio = 2
 elif "ATR" in opt.name:
+    selected_index = np.arange(0, 16000, 16000//opt.batchSize) 
+    print(selected_index)
     train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
-    print('ATR-human')
+    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg,  selected_index = selected_index)
+    print('ATR-human: %d'% len(test_dataset))
     ratio = 1
 else:
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
@@ -184,7 +200,7 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
                                           shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
                                           prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=True, pin_memory=True,
+                                         shuffle=False, pin_memory=True,
                                          num_workers=int(opt.workers), prefetch_factor=2)
 
 
@@ -244,6 +260,12 @@ if __name__ == '__main__':
     filename = []
     X_all = []
     path_all = []
+
+    if  opt.ratio == 2: 
+        nrow = 8
+    else: 
+        nrow = 4
+
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
     #for i, data in tqdm.tqdm(enumerate(train_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
@@ -277,30 +299,21 @@ if __name__ == '__main__':
             Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
             Xir = Xir.permute(0, 3, 1, 2)
 
-            randperm_a = torch.randperm(opt.batchSize)
-            randperm_b = torch.randperm(opt.batchSize)
-
 
             #############
             opt.outf = './rainbow/'
             ########
-            vutils.save_image(Xa[randperm_a, :3],
-                    '%s/current_randperm_Xa.png' % (opt.outf), normalize=True)
-
-            vutils.save_image(Xa[randperm_b, :3],
-                    '%s/current_randperm_Xb.png' % (opt.outf), normalize=True)
-
             vutils.save_image(Xa[:, :3],
-                    '%s/current_Xa.png' % (opt.outf), normalize=True)
+                    '%s/current_Xa.png' % (opt.outf), normalize=True, nrow = nrow)
 
             vutils.save_image(Xer[:, :3].detach(),
-                    '%s/current_Xer.png' % (opt.outf), normalize=True)
+                    '%s/current_Xer.png' % (opt.outf), normalize=True, nrow = nrow)
 
             vutils.save_image(Xir[:, :3].detach(),
-                    '%s/current_Xir.png' % (opt.outf), normalize=True)
+                    '%s/current_Xir.png' % (opt.outf), normalize=True, nrow = nrow)
 
             vutils.save_image(textures.detach(),
-                    '%s/current_textures.png' % (opt.outf), normalize=True)
+                    '%s/current_textures.png' % (opt.outf), normalize=True, nrow = nrow)
 
             #vutils.save_image(Ea.detach(),
             #        '%s/current_edge.png' % (opt.outf), normalize=True)
@@ -327,11 +340,13 @@ if __name__ == '__main__':
             writer = imageio.get_writer(rotate_path, mode='I')
             loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
+            A_tmp = deep_copy(Ae, detach=True)
             for delta_azimuth in loop:
-                Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(opt.batchSize).cuda()
-                predictions, _ = diffRender.render(**Ae)
+                # start from recon
+                A_tmp['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                predictions, _ = diffRender.render(**A_tmp)
                 predictions = predictions[:, :3]
-                image = vutils.make_grid(predictions)
+                image = vutils.make_grid(predictions, nrow=nrow)
                 image = image.permute(1, 2, 0).detach().cpu().numpy()
                 image = (image * 255.0).astype(np.uint8)
                 writer.append_data(image)
@@ -345,11 +360,12 @@ if __name__ == '__main__':
             elev_max = int(elev_range[1])
             loop = tqdm.tqdm(list(range(elev_min, elev_max, 5))) # 15~-45
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_ele)')
+            A_tmp = deep_copy(Ae, detach=True)
             for delta_elevation in loop:
-                Ae['elevations'] = - torch.tensor([delta_elevation], dtype=torch.float32).repeat(opt.batchSize).cuda()
-                predictions, _ = diffRender.render(**Ae)
+                A_tmp['elevations'] = - torch.tensor([delta_elevation], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                predictions, _ = diffRender.render(**A_tmp)
                 predictions = predictions[:, :3]
-                image = vutils.make_grid(predictions)
+                image = vutils.make_grid(predictions, nrow=nrow)
                 image = image.permute(1, 2, 0).detach().cpu().numpy()
                 image = (image * 255.0).astype(np.uint8)
                 writer.append_data(image)
@@ -363,11 +379,12 @@ if __name__ == '__main__':
             dist_max = int(dist_range[1])
             loop = tqdm.tqdm(list(np.arange(dist_min, dist_max+1, 0.5))) # 1, 7
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_dist)')
+            A_tmp = deep_copy(Ae, detach=True)
             for delta_dist in loop:
-                Ae['distances'] = - torch.tensor([delta_dist], dtype=torch.float32).repeat(opt.batchSize).cuda()
-                predictions, _ = diffRender.render(**Ae)
+                A_tmp['distances'] = - torch.tensor([delta_dist], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                predictions, _ = diffRender.render(**A_tmp)
                 predictions = predictions[:, :3]
-                image = vutils.make_grid(predictions)
+                image = vutils.make_grid(predictions, nrow=nrow)
                 image = image.permute(1, 2, 0).detach().cpu().numpy()
                 image = (image * 255.0).astype(np.uint8)
                 writer.append_data(image)

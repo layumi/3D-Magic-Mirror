@@ -28,7 +28,7 @@ def seg_loader(path):
         return seg
 
 class CUBDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, bg = False):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, bg = False, selected_index = []):
         super(CUBDataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -45,15 +45,18 @@ class CUBDataset(data.Dataset):
 
         self.imgs = [(im_path, self.class_dir.index(os.path.dirname(im_path))) for
                      im_path in self.im_list]
-        random.shuffle(self.imgs)
+        #random.shuffle(self.imgs)
 
         self.return_paths = return_paths
         self.train = train
         self.image_size = image_size
 
+        self.selected_index = selected_index
         print('Succeed loading dataset!')
 
     def __getitem__(self, index):
+        if len(self.selected_index) >0:
+            index = self.selected_index[index]
         img_path, label = self.imgs[index]
         target_height, target_width = self.image_size, self.image_size
 

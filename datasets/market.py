@@ -30,7 +30,7 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09, bg=False, hmr = 0.0):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09, bg=False, hmr = 0.0, selected_index = []):
         super(MarketDataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -53,17 +53,22 @@ class MarketDataset(data.Dataset):
         self.transform = transform
         self.loader = loader
         self.seg_loader = seg_loader
+
+        # sort im_list
+        #self.im_list = sorted(self.im_list)
         self.imgs = [(im_path, self.class_dir.index(os.path.dirname(im_path))) for
                      im_path in self.im_list]
-        random.shuffle(self.imgs)
+        #random.shuffle(self.imgs)
 
         self.return_paths = return_paths
         self.train = train
         self.image_size = image_size
-
+        self.selected_index = selected_index
         print('Succeed loading dataset!')
 
     def __getitem__(self, index):
+        if len(self.selected_index) > 0: # for test
+            index = self.selected_index[index]
         seg_path, label = self.imgs[index]
         target_width = self.image_size
 

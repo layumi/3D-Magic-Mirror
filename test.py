@@ -184,7 +184,7 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
                                           shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
                                           prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
-                                         shuffle=True, pin_memory=True,
+                                         shuffle=False, pin_memory=True,
                                          num_workers=int(opt.workers), prefetch_factor=2)
 
 
@@ -351,7 +351,8 @@ if __name__ == '__main__':
     azimuths_result = 'Azimuths max: {}\tmin: {}\tavg: {}'.format(torch.max(azimuths), torch.min(azimuths), torch.mean(azimuths))
     biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
     biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
-    dist_result = 'Distances max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
+    dist_result = 'Distances max: {}\tmin: {}\tavg: {}\t'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
+    dist_result += 'Distances max index: {}'.format(torch.argmax(dists))
     elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
     xyz_result = 'XYZ max: {}\t min: {}\t avg: {}'.format(torch.max(xyz_mean, dim=0)[0], torch.min(xyz_mean, dim = 0)[0], torch.mean(xyz_mean, dim=0))
 

@@ -249,7 +249,7 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    img_path = '../ATR/humanparsing/JPEGImages/2500_1798.jpg'
+    img_path = '../ATR/humanparsing/JPEGImages/2500_794.jpg'
     #img_path = '../ATR/humanparsing/JPEGImages/dataset10k_673.jpg'
     seg_path = img_path.replace('JPEGImages', 'SegmentationClassAug').replace('jpg', 'png')
     img = Image.open(img_path).convert('RGB')
@@ -325,33 +325,21 @@ if __name__ == '__main__':
         p.map(save_img, zip(X_all, path_all) )
 
 
-    azimuths_result = 'Azimuths max: {}\tmin: {}\tavg: {}'.format(torch.max(azimuths), torch.min(azimuths), torch.mean(azimuths))
-    biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
-    biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
-    dist_result = 'Distances max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
-    elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
-    xyz_result = 'X max: {}\t min: {}\t avg: {}'.format(torch.max(x, dim=1)[0], torch.min(x, dim = 1)[0], torch.mean(x, dim=1))
+    # gif 
+    print('===========Saving Gif-Azi===========')
+    rotate_path = 'demo_single/'+ image_name + '_rotation.gif'
+    writer = imageio.get_writer(rotate_path, mode='I')
+    loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
+    loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
+    for delta_azimuth in loop:
+        Ae['azimuths'] = Ae['azimuths']*0 + delta_azimuth
+        predictions, _ = diffRender.render(**Ae)
+        predictions = predictions[:, :3]
+        image = vutils.make_grid(predictions)
+        image = image.permute(1, 2, 0).detach().cpu().numpy()
+        image = (image * 255.0).astype(np.uint8)
+        writer.append_data(image)
+    writer.close()
 
-
-    fig = plt.figure()
-    ax0 = fig.add_subplot(231, title="Azimuths")
-    ax1 = fig.add_subplot(232, title="X")
-    ax2 = fig.add_subplot(233, title="Y")
-    ax3 = fig.add_subplot(234, title="Z")
-    ax4 = fig.add_subplot(235, title="Elevations")
-    ax5 = fig.add_subplot(236, title="Shape Biase Max")
-    ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax1.hist( x.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
-    ax2.hist( y.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
-    ax3.hist( z.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
-    ax4.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax5.hist( x.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    fig.savefig("demo_single/hist.png")
-
-    print(azimuths_result)
-    print(biases_result)
-    print(dist_result)
-    print(elev_result)
-    print(xyz_result)
     
 
