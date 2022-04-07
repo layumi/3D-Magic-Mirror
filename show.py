@@ -42,7 +42,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import fliplr, mask, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import save_mesh, fliplr, mask, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
 
@@ -65,7 +65,7 @@ parser.add_argument('--category', type=str, default='bird', help='list of object
 parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
 parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
@@ -140,7 +140,7 @@ opt.dataroot = config['dataroot']
 opt.gan_type = config['gan_type']
 opt.category = config['category']
 opt.workers = config['workers']
-opt.batchSize = config['batchSize']
+#opt.batchSize = config['batchSize']
 opt.imageSize = config['imageSize']
 opt.nk = config['nk']
 opt.nf = config['nf']
@@ -237,31 +237,6 @@ if __name__ == '__main__':
 
 
     netE = netE.eval()
-
-    ori_dir = os.path.join(opt.outf, 'fid/ori')
-    ori_mask_dir = os.path.join(opt.outf, 'fid/ori_mask')
-    rec_dir = os.path.join(opt.outf, 'fid/rec_tmp') # open one new
-    rec_mask_dir = os.path.join(opt.outf, 'fid/rec_mask') 
-    inter_dir = os.path.join(opt.outf, 'fid/inter')
-    inter90_dir = os.path.join(opt.outf, 'fid/inter90')
-    # ckpt_dir = os.path.join(opt.outf, 'ckpts')
-    os.makedirs(ori_dir, exist_ok=True)
-    os.makedirs(ori_mask_dir, exist_ok=True)
-    os.makedirs(rec_dir, exist_ok=True)
-    os.makedirs(rec_mask_dir, exist_ok=True)
-    os.makedirs(inter_dir, exist_ok=True)
-    os.makedirs(inter90_dir, exist_ok=True)
-    # os.makedirs(ckpt_dir, exist_ok=True)
-    os.system('rm -r %s/*'%ori_dir)
-    os.system('rm -r %s/*'%ori_mask_dir)
-    os.system('rm -r %s/*'%rec_dir)
-    os.system('rm -r %s/*'%rec_mask_dir)
-    os.system('rm -r %s/*'%inter_dir)
-    os.system('rm -r %s/*'%inter90_dir)
-
-    # summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
-    output_txt = './log/%s/result.txt'%opt.name
-
     dists = torch.tensor([]).cuda()
     azimuths = torch.tensor([]).cuda()
     biases = torch.tensor([]).cuda()
@@ -280,11 +255,6 @@ if __name__ == '__main__':
         with torch.no_grad():
             Ae = netE(Xa)
             Xer, Ae = diffRender.render(**Ae)
-
-            #print('max: {}\nmin: {}\navg: {}'.format(torch.max(Ae['distances']), torch.min(Ae['distances']), torch.mean(Ae['distances'])))
-            # clamp 
-            #Ae['vertices'] = torch.clamp(Ae['vertices'], min = torch.FloatTensor([-1, -2, -1]).cuda())
-            #Ae['vertices'] = torch.clamp(Ae['vertices'], max = torch.FloatTensor([1, 2, 1]).cuda())
             
             azimuths = torch.cat((azimuths, Ae['azimuths']))
             biases = torch.cat((biases, Ae['biases']))
@@ -295,140 +265,115 @@ if __name__ == '__main__':
             xyz_mean = torch.cat((xyz_mean, torch.mean(torch.abs(Ae['delta_vertices']), dim=1)))
 
             Ai = deep_copy(Ae)
-            Ai2 = deep_copy(Ae)
-            Ae90 = deep_copy(Ae)
             Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-            Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
-            Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
-
-            Ae90['azimuths'] += 90.0
 
             Xir, Ai = diffRender.render(**Ai)
-            Xir2, Ai2 = diffRender.render(**Ai2)
-            Xer90, Ae90 = diffRender.render(**Ae90)
-            ###
-            #Ae90_recon = netE(Xer90) 
-            #print(Ae90_recon['azimuths'])
-            #break
-            Maska = Xa[:,3,:,:].unsqueeze(1)
-            Xa = mask(Xa) # remove bg
-                   
-            for i in range(len(paths)):
-                path = paths[i]
-                filename.append(path)
-                image_name = os.path.basename(path) + 'A%.2f'%Ae['azimuths'][i] + '.jpg'
-                rec_path = os.path.join(rec_dir, image_name)
-                output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
-                #output_Xer.save(rec_path, 'JPEG', quality=100)
+            textures = Ae['textures'] 
+            Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+            Xer = (Xer * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+            Xir = (Xir * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
 
-                inter_path = os.path.join(inter_dir, image_name)
-                output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                #output_Xir.save(inter_path, 'JPEG', quality=100)
+            Xa = torch.tensor(Xa, dtype=torch.float32) / 255.0
+            Xa = Xa.permute(0, 3, 1, 2)
+            Xer = torch.tensor(Xer, dtype=torch.float32) / 255.0
+            Xer = Xer.permute(0, 3, 1, 2)
+            Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
+            Xir = Xir.permute(0, 3, 1, 2)
 
-                inter_path2 = os.path.join(inter_dir, '2+'+image_name)
-                output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
-                #output_Xir2.save(inter_path2, 'JPEG', quality=100)
-
-                inter90_path = os.path.join(inter90_dir, image_name)
-                output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
-                #output_Xer90.save(inter90_path, 'JPEG', quality=100)
-
-                ori_path = os.path.join(ori_dir, image_name)
-                output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
-                #output_Xa.save(ori_path, 'JPEG', quality=100)
-
-                ori_mask_path = os.path.join(ori_mask_dir, image_name)
-                output_ori_mask = to_pil_image(Maska[i].detach().cpu())
-
-                rec_mask_path = os.path.join(rec_mask_dir, image_name)
-                output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
-
-                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa, output_ori_mask, output_rec_mask])
-                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path, ori_mask_path, rec_mask_path])
-
-    with Pool(4) as p:
-        p.map(save_img, zip(X_all, path_all) )
+            randperm_a = torch.randperm(opt.batchSize)
+            randperm_b = torch.randperm(opt.batchSize)
 
 
-    azimuths_result = 'Azimuths max: {}\tmin: {}\tavg: {}'.format(torch.max(azimuths), torch.min(azimuths), torch.mean(azimuths))
-    biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
-    biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
-    dist_result = 'Distances max: {}\tmin: {}\tavg: {}'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
-    elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
-    xyz_result = 'XYZ max: {}\t min: {}\t avg: {}'.format(torch.max(xyz_mean, dim=0)[0], torch.min(xyz_mean, dim = 0)[0], torch.mean(xyz_mean, dim=0))
+            #############
+            opt.outf = './rainbow/'
+            ########
+            vutils.save_image(Xa[randperm_a, :3],
+                    '%s/current_randperm_Xa.png' % (opt.outf), normalize=True)
 
+            vutils.save_image(Xa[randperm_b, :3],
+                    '%s/current_randperm_Xb.png' % (opt.outf), normalize=True)
 
-    fig = plt.figure()
-    ax0 = fig.add_subplot(231, title="Azimuths")
-    ax1 = fig.add_subplot(232, title="Distances")
-    ax2 = fig.add_subplot(233, title="Elevations")
-    ax3 = fig.add_subplot(234, title="Biases-X")
-    ax4 = fig.add_subplot(235, title="Biases-Y")
-    ax5 = fig.add_subplot(236, title="Shape Bias Mean")
-    ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax1.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax2.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax3.hist( biases[:,0].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    ax4.hist( biases[:,1].cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    xyz_mean = torch.norm(xyz_mean, p=2, dim=1)
-    print(xyz_mean.shape)
-    ax5.hist( xyz_mean.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
+            vutils.save_image(Xa[:, :3],
+                    '%s/current_Xa.png' % (opt.outf), normalize=True)
 
-    ax0.grid()
-    ax1.grid()
-    ax2.grid()
-    ax3.grid()
-    ax4.grid()
-    ax5.grid()
-    
-    fig.tight_layout()
-    fig.savefig("hist.png")
-    max_index = torch.max(xyz_max, dim=0)[1]
-    print( filename[max_index[0].data] )
+            vutils.save_image(Xer[:, :3].detach(),
+                    '%s/current_Xer.png' % (opt.outf), normalize=True)
 
-    print(azimuths_result)
-    print(biases_result)
-    print(dist_result)
-    print(elev_result)
-    print(xyz_result)
-    # Recon SSIM
-    ssim_score = []
-    mask_score = []
-    for root, dirs, files in os.walk(ori_dir, topdown=True):
-        for name in files:
-            if not ( name[-3:]=='png' or name[-3:]=='jpg'):
-                continue
-            # SSIM
-            ori_path = ori_dir + '/' + name
-            rec_path = rec_dir + '/' + name
-            ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
-            rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
-            ssim_score.append(ssim(ori, rec, data_range=1))
-            # Mask IoU
-            ori_path = ori_mask_dir + '/' + name
-            rec_path = rec_mask_dir + '/' + name
-            ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            ori = torchvision.transforms.functional.to_tensor(ori)
-            rec = torchvision.transforms.functional.to_tensor(rec)
-            mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
+            vutils.save_image(Xir[:, :3].detach(),
+                    '%s/current_Xir.png' % (opt.outf), normalize=True)
 
-    print('\033[1mTest recon ssim: %0.3f \033[0m' % np.mean(ssim_score) )
-    print('\033[1mTest recon MaskIoU: %0.3f\033[0m' % np.mean(mask_score) )
-    fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
-    print('\033[1mTest recon fid: %0.2f\033[0m' % fid_recon ) 
-    fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
-    print('\033[1mTest rotation fid: %0.2f\033[0m' %  fid_inter)
-    fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
-    print('\033[1mTest rotat90 fid: %0.2f\033[0m' % fid_90 ) 
+            vutils.save_image(textures.detach(),
+                    '%s/current_textures.png' % (opt.outf), normalize=True)
 
-    with open(output_txt, 'a') as fp:
-        fp.write(dist_result+'\n')
-        fp.write(elev_result + '\n')
-        fp.write('Test recon ssim: %0.2f\n' % np.mean(ssim_score))
-        fp.write('Test recon fid: %0.2f\n' % (fid_recon))
-        fp.write('Test rotation fid: %0.2f\n' % (fid_inter))
-        fp.write('Test rotate90 fid: %0.2f\n' % (fid_90))
+            #vutils.save_image(Ea.detach(),
+            #        '%s/current_edge.png' % (opt.outf), normalize=True)
 
+            Ae = deep_copy(Ae, detach=True)
+            vertices = Ae['vertices']
+            faces = diffRender.faces
+            uvs = diffRender.uvs
+            textures = Ae['textures']
+            azimuths = Ae['azimuths']
+            elevations = Ae['elevations']
+            distances = Ae['distances']
+            lights = Ae['lights']
+
+            texure_maps = to_pil_image(textures[0].detach().cpu())
+            texure_maps.save('%s/current_mesh_recon.png' % (opt.outf), 'PNG')
+            texure_maps.save('%s/epoch_%03d_mesh_recon.png' % (opt.outf, epoch), 'PNG')
+
+            save_mesh('%s/current_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+            save_mesh('%s/epoch_%03d_template.obj' % (opt.outf, epoch), netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+
+            print('===========Saving Gif-Azi===========')
+            rotate_path = os.path.join(opt.outf, 'current_rotation.gif')
+            writer = imageio.get_writer(rotate_path, mode='I')
+            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
+            for delta_azimuth in loop:
+                Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                predictions, _ = diffRender.render(**Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+
+            print('===========Saving Gif-Y===========')
+            rotate_path = os.path.join(opt.outf, 'current_rotation_ele.gif' )
+            writer = imageio.get_writer(rotate_path, mode='I')
+            elev_range = opt.elev_range.split('~')
+            elev_min = int(elev_range[0])
+            elev_max = int(elev_range[1])
+            loop = tqdm.tqdm(list(range(elev_min, elev_max, 5))) # 15~-45
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_ele)')
+            for delta_elevation in loop:
+                Ae['elevations'] = - torch.tensor([delta_elevation], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                predictions, _ = diffRender.render(**Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+
+            print('===========Saving Gif-Dist===========')
+            rotate_path = os.path.join(opt.outf, 'current_rotation_dist.gif')
+            writer = imageio.get_writer(rotate_path, mode='I')
+            dist_range = opt.dist_range.split('~')
+            dist_min = int(dist_range[0])
+            dist_max = int(dist_range[1])
+            loop = tqdm.tqdm(list(np.arange(dist_min, dist_max+1, 0.5))) # 1, 7
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_dist)')
+            for delta_dist in loop:
+                Ae['distances'] = - torch.tensor([delta_dist], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                predictions, _ = diffRender.render(**Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+
+            break

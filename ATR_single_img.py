@@ -193,13 +193,15 @@ if __name__ == '__main__':
 
 
     # load updated template
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    #resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
     if os.path.exists(resume_path):
         checkpoint = torch.load(resume_path)
         epoch = checkpoint['epoch']
         
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight)
-    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
+    #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
+    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
     print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
     diffRender.vertices_init = latest_template_file.vertices
 
@@ -247,7 +249,7 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    img_path = '../ATR/humanparsing/JPEGImages/997_95.jpg'
+    img_path = '../ATR/humanparsing/JPEGImages/2500_1798.jpg'
     #img_path = '../ATR/humanparsing/JPEGImages/dataset10k_673.jpg'
     seg_path = img_path.replace('JPEGImages', 'SegmentationClassAug').replace('jpg', 'png')
     img = Image.open(img_path).convert('RGB')
@@ -293,7 +295,7 @@ if __name__ == '__main__':
             Ai2 = deep_copy(Ae)
             Ae90 = deep_copy(Ae)
             Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-            Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
+            Ai2['azimuths'] = Ae['azimuths'] - 45.0 # -90, 270
             Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
 
             Ae90['azimuths'] += 90.0
@@ -312,8 +314,8 @@ if __name__ == '__main__':
             image_name = os.path.basename(path) + '.jpg'
             rec_path = 'demo_single/rec_'+ image_name
             output_Xer = to_pil_image(Xer[0, :3].detach().cpu())
-            inter_path = 'demo_single/inter_'+ image_name
-            output_Xir = to_pil_image(Xir[0, :3].detach().cpu())
+            inter_path = 'demo_single/inter45_'+ image_name
+            output_Xir = to_pil_image(Xir2[0, :3].detach().cpu())
             ori_path = 'demo_single/ori_'+ image_name
             output_Xa = to_pil_image(Xa[0, :3].detach().cpu())
             X_all.extend([output_Xer, output_Xir, output_Xa])
