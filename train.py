@@ -104,11 +104,11 @@ parser.add_argument('--gan_reg', type=float, default=10.0, help='parameter')
 parser.add_argument('--em_step', type=float, default=0.1, help='parameter')
 parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
 parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
-parser.add_argument('--bias_range', type=float, default=0.1, help='parameter bias range')
+parser.add_argument('--bias_range', type=float, default=0.3, help='parameter bias range')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="0~30", help='~ elevantion')
 parser.add_argument('--hard_range', type=int, default=0, help='~ range from x to 180-x. x<90')
-parser.add_argument('--dist_range', type=str, default="2~6", help='~ separated list of classes for the lsun data set')
+parser.add_argument('--dist_range', type=str, default="2~7", help='~ separated list of classes for the lsun data set')
 
 opt = parser.parse_args()
 opt.outf = './log/'+ opt.name
