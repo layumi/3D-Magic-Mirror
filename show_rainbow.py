@@ -344,12 +344,14 @@ if __name__ == '__main__':
             print('===========Saving Gif-Azi===========')
             rotate_path = os.path.join(opt.outf, 'current_rotation.gif')
             writer = imageio.get_writer(rotate_path, mode='I')
-            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
+            #loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
+            loop = tqdm.tqdm(list(range(0, int(opt.azi_scope), 10))) # 0, 360
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
             A_tmp = deep_copy(Ae, detach=True)
             for delta_azimuth in loop:
                 # start from recon
-                A_tmp['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                A_tmp['azimuths'] = Ae['azimuths'] - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                #A_tmp['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(opt.batchSize).cuda()
                 predictions, _ = diffRender.render(**A_tmp)
                 predictions = predictions[:, :3]
                 image = vutils.make_grid(predictions, nrow=nrow)

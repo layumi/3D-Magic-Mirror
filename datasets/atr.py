@@ -54,8 +54,12 @@ class ATRDataset(data.Dataset):
 
     def __getitem__(self, index):
         if len(self.selected_index) >0:
+            original_index = index
             index = self.selected_index[index]
+ 
         img_path, label = self.imgs[index]
+        if len(self.selected_index) >0:
+            print(original_index, img_path)
         target_height, target_width = self.image_size, self.image_size
 
         # image and its flipped image

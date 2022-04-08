@@ -249,7 +249,10 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    img_path = '../ATR/humanparsing/JPEGImages/2500_794.jpg'
+    # img_path = '../ATR/humanparsing/JPEGImages/2500_794.jpg'
+    # 4 ../ATR/humanparsing/JPEGImages/2500_231.jpg
+    # 6 ../ATR/humanparsing/JPEGImages/2500_2250.jpg
+    img_path = '../ATR/humanparsing/JPEGImages/dataset10k_4244.jpg'
     #img_path = '../ATR/humanparsing/JPEGImages/dataset10k_673.jpg'
     seg_path = img_path.replace('JPEGImages', 'SegmentationClassAug').replace('jpg', 'png')
     img = Image.open(img_path).convert('RGB')
