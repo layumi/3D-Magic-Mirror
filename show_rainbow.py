@@ -169,15 +169,17 @@ if "MKT" in opt.name:
     print(selected_index) 
     # more challenge cases
     selected_index[0] = 2415
-    #selected_index[6] = 3315
     selected_index[10] = 3315
+    selected_index[11] = 2558
     selected_index[12] = 1175
     selected_index[14] = 802
     selected_index[18] = 527
     selected_index[19] = 1794
+    selected_index[24] = 2520
     selected_index[25] = 244
     selected_index[26] = 777 
     selected_index[28] = 1456
+    #print(selected_index) 
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, selected_index = selected_index)
     print('Market-1501')
