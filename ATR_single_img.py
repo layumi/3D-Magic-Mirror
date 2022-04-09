@@ -252,7 +252,8 @@ if __name__ == '__main__':
     # img_path = '../ATR/humanparsing/JPEGImages/2500_794.jpg'
     # 4 ../ATR/humanparsing/JPEGImages/2500_231.jpg
     # 6 ../ATR/humanparsing/JPEGImages/2500_2250.jpg
-    img_path = '../ATR/humanparsing/JPEGImages/dataset10k_4244.jpg'
+    #img_path = '../ATR/humanparsing/JPEGImages/dataset10k_4244.jpg'
+    img_path = '../ATR/humanparsing/JPEGImages/dataset10k_673.jpg'
     #img_path = '../ATR/humanparsing/JPEGImages/dataset10k_673.jpg'
     seg_path = img_path.replace('JPEGImages', 'SegmentationClassAug').replace('jpg', 'png')
     img = Image.open(img_path).convert('RGB')
@@ -332,11 +333,12 @@ if __name__ == '__main__':
     print('===========Saving Gif-Azi===========')
     rotate_path = 'demo_single/'+ image_name + '_rotation.gif'
     writer = imageio.get_writer(rotate_path, mode='I')
-    loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
+    loop = tqdm.tqdm(list(range(45, 45 + 360, 10))) # -180, 180
+    A_tmp = deep_copy(Ae)
     loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
     for delta_azimuth in loop:
-        Ae['azimuths'] = Ae['azimuths']*0 + delta_azimuth
-        predictions, _ = diffRender.render(**Ae)
+        A_tmp['azimuths'] = Ae['azimuths'] -  delta_azimuth
+        predictions, _ = diffRender.render(**A_tmp)
         predictions = predictions[:, :3]
         image = vutils.make_grid(predictions)
         image = image.permute(1, 2, 0).detach().cpu().numpy()
