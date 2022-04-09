@@ -195,14 +195,15 @@ if __name__ == '__main__':
 
 
     # load updated template
-    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
+    #resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
     if os.path.exists(resume_path):
         checkpoint = torch.load(resume_path)
         epoch = checkpoint['epoch']
         
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight)
-    #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
-    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
+    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
+    #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
     #print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
     diffRender.vertices_init = latest_template_file.vertices
 
@@ -402,6 +403,9 @@ if __name__ == '__main__':
             rec_path = rec_dir + '/' + name
             ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
             rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            if 'CUB' in opt.name:
+                ori = Image.open(ori_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
+                rec = Image.open(rec_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
             ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
             rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
             ssim_score.append(ssim(ori, rec, data_range=1))
