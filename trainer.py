@@ -740,7 +740,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         mean_elev = (elev_max + elev_min) /2
         mean_dist = (dist_max + dist_min) /2
         # only updating in the first 80% epoch and fix the template for the final shape updating
-        if opt.em > 0 and epoch%opt.em_gap == 0 and epoch<int(0.8*opt.niter):
+        if opt.em > 0 and epoch%opt.em_gap == 0: # and epoch<int(0.8*opt.niter):
             print('===========Updating template===========')
             sample_number = len(train_dataloader.dataset)//opt.batchSize * opt.batchSize
             current_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
