@@ -343,6 +343,31 @@ if __name__ == '__main__':
             save_mesh('%s/current_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
             save_mesh('%s/epoch_%03d_template.obj' % (opt.outf, epoch), netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
 
+            print('===========Saving Rainbow===========')
+            rotate_path = os.path.join(opt.outf, 'current_rainbow.gif')
+            writer = imageio.get_writer(rotate_path, mode='I')
+            loop = tqdm.tqdm(list(range(0, int(opt.azi_scope), 10))) # 0, 360
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
+            A_tmp = deep_copy(Ae, detach=True, index = [0,1,2,3,4,5,6,7])
+            batch_tmp = 8
+            predictions_all = torch.ones((9, 9, 3, opt.imageSize * opt.ratio, opt.imageSize))
+            predictions_all[0, 1:, :, :, : ] = Xa[0:8, :3]
+            for delta_azimuth in loop:
+                for i in range(batch_tmp):
+                    A_tmp['azimuths'] =  - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_tmp).cuda()
+                    A_tmp['textures']  = Ae['textures'][i].unsqueeze(0).repeat(batch_tmp, 1, 1, 1) 
+                    predictions, _ = diffRender.render(**A_tmp)
+                    predictions = torch.cat( (Xa[i, :3].unsqueeze(0), predictions[:, :3].cpu()), dim=0)
+                    predictions_all[i+1, :, :, :, : ] = predictions
+                   
+                predictions_save = predictions_all.view(-1, 3, opt.imageSize * opt.ratio, opt.imageSize)
+                image = vutils.make_grid(predictions_save, nrow=9)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+
+
             print('===========Saving Gif-Azi===========')
             rotate_path = os.path.join(opt.outf, 'current_rotation.gif')
             writer = imageio.get_writer(rotate_path, mode='I')
@@ -398,6 +423,33 @@ if __name__ == '__main__':
                 image = image.permute(1, 2, 0).detach().cpu().numpy()
                 image = (image * 255.0).astype(np.uint8)
                 writer.append_data(image)
+
             writer.close()
 
+            print('===========Saving Gif-XY===========')
+            rotate_path = os.path.join(opt.outf, 'current_rotation_XY.gif')
+            writer = imageio.get_writer(rotate_path, mode='I')
+            loop = tqdm.tqdm(list(np.arange(-0.5, 0.6, 0.1))) # 1, 7
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_biases)')
+            A_tmp = deep_copy(Ae, detach=True)
+            for delta_biases in loop:
+                A_tmp['azimuths'] = torch.tensor([0], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                A_tmp['biases'] = torch.tensor([delta_biases, 0], dtype=torch.float32).unsqueeze(0).repeat(opt.batchSize,1).cuda()
+                predictions, _ = diffRender.render(**A_tmp)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions, nrow=nrow)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            for delta_biases in loop:
+                A_tmp['azimuths'] = torch.tensor([0], dtype=torch.float32).repeat(opt.batchSize).cuda()
+                A_tmp['biases'] = torch.tensor([0, delta_biases], dtype=torch.float32).unsqueeze(0).repeat(opt.batchSize,1).cuda()
+                predictions, _ = diffRender.render(**A_tmp)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions, nrow=nrow)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+
+            writer.close()
             break
