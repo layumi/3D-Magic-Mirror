@@ -350,8 +350,8 @@ if __name__ == '__main__':
 
 
     azimuths_result = 'Azimuths max: {}\tmin: {}\tavg: {}'.format(torch.max(azimuths), torch.min(azimuths), torch.mean(azimuths))
-    biases_result = 'Biases-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
-    biases_result += 'Biases-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
+    biases_result = 'Offsets-X max: {}\tmin: {}\tavg: {}\n'.format(torch.max(biases[:,0]), torch.min(biases[:,0]), torch.mean(biases[:,0]))
+    biases_result += 'Offsets-Y max: {}\tmin: {}\tavg: {}'.format(torch.max(biases[:,1]), torch.min(biases[:,1]), torch.mean(biases[:,1]))
     dist_result = 'Distances max: {}\tmin: {}\tavg: {}\t'.format(torch.max(dists), torch.min(dists), torch.mean(dists))
     dist_result += 'Distances max index: {}'.format(torch.argmax(dists))
     elev_result = 'Elevations max: {}\tmin: {}\tavg: {}'.format(torch.max(elevations), torch.min(elevations), torch.mean(elevations))
@@ -362,8 +362,8 @@ if __name__ == '__main__':
     ax0 = fig.add_subplot(231, title="Azimuths")
     ax1 = fig.add_subplot(232, title="Distances")
     ax2 = fig.add_subplot(233, title="Elevations")
-    ax3 = fig.add_subplot(234, title="Biases-X")
-    ax4 = fig.add_subplot(235, title="Biases-Y")
+    ax3 = fig.add_subplot(234, title="Offsets-X")
+    ax4 = fig.add_subplot(235, title="Offsets-Y")
     ax5 = fig.add_subplot(236, title="Shape Bias Mean")
     ax0.hist( azimuths.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax1.hist( dists.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
