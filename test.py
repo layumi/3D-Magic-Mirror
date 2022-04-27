@@ -195,8 +195,8 @@ if __name__ == '__main__':
 
 
     # load updated template
-    #resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
+    #resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
     if os.path.exists(resume_path):
         checkpoint = torch.load(resume_path)
         epoch = checkpoint['epoch']
@@ -342,16 +342,6 @@ if __name__ == '__main__':
                 rec_mask_path = os.path.join(rec_mask_dir, image_name)
                 output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
 
-                # for a fair comparison we resize the image to 256.
-                if 'CUB' in opt.name:
-                    output_Xer = output_Xer.resize((256, 256))
-                    output_Xir = output_Xir.resize((256, 256))
-                    output_Xir2 = output_Xir2.resize((256, 256))
-                    output_Xer90 = output_Xer90.resize((256, 256))
-                    output_Xa = output_Xa.resize((256, 256))
-                    output_ori_mask = output_ori_mask.resize((256, 256))
-                    output_rec_mask = output_rec_mask.resize((256, 256))
-
                 X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa, output_ori_mask, output_rec_mask])
                 path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path, ori_mask_path, rec_mask_path])
 
@@ -413,6 +403,9 @@ if __name__ == '__main__':
             rec_path = rec_dir + '/' + name
             ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
             rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            if 'CUB' in opt.name:
+                ori = Image.open(ori_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
+                rec = Image.open(rec_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
             ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
             rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
             ssim_score.append(ssim(ori, rec, data_range=1))
@@ -424,6 +417,7 @@ if __name__ == '__main__':
             ori = torchvision.transforms.functional.to_tensor(ori)
             rec = torchvision.transforms.functional.to_tensor(rec)
             mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
+
 
     print('\033[1mTest recon ssim: %0.3f \033[0m' % np.mean(ssim_score) )
     print('\033[1mTest recon MaskIoU: %0.3f\033[0m' % np.mean(mask_score) )
