@@ -311,7 +311,7 @@ if __name__ == '__main__':
             #break
             Maska = Xa[:,3,:,:].unsqueeze(1)
             Xa = mask(Xa) # remove bg
-                   
+       
             for i in range(len(paths)):
                 path = paths[i]
                 filename.append(path)
@@ -341,6 +341,16 @@ if __name__ == '__main__':
 
                 rec_mask_path = os.path.join(rec_mask_dir, image_name)
                 output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
+
+                # for a fair comparison we resize the image to 256.
+                if 'CUB' in opt.name:
+                    output_Xer = output_Xer.resize((256, 256))
+                    output_Xir = output_Xir.resize((256, 256))
+                    output_Xir2 = output_Xir2.resize((256, 256))
+                    output_Xer90 = output_Xer90.resize((256, 256))
+                    output_Xa = output_Xa.resize((256, 256))
+                    output_ori_mask = output_ori_mask.resize((256, 256))
+                    output_rec_mask = output_rec_mask.resize((256, 256))
 
                 X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa, output_ori_mask, output_rec_mask])
                 path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path, ori_mask_path, rec_mask_path])
@@ -403,9 +413,6 @@ if __name__ == '__main__':
             rec_path = rec_dir + '/' + name
             ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
             rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            if 'CUB' in opt.name:
-                ori = Image.open(ori_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
-                rec = Image.open(rec_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
             ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
             rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
             ssim_score.append(ssim(ori, rec, data_range=1))
