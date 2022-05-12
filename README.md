@@ -9,7 +9,7 @@
 <center><img src="./doc/Figure8.gif" width="40%" /></center>
 </pre>
 
-[[Project]](https://zdzheng.xyz/publication/3D-Ma2022) [[Code]](https://github.com/layumi/3D-Magic-Mirror) [[Paper]](https://arxiv.org/abs/2204.13096)
+[[Project]](https://zdzheng.xyz/publication/3D-Ma2022) [[Code]](https://github.com/layumi/3D-Magic-Mirror) [[Paper]](https://zdzheng.xyz/files/3D_Recon.pdf)
 
 3D Magic Mirror: Clothing Reconstruction from a Single Image via a Causal Perspective, arXiv preprint arXiv:2204.13096, 2022.<br>[Zhedong Zheng](http://zdzheng.xyz/), [Jiayin Zhu](https://github.com/viridityzhu), [Wei Ji](https://jiwei0523.github.io/), [Yi Yang](https://www.uts.edu.au/staff/yi.yang), [Tat-Seng Chua](https://www.chuatatseng.com/)
 
