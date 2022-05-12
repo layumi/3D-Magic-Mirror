@@ -78,14 +78,17 @@ $ python setup.py develop
 
 * Others: tqdm, trimesh, imageio, etc.
 
-
-``` sh
-$ python -m ROMP.romp.predict.image_simple
-```
-
 Our code is tested on PyTorch 1.9.0+ and torchvision 0.10.0+.
 
 ### Dataset Preparation
+
+
+Download tool:
+
+Install gdrive for fast download the dataset from Google Driver. It is good for all terminal users. 
+
+https://github.com/prasmussen/gdrive/releases/tag/2.1.1 
+
 
 Download the dataset:
 
@@ -124,19 +127,24 @@ gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 
 
 
-Preparation: put the images with the same id in one folder. You may use 
-```bash
-python prepare_market.py          # for Market-1501
-python prepare_ATR.py             # for ATR
-python prepare_cub_edge.py        # for CUB
-python preproces_cub.py           # for CUB
-```
+Preparation: 
+
+Only Market dataset is needed to prepare.  This code will calculate the ratio of foreground against background. 
+During training, we will drop few wrong masks or ill-detected person.
+
 Note to modify the dataset path to your own path.
+
+```bash
+python prepare_market.py          # only Market is needed.
+```
+
 
 ### Testing
 
 #### Download the trained model
-We provide our trained model. You may download it from [Google Drive](https://drive.google.com/open?id=1lL18FZX1uZMWKzaZOuPe3IuAdfUYyJKH) (or [Baidu Disk](https://pan.baidu.com/s/1503831XfW0y4g3PHir91yw) password: rqvf). You may download and move it to the `outputs`.
+We provide our trained model. 
+[Coming soon.]
+You may download and move it to the `outputs`.
 ```
 ├── outputs/
 │   ├── E0.5new_reid0.5_w30000
@@ -144,8 +152,8 @@ We provide our trained model. You may download it from [Google Drive](https://dr
 │   ├── best/                   
 ```
 
-### Training
 
+### Training
 - Training on CUB
 
 ```sh
@@ -219,6 +227,7 @@ python train_market.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_dat
                        --em_gap 2 \
                        --beta1 0.9
 ```
+
 
 ## Citation
 
