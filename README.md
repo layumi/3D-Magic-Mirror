@@ -60,7 +60,7 @@ $ pip install timm prettytable h5py imgaug smplx munkres joblib pycocotools lap 
 $ pip install ipywidgets keyboard transforms3d chumpy
 ```
 
-* Update your gcc if your gcc is too old  and you do not have sudo rights.
+* gcc is needed by kaolin. If you have latest gcc, please skip this step. (Update your gcc if your gcc is too old (<=7.3) and you do not have sudo rights.)  
 
 ```sh
 $ conda config --add channels conda-forge # add conda forge channel
@@ -70,7 +70,7 @@ $ ln x86_64-conda-linux-gnu-gcc gcc # cd bin
 $ ln x86_64-conda-linux-gnu-g++ g++ 
 ```
 
-* Kaolin Library
+* install Kaolin Library
 
 ```sh
 $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
@@ -87,9 +87,7 @@ Our code is tested on PyTorch 1.9.0+ and torchvision 0.10.0+.
 
 Download tool:
 
-Install gdrive for fast download the dataset from Google Driver. It is good for all terminal users. 
-
-https://github.com/prasmussen/gdrive/releases/tag/2.1.1 
+Install gdrive for fast download the dataset from Google Driver. It is good for all command line users. (https://github.com/prasmussen/gdrive/releases/tag/2.1.1 )
 
 
 Download the dataset:
@@ -129,9 +127,10 @@ gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 
 
 
-Preparation: 
+### Preparation: 
 
-Only Market dataset is needed to prepare.  This code will calculate the ratio of foreground against background. 
+Only Market dataset is needed to prepare, and other datasets are ready to run after download.  
+This code will calculate the ratio of foreground against background. 
 During training, we will drop few wrong masks or ill-detected person.
 
 Note to modify the dataset path to your own path.
