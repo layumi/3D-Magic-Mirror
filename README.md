@@ -5,8 +5,8 @@
 
 ![](./doc/Figure10.gif)
 
-<pre>
-<center><img src="./doc/Figure8.gif" style="zoom:50%;" /></center>
+<pre align="center" >
+<center><img src="./doc/Figure8.gif" width="40%" /></center>
 </pre>
 
 [[Project]](https://zdzheng.xyz/publication/3D-Ma2022) [[Code]](https://github.com/layumi/3D-Magic-Mirror) [[Paper]](https://arxiv.org/abs/2204.13096)
