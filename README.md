@@ -94,7 +94,7 @@ https://github.com/prasmussen/gdrive/releases/tag/2.1.1
 
 Download the dataset:
 
-- Market-HQ
+- [Market-HQ](https://github.com/layumi/HQ-Market)
 
 Download the processed data from [Google Drive](https://drive.google.com/file/d/10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW/view?usp=sharing). Or use the gdrive tool to download:
 
