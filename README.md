@@ -89,6 +89,11 @@ Download tool:
 
 Install gdrive for fast download the dataset from Google Driver. It is good for all command line users. (https://github.com/prasmussen/gdrive/releases/tag/2.1.1 )
 
+```
+wget https://github.com/prasmussen/gdrive/releases/download/2.1.1/gdrive_2.1.1_linux_386.tar.gz
+tar -xzvf gdrive_2.1.1_linux_386.tar.gz
+```
+
 
 Download the dataset:
 
