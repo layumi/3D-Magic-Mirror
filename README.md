@@ -28,6 +28,11 @@
 
 ## News
 
+
+## To DO List
+- Check the EMA part code.
+- Running on a new machine. 
+
 ## Features
 We have supported:
 
@@ -148,16 +153,42 @@ python prepare_market.py          # only Market is needed.
 ### Testing
 
 #### Download the trained model
-We provide our trained model. 
-[Coming soon.]
-You may download and move it to the `outputs`.
+
+- Trained model [Coming soon.]
+You may download and move it to the `log`.
 ```
-├── outputs/
-│   ├── E0.5new_reid0.5_w30000
-├── models
-│   ├── best/                   
+├── log/
+│   ├── MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9/
+|       |-- ckpts/
 ```
 
+- Visualization
+```bash
+python show_rainbow2.py --name  MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
+```
+It will generate the five gif animations in the `log/your_model_name/`.
+(We manually find some hard index to show the result.)
+
+`current_rainbow.gif`: Swapping appearnce. 
+
+`current_rotation.gif`: Rotation via azumith.
+
+`current_rotation_ele.gif`: Rotation via elevation. 
+
+`current_rotation_dist.gif`: Change distance to the camera. 
+
+`current_rotation_XY.gif`: Shift the camera in X-axis and Y-axis. 
+
+
+- Test Flops, maskIoU and SSIM 
+```bash
+python test.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
+or
+python test.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depth0.2_data4_drop0.4_gap2_beta0.9
+or 
+python test.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_lpl_reg0.1_data2_depth0.1_flat10_drop0.2_gap2_beta0.9 
+```
+** Please make sure the dataset name in your model. We use model name to set the test dataset. **
 
 ### Training
 - Training on CUB
