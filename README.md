@@ -154,20 +154,20 @@ python prepare_market.py          # only Market is needed.
 
 #### Download the trained model
 
-- Trained model [Coming soon.]
-You may download and move it to the `log`.
+- Trained model 
+You may download it from [GoogleDrive](https://drive.google.com/file/d/1NUs2MoCo_gUsUXeHg1i6PqyfAxseJmk9/view?usp=sharing) and move it to the `log`.
 ```
 ├── log/
 │   ├── MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9/
 |       |-- ckpts/
 ```
 
-- Visualization
+- Visualization 
 ```bash
 python show_rainbow2.py --name  MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
 ```
 It will generate the five gif animations in the `log/your_model_name/`.
-(We manually find some hard index to show the result.)
+(We manually select some hard index to show the result.)
 
 `current_rainbow.gif`: Swapping appearnce. 
 
