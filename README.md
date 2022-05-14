@@ -271,7 +271,7 @@ python train_market.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_dat
 Please cite this paper if it helps your research:
 
 ```bibtex
-@article{zheng20223d,
+@article{zheng2022magic,
   title={3D Magic Mirror: Clothing Reconstruction from a Single Image via a Causal Perspective},
   author={Zheng, Zhedong and Zhu, Jiayin and Ji, Wei and Yang, Yi and Chua, Tat-Seng},
   journal={arXiv preprint arXiv:2204.13096},
