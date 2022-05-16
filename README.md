@@ -57,8 +57,8 @@ $ cd 3D-Magic-Mirror/
 - Install requirements
 
 ```sh
-$ conda create --name smr --file spec-file.txt
-$ conda activate smr
+$ conda create --name magic_mirror --file spec-file.txt
+$ conda activate magic_mirror
 $ pip install tensorboard tensorboardx
 $ pip install opencv-python imageio trimesh typing-extensions
 $ pip install timm prettytable h5py imgaug smplx munkres joblib pycocotools lap plotly pandas
@@ -139,7 +139,7 @@ gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 
 ### Preparation: 
 
-Only Market dataset is needed to prepare, and other datasets are ready to run after download.  
+Only Market dataset requires preparation, and other datasets are ready to run after download.  
 This code will calculate the ratio of foreground against background. 
 During training, we will drop few wrong masks or ill-detected person.
 
@@ -155,6 +155,7 @@ python prepare_market.py          # only Market is needed.
 #### Download the trained model
 
 - Trained model 
+
 You may download it from [GoogleDrive](https://drive.google.com/file/d/1NUs2MoCo_gUsUXeHg1i6PqyfAxseJmk9/view?usp=sharing) and move it to the `log`.
 ```
 ├── log/
@@ -188,7 +189,7 @@ python test.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_reg0.
 or 
 python test.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_lpl_reg0.1_data2_depth0.1_flat10_drop0.2_gap2_beta0.9 
 ```
-** Please make sure the dataset name in your model. We use model name to set the test dataset. **
+**Please make sure the dataset name in your model. We use model name to set the test dataset.**
 
 ### Training
 - Training on CUB
