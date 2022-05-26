@@ -71,7 +71,7 @@ $ pip install ipywidgets keyboard transforms3d chumpy
 $ conda config --add channels conda-forge # add conda forge channel
 $ conda install gcc_linux-64=9.4.0 gcc_impl_linux-64=9.4.0
 $ conda install gxx_linux-64=9.4.0 gxx_impl_linux-64=9.4.0
-$ ln x86_64-conda-linux-gnu-gcc gcc # cd bin
+$ ln x86_64-conda-linux-gnu-gcc gcc # cd your_anaconda/envs/smr/bin
 $ ln x86_64-conda-linux-gnu-g++ g++ 
 ```
 
