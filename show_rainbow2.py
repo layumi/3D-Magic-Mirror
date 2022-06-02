@@ -136,7 +136,8 @@ with open('log/%s/opts.yaml'%opt.name,'r') as fp:
 
 opt.template_path = config['template_path']
 opt.name = config['name']
-opt.dataroot = config['dataroot']
+if opt.dataroot is None:
+    opt.dataroot = config['dataroot']
 opt.gan_type = config['gan_type']
 opt.category = config['category']
 opt.workers = config['workers']

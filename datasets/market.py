@@ -73,15 +73,16 @@ class MarketDataset(data.Dataset):
         target_width = self.image_size
 
         # image and its flipped image
-        #img_path = seg_path.replace('seg', 'pytorch')
-        img_path = seg_path.replace('seg_hmr', 'pytorch')
+        img_path = seg_path.replace('seg', 'pytorch')
+        # img_path = seg_path.replace('seg_hmr', 'pytorch')
         # remove foreground precentage
         img_path = img_path[:-9] + '.png'
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path)
         W, H = img.size
         if self.hmr>0.0:
-            obj_path = seg_path.replace('seg_hmr', 'bodymesh')
+            obj_path = seg_path.replace('seg', 'bodymesh')
+            # obj_path = seg_path.replace('seg_hmr', 'bodymesh')
             obj_path = obj_path[:-9] + '.obj'
             mesh =  kal.io.obj.import_mesh(obj_path)
             obj = np.asarray(mesh.vertices, dtype=np.float32) # 6890*3

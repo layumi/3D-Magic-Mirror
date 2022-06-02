@@ -3,7 +3,7 @@ import os
 from PIL import Image, ImageFilter, ImageOps
 import numpy as np
 # You only need to change this line to your dataset download path
-download_path = '../Market/hq/seg_hmr' 
+download_path = './Market/hq/seg' 
 
 seg_list = glob.glob(os.path.join(download_path,'*/*/*.png'))
 

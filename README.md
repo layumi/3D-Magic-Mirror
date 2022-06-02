@@ -79,11 +79,18 @@ $ ln x86_64-conda-linux-gnu-g++ g++
 
 ```sh
 $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+$ cd kaolin
 $ git checkout v0.9.1
 $ python setup.py develop
 ```
 
 * Others: tqdm, trimesh, imageio, etc.
+
+```sh
+$ pip install pytorch_msssim
+$ conda install scikit-learn
+$ conda install imageio
+```
 
 Our code is tested on PyTorch 1.9.0+ and torchvision 0.10.0+.
 
@@ -118,6 +125,14 @@ Download the processed data from [Google Drive](https://drive.google.com/file/d/
 gdrive download 1TxKpVMiRjYknQyf0MJthvzSWfPJ0h6fm
 ```
 
+Note that Market-Seg should be put in the subdirectory of Market-HQ. You may follow this to decompress the two dataset:
+
+```sh
+mkdir Market
+tar -xzvf Market-hq.tar.gz --directory=./Market
+tar -xzvf Market-seg.tar.gz --directory=./Market/hq # make sure market-seg is in the subdirectory of market-hq
+```
+
 
 - CUB
 
@@ -125,6 +140,7 @@ Download the processed data from [Google Drive](https://drive.google.com/file/d/
 
 ```
 gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
+unzip CUB_SMR_Data.zip
 ```
 
 - ATR
@@ -133,6 +149,7 @@ Download the processed data from [Google Drive](https://drive.google.com/file/d/
 
 ```
 gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
+unzip humanparsing -d ATR
 ```
 
 
@@ -157,6 +174,12 @@ python prepare_market.py          # only Market is needed.
 - Trained model 
 
 You may download it from [GoogleDrive](https://drive.google.com/file/d/1NUs2MoCo_gUsUXeHg1i6PqyfAxseJmk9/view?usp=sharing) and move it to the `log`.
+
+```sh
+gdrive download 1NUs2MoCo_gUsUXeHg1i6PqyfAxseJmk9
+unzip magic_mirror_snapshots.zip -d ./log
+```
+
 ```
 ├── log/
 │   ├── MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9/
@@ -165,9 +188,10 @@ You may download it from [GoogleDrive](https://drive.google.com/file/d/1NUs2MoCo
 
 - Visualization 
 ```bash
-python show_rainbow2.py --name  MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
+python show_rainbow2.py --name  MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9 \
+   --dataroot ./Market/hq/seg # or path/to/your/Market/hq/seg
 ```
-It will generate the five gif animations in the `log/your_model_name/`.
+It will generate the five gif animations in the `./rainbow/`.
 (We manually select some hard index to show the result.)
 
 `current_rainbow.gif`: Swapping appearnce. 
@@ -183,13 +207,15 @@ It will generate the five gif animations in the `log/your_model_name/`.
 
 - Test Flops, maskIoU and SSIM 
 ```bash
-python test.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
-or
-python test.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depth0.2_data4_drop0.4_gap2_beta0.9
-or 
-python test.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_lpl_reg0.1_data2_depth0.1_flat10_drop0.2_gap2_beta0.9 
+python test.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9  --dataroot ./Market/hq/seg # or path/to/your/Market/hq/seg
+# or
+python test.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depth0.2_data4_drop0.4_gap2_beta0.9  --dataroot ./ATR/humanparsing/JPEGImages # or path/to/your/humanparsing/JPEGImages
+# or 
+python test.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_lpl_reg0.1_data2_depth0.1_flat10_drop0.2_gap2_beta0.9 --dataroot ./CUB_Data # or path/to/your/CUB_Data
 ```
 **Please make sure the dataset name in your model. We use model name to set the test dataset.**
+
+In `test.py`, the latest_template_file is set by default as `/epoch_xxx_template.obj`, where xxx is the latest epoch. There is one thing to note: in the downloaded trained model, the best template is  `/ckpts/best_mesh.obj`. So **if you are testing the downloaded trained model, you need to comment line 206 and uncomment line 207 in `test.py`** to change the latest_template_file.
 
 ### Training
 - Training on CUB
@@ -214,7 +240,8 @@ python train.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_
                 --unmask 2 \
                 --amsgrad \
                 --em_gap 2 \
-                --beta1 0.9
+                --beta1 0.9 \
+                --dataroot ./CUB_Data # or path/to/your/CUB_Data
 ```
 
 - Training on ATR
@@ -238,7 +265,8 @@ python train_ATR.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_
                     --lambda_depth 0.2 \
                     --drop 0.4 \
                     --em_gap 2 \
-                    --beta1 0.9
+                    --beta1 0.9 \
+                    --dataroot ./ATR/humanparsing/JPEGImages # or path/to/your/humanparsing/JPEGImages
 ```
 
 - Training on Market
@@ -263,7 +291,8 @@ python train_market.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_dat
                        --drop 0.4 \
                        --amsgrad \
                        --em_gap 2 \
-                       --beta1 0.9
+                       --beta1 0.9 \
+                       --dataroot ./Market/hq/seg # or path/to/your/Market/hq/seg
 ```
 
 
