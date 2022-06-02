@@ -57,8 +57,8 @@ $ cd 3D-Magic-Mirror/
 - Install requirements
 
 ```sh
-$ conda create --name magic_mirror --file spec-file.txt
-$ conda activate magic_mirror
+$ conda create --name magic --file spec-file.txt
+$ conda activate magic
 $ pip install tensorboard tensorboardx
 $ pip install opencv-python imageio trimesh typing-extensions
 $ pip install timm prettytable h5py imgaug smplx munkres joblib pycocotools lap plotly pandas
@@ -71,7 +71,7 @@ $ pip install ipywidgets keyboard transforms3d chumpy
 $ conda config --add channels conda-forge # add conda forge channel
 $ conda install gcc_linux-64=9.4.0 gcc_impl_linux-64=9.4.0
 $ conda install gxx_linux-64=9.4.0 gxx_impl_linux-64=9.4.0
-$ ln x86_64-conda-linux-gnu-gcc gcc # cd your_anaconda/envs/smr/bin
+$ ln x86_64-conda-linux-gnu-gcc gcc # cd your_anaconda/envs/magic/bin
 $ ln x86_64-conda-linux-gnu-g++ g++ 
 ```
 
