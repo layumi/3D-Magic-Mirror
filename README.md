@@ -117,12 +117,12 @@ Download the processed data from [Google Drive](https://drive.google.com/file/d/
 gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 ```
 
-- Market-Seg
+- Market-Seg-HMR
 
-Download the processed data from [Google Drive](https://drive.google.com/file/d/1TxKpVMiRjYknQyf0MJthvzSWfPJ0h6fm/view?usp=sharing). Or use the gdrive tool to download:
+Download the processed data from [Google Drive](https://drive.google.com/file/d/1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
-gdrive download 1TxKpVMiRjYknQyf0MJthvzSWfPJ0h6fm
+gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 ```
 
 Note that Market-Seg should be put in the subdirectory of Market-HQ. You may follow this to decompress the two dataset:
