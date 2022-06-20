@@ -95,8 +95,8 @@ class ATR2Dataset(data.Dataset):
         #img = ImageOps.expand(img, padding)
         #seg = ImageOps.expand(seg, padding)
 
-        img = img.resize((target_height, target_width))
-        seg = seg.resize((target_height, target_width), Image.NEAREST)
+        img = img.resize((target_width, target_height))
+        seg = seg.resize((target_width, target_height), Image.NEAREST)
         seg = seg.point(lambda p: p > 160 and 255)
 
         #edge = seg.filter(ImageFilter.FIND_EDGES)
