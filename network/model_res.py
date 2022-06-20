@@ -585,11 +585,11 @@ class Resnet_4C(nn.Module):
         super(Resnet_4C, self).__init__()
         if pretrain == 'res50':
             model = models.resnet50(pretrained=True)
-        elif pretrained=='res50_swsl':
+        elif pretrain =='res50_swsl':
             model_ft = timm.create_model('swsl_resnet50', pretrained=True)
-        elif pretrained=='res50_ibn':
+        elif pretrain =='res50_ibn':
             model_ft = torch.hub.load('XingangPan/IBN-Net', 'resnet50_ibn_a', pretrained=True)
-        elif pretrained=='res50_lu': # pretrained on luperson dataset
+        elif pretrain =='res50_lu': # pretrained on luperson dataset
             if not os.path.isfile('/home/zzd/.cache/torch/checkpoints/lup_moco_r50.pth'):
                 os.system('gdrive download 1pFyAdt9BOZCtzaLiE-W3CsX_kgWABKK6 --path ~/.cache/torch/checkpoints/')
             model_ft = models.resnet50()
@@ -621,7 +621,7 @@ class HRnet_4C(nn.Module):
         super(HRnet_4C, self).__init__()
         if pretrain == 'hr18':
             model = timm.create_model('hrnet_w18', pretrained=True)
-        elif pretrained=='hr18_ssld': # imagenet21k
+        elif pretrain =='hr18_ssld': # imagenet21k
             if not os.path.isfile('/home/zzd/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth'):
                 os.system('wget https://github.com/HRNet/HRNet-Image-Classification/releases/download/PretrainedWeights/HRNet_W18_C_ssld_pretrained.pth -P ~/.cache/torch/checkpoints/')
             model_ft = timm.create_model('hrnet_w18', checkpoint_path="/home/zzd/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth")
