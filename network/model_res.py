@@ -6,7 +6,7 @@ from torchvision import models
 from .utils import weights_init, weights_init_classifier
 import math
 import timm
-
+import os
 def normalize_batch_3C(batch):
     # normalize using imagenet mean and std
     mean = batch.new_tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
@@ -586,20 +586,21 @@ class Resnet_4C(nn.Module):
         if pretrain == 'res50':
             model = models.resnet50(pretrained=True)
         elif pretrain =='res50_swsl':
-            model_ft = timm.create_model('swsl_resnet50', pretrained=True)
+            model = timm.create_model('swsl_resnet50', pretrained=True)
         elif pretrain =='res50_ibn':
-            model_ft = torch.hub.load('XingangPan/IBN-Net', 'resnet50_ibn_a', pretrained=True)
+            model = torch.hub.load('XingangPan/IBN-Net', 'resnet50_ibn_a', pretrained=True)
         elif pretrain =='res50_lu': # pretrained on luperson dataset
             if not os.path.isfile('/home/zzd/.cache/torch/checkpoints/lup_moco_r50.pth'):
                 os.system('gdrive download 1pFyAdt9BOZCtzaLiE-W3CsX_kgWABKK6 --path ~/.cache/torch/checkpoints/')
-            model_ft = models.resnet50()
-            model_ft.load_state_dict(torch.load("/home/zzd/.cache/torch/checkpoints/lup_moco_r50.pth"), strict=False)
+            model = models.resnet50()
+            model.load_state_dict(torch.load("/home/zzd/.cache/torch/checkpoints/lup_moco_r50.pth"), strict=False)
         else:
             model = models.resnet18(pretrained=True)
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1) * 0.1
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=1) 
+        model.relu = nn.ReLU()
 
         model.layer4[0].downsample[0].stride = (1,1)
         model.layer4[0].conv1.stride = (1,1)
@@ -624,7 +625,7 @@ class HRnet_4C(nn.Module):
         elif pretrain =='hr18_ssld': # imagenet21k
             if not os.path.isfile('/home/zzd/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth'):
                 os.system('wget https://github.com/HRNet/HRNet-Image-Classification/releases/download/PretrainedWeights/HRNet_W18_C_ssld_pretrained.pth -P ~/.cache/torch/checkpoints/')
-            model_ft = timm.create_model('hrnet_w18', checkpoint_path="/home/zzd/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth")
+            model = timm.create_model('hrnet_w18', checkpoint_path="/home/zzd/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth")
         elif pretrain == 'hr18sv2':
             model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
         elif pretrain == 'hr18sv1':
@@ -633,7 +634,7 @@ class HRnet_4C(nn.Module):
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
-        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=-1)  #model.conv1.weight[:, 0]
+        model.conv1.weight.data[:, 3] = torch.mean(weight, dim=1)  #model.conv1.weight[:, 0]
         self.model = model
     def forward(self, x):
         x = self.model.forward_features(x)
