@@ -42,6 +42,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
+from datasets.atr2 import ATR2Dataset
 from smr_utils import fliplr, mask, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
@@ -168,10 +169,15 @@ if "MKT" in opt.name:
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     print('Market-1501')
     ratio = 2
+elif "ATR2" in opt.name:
+    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
+    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
+    print('ATR2-human with 2:1')
+    ratio = 2
 elif "ATR" in opt.name:
     train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
     test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
-    print('ATR-human')
+    print('ATR-human with 1:1')
     ratio = 1
 else:
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
@@ -251,12 +257,19 @@ if __name__ == '__main__':
     os.makedirs(inter_dir, exist_ok=True)
     os.makedirs(inter90_dir, exist_ok=True)
     # os.makedirs(ckpt_dir, exist_ok=True)
-    os.system('rm -r %s/*'%ori_dir)
-    os.system('rm -r %s/*'%ori_mask_dir)
-    os.system('rm -r %s/*'%rec_dir)
-    os.system('rm -r %s/*'%rec_mask_dir)
-    os.system('rm -r %s/*'%inter_dir)
-    os.system('rm -r %s/*'%inter90_dir)
+    os.system('rm -r %s'%ori_dir)
+    os.system('rm -r %s'%ori_mask_dir)
+    os.system('rm -r %s'%rec_dir)
+    os.system('rm -r %s'%rec_mask_dir)
+    os.system('rm -r %s'%inter_dir)
+    os.system('rm -r %s'%inter90_dir) # rm list too long.
+    # clean again 
+    os.makedirs(ori_dir, exist_ok=True)
+    os.makedirs(ori_mask_dir, exist_ok=True)
+    os.makedirs(rec_dir, exist_ok=True)
+    os.makedirs(rec_mask_dir, exist_ok=True)
+    os.makedirs(inter_dir, exist_ok=True)
+    os.makedirs(inter90_dir, exist_ok=True)
 
     # summary_writer = SummaryWriter(os.path.join(opt.outf + "/logs"))
     output_txt = './log/%s/result.txt'%opt.name
