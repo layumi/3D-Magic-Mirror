@@ -34,6 +34,7 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
                                spherical_harmonic_lighting, prepare_vertices
 
 from PIL import Image
+import time
 from pytorch_msssim import ssim
 from kaolin.metrics.render import mask_iou
 from pytorch3d.loss import chamfer_distance
