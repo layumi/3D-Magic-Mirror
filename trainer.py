@@ -214,10 +214,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Ae90 = deep_copy(Ae)
                     #Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
                     if  random.random()>0.5:
-                        Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(opt.hard_range, 180-opt.hard_range).cuda()
+                        Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(opt.hard_range, 180-opt.hard_range)
                     else:
-                        Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(0, 180).cuda()
-                    rand = torch.empty((batch_size), dtype=torch.float32).uniform_(-1.0, 1.0).cuda()
+                        Ae90['azimuths'] = - torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(0, 180)
+                    rand = torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(-1.0, 1.0)
                     rand[rand<0] = -1.0
                     rand[rand>=0] = 1.0
                     Ae90['azimuths'] *= rand
@@ -245,23 +245,23 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # linearly interpolate 3D attributes
                 if opt.lambda_ic > 0.0:
                     # camera interpolation
-                    alpha_camera = torch.empty((batch_size), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                    Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    alpha_camera = torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(0.0, 1.0)
+                    Ai['azimuths'] = - torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(-opt.azi_scope/2, opt.azi_scope/2)
 
-                    Ai['elevations'] = torch.empty((batch_size), dtype=torch.float32).uniform_(netE.camera_enc.elev_min, netE.camera_enc.elev_max).cuda()
-                    Ai['distances'] = torch.empty((batch_size), dtype=torch.float32).uniform_(netE.camera_enc.dist_min, netE.camera_enc.dist_max).cuda()
-                    Ai['biases'] = torch.empty((batch_size, 2), dtype=torch.float32).uniform_(-opt.bias_range, opt.bias_range).cuda()
+                    Ai['elevations'] = torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(netE.camera_enc.elev_min, netE.camera_enc.elev_max)
+                    Ai['distances'] = torch.empty((batch_size), dtype=torch.float32, device='cuda').uniform_(netE.camera_enc.dist_min, netE.camera_enc.dist_max)
+                    Ai['biases'] = torch.empty((batch_size, 2), dtype=torch.float32, device='cuda').uniform_(-opt.bias_range, opt.bias_range)
                     # texture & shape interpolation
                     if opt.beta>0:
                         beta = min(1.0, opt.beta) # + 0.8*epoch/opt.niter)
-                        alpha = torch.FloatTensor(np.random.beta(beta, beta, batch_size))
-                        alpha_texture = alpha.view(batch_size, 1, 1, 1).cuda()
+                        alpha = torch.FloatTensor(np.random.beta(beta, beta, batch_size), device='cuda')
+                        alpha_texture = alpha.view(batch_size, 1, 1, 1)
                         #torch.FloatTensor(np.random.beta(beta, beta, batch_size))
                         alpha = 1-alpha  # to use different  shape and texture pair on purporse
-                        alpha_shape = alpha.view(batch_size, 1, 1 ).cuda()
+                        alpha_shape = alpha.view(batch_size, 1, 1 )
                     else:
-                        alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
-                        alpha_shape = torch.empty((batch_size, 1, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                        alpha_texture = torch.empty((batch_size, 1, 1, 1), dtype=torch.float32, device='cuda').uniform_(0.0, 1.0)
+                        alpha_shape = torch.empty((batch_size, 1, 1), dtype=torch.float32, device='cuda').uniform_(0.0, 1.0)
 
                     Ai['vertices'] = alpha_shape * Aa['vertices'] + (1-alpha_shape) * Ab['vertices']
                     Ai['delta_vertices'] = alpha_shape * Aa['delta_vertices'] + (1-alpha_shape) * Ab['delta_vertices']
@@ -271,7 +271,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     else:
                         Ai['bg'] = None
                     # light interpolation
-                    alpha_light = torch.empty((batch_size, 1), dtype=torch.float32).uniform_(0.0, 1.0).cuda()
+                    alpha_light = torch.empty((batch_size, 1), dtype=torch.float32, device='cuda').uniform_(0.0, 1.0)
                     Ai['lights'] = alpha_light * Aa['lights'] + (1.0 - alpha_light) * Ab['lights']
                 else:
                     Ai = Ae
