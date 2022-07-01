@@ -145,7 +145,7 @@ class Discriminator(nn.Module):
 
 def deep_copy(att, index=None, detach=False):
     if index is None:
-        index = torch.arange(att['distances'].shape[0]).cuda() # sequential order
+        index = torch.arange(att['distances'].shape[0], device='cuda') # sequential order
 
     copy_att = {}
     for key, value in att.items():
