@@ -57,6 +57,7 @@ class CUBDataset(data.Dataset):
     def __getitem__(self, index):
         if len(self.selected_index) >0:
             index = self.selected_index[index]
+        index = index%self.imgs
         img_path, label = self.imgs[index]
         target_height, target_width = self.image_size, self.image_size
 
@@ -121,4 +122,4 @@ class CUBDataset(data.Dataset):
         return {'data': data}
 
     def __len__(self):
-        return len(self.imgs)
+        return len(self.imgs)*2
