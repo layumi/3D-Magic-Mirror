@@ -22,7 +22,6 @@ from torchvision.transforms.functional import to_pil_image
 import torchvision.utils as vutils
 from torchvision.transforms.transforms import ColorJitter
 import torch.nn.functional as F
-from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.swa_utils import AveragedModel, SWALR
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -182,11 +181,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # (1) Update D network
                 ###########################
                 optimizerD.zero_grad()
-                Xa = Variable(data['data']['images']).cuda().detach()
+                Xa = data['data']['images'].cuda().detach()
                 if opt.hmr>0.0:
-                    Va = Variable(data['data']['obj']).cuda().detach()
+                    Va = data['data']['obj'].cuda().detach()
                 img_path = data['data']['path']
-                #Ea = Variable(data['data']['edge']).cuda()
+                #Ea = data['data']['edge'].cuda()
                 batch_size = Xa.shape[0]
 
                 # encode real
@@ -225,7 +224,6 @@ def trainer(opt, train_dataloader, test_dataloader):
 
                 # bad case
                 mean_delta = torch.mean(torch.abs(Ae['delta_vertices'])[:,-1], dim = 1)
-                #bad_case = torch.argwhere(mean_delta>0.2) 
                 bad_index = np.argwhere(mean_delta.data.cpu().numpy()>0.4) 
                 print(bad_index)
                 rand_a = np.random.permutation(batch_size)
@@ -537,7 +535,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
             for delta_azimuth in loop:
-                Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
+                Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32, device='cuda').repeat(batch_size)
                 predictions, _ = diffRender.render(**Ae)
                 predictions = predictions[:, :3]
                 image = vutils.make_grid(predictions)
@@ -557,7 +555,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             loop = tqdm.tqdm(list(range(elev_min, elev_max, 10))) # 15~-45
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_ele)')
             for delta_elevation in loop:
-                Ae['elevations'] = - torch.tensor([delta_elevation], dtype=torch.float32).repeat(batch_size).cuda()
+                Ae['elevations'] = - torch.tensor([delta_elevation], dtype=torch.float32, device='cuda').repeat(batch_size)
                 predictions, _ = diffRender.render(**Ae)
                 predictions = predictions[:, :3]
                 image = vutils.make_grid(predictions)
@@ -577,7 +575,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             loop = tqdm.tqdm(list(range(dist_min, dist_max+1, 1))) # 1, 7
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_dist)')
             for delta_dist in loop:
-                Ae['distances'] = - torch.tensor([delta_dist], dtype=torch.float32).repeat(batch_size).cuda()
+                Ae['distances'] = - torch.tensor([delta_dist], dtype=torch.float32, device='cuda').repeat(batch_size)
                 predictions, _ = diffRender.render(**Ae)
                 predictions = predictions[:, :3]
                 image = vutils.make_grid(predictions)
@@ -594,7 +592,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             X_all = []
             path_all = []
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
-                Xa = Variable(data['data']['images']).cuda()
+                Xa = data['data']['images'].cuda()
                 paths = data['data']['path']
 
                 with torch.no_grad():
@@ -604,7 +602,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
                     Ae90 = deep_copy(Ae)
-                    Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                    Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32, device='cuda').uniform_(-opt.azi_scope/2, opt.azi_scope/2)
                     Ai2['azimuths'] = Ai['azimuths'] + 90.0
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
                     Ae90['azimuths'] += 90.0
@@ -747,7 +745,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             all_vertices = torch.zeros(sample_number, diffRender.vertices_init.shape[0], 3) # all
             all_delta_vertices = torch.zeros(sample_number, diffRender.vertices_init.shape[0], 3) # all
             for iter, data in enumerate(train_dataloader):
-                Xa = Variable(data['data']['images']).cuda()
+                Xa = data['data']['images'].cuda()
                 with torch.no_grad():
                     Ae = netE(Xa)
                     _, Ae0 = diffRender.render(**Ae)
@@ -849,7 +847,7 @@ def trainer(opt, train_dataloader, test_dataloader):
 
     netE.eval()
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
-        Xa = Variable(data['data']['images']).cuda()
+        Xa = data['data']['images'].cuda()
         paths = data['data']['path']
 
         with torch.no_grad():
