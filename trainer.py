@@ -225,7 +225,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # bad case
                 mean_delta = torch.mean(torch.abs(Ae['delta_vertices'])[:,-1], dim = 1)
                 bad_index = np.argwhere(mean_delta.data.cpu().numpy()>0.4) 
-                print(bad_index)
+                print('Collapse index:', bad_index)
                 rand_a = np.random.permutation(batch_size)
                 rand_b = np.random.permutation(batch_size)
                 good_index = np.setdiff1d( np.arange(batch_size), bad_index) 
@@ -236,7 +236,6 @@ def trainer(opt, train_dataloader, test_dataloader):
                     rand_b[bad_indexb] = np.random.choice(good_index, 1)
                 rand_a = torch.LongTensor(rand_a)
                 rand_b = torch.LongTensor(rand_b)
-                print(rand_a)
                 Aa = deep_copy(Ae, rand_a)
                 Ab = deep_copy(Ae, rand_b)
                 Ai = {}
