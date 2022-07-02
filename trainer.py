@@ -824,11 +824,11 @@ def trainer(opt, train_dataloader, test_dataloader):
             print('Epoch %03d SWA Test rotat90 fid: %0.2f' % (epoch, fid_90))
             summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
             with open(output_txt, 'a') as fp:
-                fp.write('Epoch %03d recon ssim: %0.3f\n (SWA)' % (epoch, np.mean(ssim_score)))
-                fp.write('Epoch %03d recon MaskIoU: %0.3f\n (SWA)' % (epoch, np.mean(mask_score)))
-                fp.write('Epoch %03d Test recon fid: %0.2f\n (SWA)' % (epoch, fid_recon))
-                fp.write('Epoch %03d Test rotation fid: %0.2f\n (SWA)' % (epoch, fid_inter))
-                fp.write('Epoch %03d Test rotate90 fid: %0.2f\n (SWA)' % (epoch, fid_90))
+                fp.write('Epoch %03d recon ssim: %0.3f (SWA) \n' % (epoch, np.mean(ssim_score)))
+                fp.write('Epoch %03d recon MaskIoU: %0.3f (SWA) \n' % (epoch, np.mean(mask_score)))
+                fp.write('Epoch %03d Test recon fid: %0.2f (SWA) \n' % (epoch, fid_recon))
+                fp.write('Epoch %03d Test rotation fid: %0.2f (SWA) \n' % (epoch, fid_inter))
+                fp.write('Epoch %03d Test rotate90 fid: %0.2f (SWA) \n' % (epoch, fid_90))
 
             print('===========Saving Best Snapshot===========')
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
