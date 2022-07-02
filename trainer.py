@@ -843,125 +843,129 @@ def trainer(opt, train_dataloader, test_dataloader):
         netE.train()
 
     ###### After training, test the swa result
-    print('Start SWA Test!')
+        if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0::
+            print('Start SWA Test!')
+        else:
+            continue
     # Update bn statistics for the swa_model at the end
-    torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
+    #torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
 
-    netE.eval()
-    for i, data in tqdm.tqdm(enumerate(test_dataloader)):
-        Xa = data['data']['images'].cuda()
-        paths = data['data']['path']
+        swa_modelE.eval()
 
-        with torch.no_grad():
-            Ae = swa_modelE(Xa)
-            Xer, Ae = diffRender.render(**Ae)
+        for i, data in tqdm.tqdm(enumerate(test_dataloader)):
+            Xa = data['data']['images'].cuda()
+            paths = data['data']['path']
 
-            Ai = deep_copy(Ae)
-            Ai2 = deep_copy(Ae)
-            Ae90 = deep_copy(Ae)
-            Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-            Ai2['azimuths'] = Ai['azimuths'] + 90.0
-            Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
-            Ae90['azimuths'] += 90.0
+            with torch.no_grad():
+                Ae = swa_modelE(Xa)
+                Xer, Ae = diffRender.render(**Ae)
 
-            Xir, Ai = diffRender.render(**Ai)
-            Xir2, Ai2 = diffRender.render(**Ai2)
-            Xer90, Ae90 = diffRender.render(**Ae90)
+                Ai = deep_copy(Ae)
+                Ai2 = deep_copy(Ae)
+                Ae90 = deep_copy(Ae)
+                Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+                Ai2['azimuths'] = Ai['azimuths'] + 90.0
+                Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
+                Ae90['azimuths'] += 90.0
 
-            for i in range(len(paths)):
-                path = paths[i]
-                image_name = os.path.basename(path)
-                rec_path = os.path.join(rec_dir, image_name)
-                output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
-                output_Xer.save(rec_path, 'JPEG', quality=100)
+                Xir, Ai = diffRender.render(**Ai)
+                Xir2, Ai2 = diffRender.render(**Ai2)
+                Xer90, Ae90 = diffRender.render(**Ae90)
 
-                inter_path = os.path.join(inter_dir, image_name)
-                output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                output_Xir.save(inter_path, 'JPEG', quality=100)
+                for i in range(len(paths)):
+                    path = paths[i]
+                    image_name = os.path.basename(path)
+                    rec_path = os.path.join(rec_dir, image_name)
+                    output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
+                    output_Xer.save(rec_path, 'JPEG', quality=100)
 
-                inter_path2 = os.path.join(inter_dir, '2+'+image_name)
-                output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
-                output_Xir2.save(inter_path2, 'JPEG', quality=100)
+                    inter_path = os.path.join(inter_dir, image_name)
+                    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
+                    output_Xir.save(inter_path, 'JPEG', quality=100)
 
-                inter90_path = os.path.join(inter90_dir, image_name)
-                output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
-                output_Xer90.save(inter90_path, 'JPEG', quality=100)
+                    inter_path2 = os.path.join(inter_dir, '2+'+image_name)
+                    output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
+                    output_Xir2.save(inter_path2, 'JPEG', quality=100)
 
-            # save files
-            textures = Ae['textures']
+                    inter90_path = os.path.join(inter90_dir, image_name)
+                    output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
+                    output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
-            Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
-            Xer = (Xer * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
-            Xir = (Xir * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+                # save files
+                textures = Ae['textures']
 
-            Xa = torch.tensor(Xa, dtype=torch.float32) / 255.0
-            Xa = Xa.permute(0, 3, 1, 2)
-            Xer = torch.tensor(Xer, dtype=torch.float32) / 255.0
-            Xer = Xer.permute(0, 3, 1, 2)
-            Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
-            Xir = Xir.permute(0, 3, 1, 2)
+                Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+                Xer = (Xer * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
+                Xir = (Xir * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
 
-            vutils.save_image(Xa[:, :3],
+                Xa = torch.tensor(Xa, dtype=torch.float32) / 255.0
+                Xa = Xa.permute(0, 3, 1, 2)
+                Xer = torch.tensor(Xer, dtype=torch.float32) / 255.0
+                Xer = Xer.permute(0, 3, 1, 2)
+                Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
+                Xir = Xir.permute(0, 3, 1, 2)
+
+                vutils.save_image(Xa[:, :3],
                     '%s/swa_test_Xa.png' % (opt.outf), normalize=True)
 
-            vutils.save_image(Xer[:, :3].detach(),
+                vutils.save_image(Xer[:, :3].detach(),
                     '%s/swa_test_Xer.png' % (opt.outf), normalize=True)
 
-            vutils.save_image(Xir[:, :3].detach(),
+                vutils.save_image(Xir[:, :3].detach(),
                     '%s/swa_test_Xir.png' % (opt.outf), normalize=True)
 
-            vutils.save_image(textures.detach(),
+                vutils.save_image(textures.detach(),
                     '%s/swa_test_textures.png' % (opt.outf), normalize=True)
 
             #vutils.save_image(Ea.detach(),
             #        '%s/current_edge.png' % (opt.outf), normalize=True)
 
-            Ae = deep_copy(Ae, detach=True)
-            vertices = Ae['vertices']
-            faces = diffRender.faces
-            uvs = diffRender.uvs
-            textures = Ae['textures']
-            azimuths = Ae['azimuths']
-            elevations = Ae['elevations']
-            distances = Ae['distances']
-            lights = Ae['lights']
+                Ae = deep_copy(Ae, detach=True)
+                vertices = Ae['vertices']
+                faces = diffRender.faces
+                uvs = diffRender.uvs
+                textures = Ae['textures']
+                azimuths = Ae['azimuths']
+                elevations = Ae['elevations']
+                distances = Ae['distances']
+                lights = Ae['lights']
 
-            texure_maps = to_pil_image(textures[0].detach().cpu())
-            texure_maps.save('%s/swa_test_mesh_recon.png' % (opt.outf), 'PNG')
+                texure_maps = to_pil_image(textures[0].detach().cpu())
+                texure_maps.save('%s/swa_test_mesh_recon.png' % (opt.outf), 'PNG')
 
             #tri_mesh = trimesh.Trimesh(vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy())
             #tri_mesh.export('%s/current_mesh_recon.obj' % opt.outf)
             #tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
-            save_mesh('%s/swa_test_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+                save_mesh('%s/swa_test_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
 
-            rotate_path = os.path.join(opt.outf, 'swa_test_rotation.gif')
-            writer = imageio.get_writer(rotate_path, mode='I')
-            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10)))
-            loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
-            for delta_azimuth in loop:
-                batch_size = Xa.shape[0]
-                Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
-                predictions, _ = diffRender.render(**Ae)
-                predictions = predictions[:, :3]
-                image = vutils.make_grid(predictions)
-                image = image.permute(1, 2, 0).detach().cpu().numpy()
-                image = (image * 255.0).astype(np.uint8)
-                writer.append_data(image)
-            writer.close()
+                rotate_path = os.path.join(opt.outf, 'swa_test_rotation.gif')
+                writer = imageio.get_writer(rotate_path, mode='I')
+                loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10)))
+                loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
+                for delta_azimuth in loop:
+                    batch_size = Xa.shape[0]
+                    Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
+                    predictions, _ = diffRender.render(**Ae)
+                    predictions = predictions[:, :3]
+                    image = vutils.make_grid(predictions)
+                    image = image.permute(1, 2, 0).detach().cpu().numpy()
+                    image = (image * 255.0).astype(np.uint8)
+                    writer.append_data(image)
+                writer.close()
 
 
 
-    fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
-    print('SWA Test recon fid: %0.2f' % (fid_recon) )
-    summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch + 1)
-    fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
-    print('SWA Test rotation fid: %0.2f' % (fid_inter))
-    summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch + 1)
-    fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
-    print('SWA Test rotat90 fid: %0.2f' % (fid_90))
-    summary_writer.add_scalar('Test/fid_90', fid_90, epoch + 1)
-    with open(output_txt, 'a') as fp:
-        fp.write('SWA Test recon fid: %0.2f\n' % (fid_recon))
-        fp.write('SWA Test rotation fid: %0.2f\n' % (fid_inter))
-        fp.write('SWA Test rotate90 fid: %0.2f\n' % (fid_90))
+        fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
+        print('SWA Test recon fid: %0.2f' % (fid_recon) )
+        summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch + 1)
+        fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
+        print('SWA Test rotation fid: %0.2f' % (fid_inter))
+        summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch + 1)
+        fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
+        print('SWA Test rotat90 fid: %0.2f' % (fid_90))
+        summary_writer.add_scalar('Test/fid_90', fid_90, epoch + 1)
+        with open(output_txt, 'a') as fp:
+            fp.write('SWA Test recon fid: %0.2f\n' % (fid_recon))
+            fp.write('SWA Test rotation fid: %0.2f\n' % (fid_inter))
+            fp.write('SWA Test rotate90 fid: %0.2f\n' % (fid_90))
 
