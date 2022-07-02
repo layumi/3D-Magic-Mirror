@@ -716,11 +716,141 @@ def trainer(opt, train_dataloader, test_dataloader):
                 best_fid = fid_inter 
 
         if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0:
-            print('Start SWA Test!')
+            print('===========Generating SWA Test Images===========')
             swa_modelE.cuda().eval()
+            X_all = []
+            path_all = []
+            for i, data in tqdm.tqdm(enumerate(test_dataloader)):
+                Xa = data['data']['images'].cuda()
+                paths = data['data']['path']
+
+                with torch.no_grad():
+                    Ae = swa_modelE(Xa)
+                    Xer, Ae = diffRender.render(**Ae)
+
+                    Ai = deep_copy(Ae)
+                    Ai2 = deep_copy(Ae)
+                    Ae90 = deep_copy(Ae)
+                    Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32, device='cuda').uniform_(-opt.azi_scope/2, opt.azi_scope/2)
+                    Ai2['azimuths'] = Ai['azimuths'] + 90.0
+                    Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
+                    Ae90['azimuths'] += 90.0
+
+                    Xir, Ai = diffRender.render(**Ai)
+                    Xir2, Ai2 = diffRender.render(**Ai2)
+                    Xer90, Ae90 = diffRender.render(**Ae90)
 
 
+                    # multiprocess to save image
+                    for i in range(len(paths)):
+                        path = paths[i]
+                        image_name = os.path.basename(path)
+                        rec_path = os.path.join(rec_dir, image_name)
+                        output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
+                        #output_Xer.save(rec_path, 'JPEG', quality=100)
 
+                        inter_path = os.path.join(inter_dir, image_name)
+                        output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
+                        #output_Xir.save(inter_path, 'JPEG', quality=100)
+
+                        inter_path2 = os.path.join(inter_dir, '2+'+image_name)
+                        output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
+                        #output_Xir2.save(inter_path2, 'JPEG', quality=100)
+
+                        inter90_path = os.path.join(inter90_dir, image_name)
+                        output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
+                        #output_Xer90.save(inter90_path, 'JPEG', quality=100)
+
+                        rec_mask_path = os.path.join(rec_mask_dir, image_name)
+                        output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
+
+                        if epoch==0:
+                            ori_path = os.path.join(ori_dir, image_name)
+                            if opt.bg:
+                                gt_img = Xa[:, :3]
+                                gt_mask = Xa[:, 3]
+                                Xa[:, :3] = gt_img * gt_mask.unsqueeze(1) + torch.ones_like(gt_img) * (1 - gt_mask.unsqueeze(1))
+                            output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
+                            ori_mask_path = os.path.join(ori_mask_dir, image_name)
+                            output_ori_mask =  to_pil_image(Xa[i, 3].detach().cpu())
+                            #output_Xa.save(ori_path, 'JPEG', quality=100)
+                            X_all.extend([output_Xa, output_ori_mask])
+                            path_all.extend([ori_path, ori_mask_path])
+
+                        X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_rec_mask])
+                        path_all.extend([rec_path, inter_path, inter_path2, inter90_path, rec_mask_path])
+            # save image
+            with Pool(4) as p:
+                p.map(save_img, zip(X_all, path_all) )        
+
+            print('===========Evaluating SWA SSIM & MaskIoU===========')
+            ssim_score = []
+            mask_score = []
+            for root, dirs, files in os.walk(ori_dir, topdown=True):
+                for name in files:
+                    if not ( name[-3:]=='png' or name[-3:]=='jpg'):
+                        continue
+                    # SSIM
+                    ori_path = ori_dir + '/' + name
+                    rec_path = rec_dir + '/' + name
+                    ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
+                    rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
+                    ssim_score.append(ssim(ori, rec, data_range=1))
+                    # Mask IoU
+                    ori_path = ori_mask_dir + '/' + name
+                    rec_path = rec_mask_dir + '/' + name
+                    ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    ori = torchvision.transforms.functional.to_tensor(ori)
+                    rec = torchvision.transforms.functional.to_tensor(rec)
+                    mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
+
+            print('\033[1m SWA Test recon ssim: %0.3f \033[0m' % np.mean(ssim_score) )
+            print('\033[1m SWA Test recon MaskIoU: %0.3f\033[0m' % np.mean(mask_score) )
+
+            print('===========Evaluating FID Score===========')
+            fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
+            print('Epoch %03d SWA Test recon fid: %0.2f' % (epoch, fid_recon) ) 
+            summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch)
+            fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
+            print('Epoch %03d SWA Test rotation fid: %0.2f' % (epoch, fid_inter))
+            summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
+            fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
+            print('Epoch %03d SWA Test rotat90 fid: %0.2f' % (epoch, fid_90))
+            summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
+            with open(output_txt, 'a') as fp:
+                fp.write('Epoch %03d recon ssim: %0.3f\n (SWA)' % (epoch, np.mean(ssim_score)))
+                fp.write('Epoch %03d recon MaskIoU: %0.3f\n (SWA)' % (epoch, np.mean(mask_score)))
+                fp.write('Epoch %03d Test recon fid: %0.2f\n (SWA)' % (epoch, fid_recon))
+                fp.write('Epoch %03d Test rotation fid: %0.2f\n (SWA)' % (epoch, fid_inter))
+                fp.write('Epoch %03d Test rotate90 fid: %0.2f\n (SWA)' % (epoch, fid_90))
+
+            print('===========Saving Best Snapshot===========')
+            epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
+            latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
+            best_name = os.path.join(ckpt_dir, 'best_ckpt.pth')
+            best_mesh_name = os.path.join(ckpt_dir, 'best_mesh.obj')
+            state_dict = {
+                'epoch': epoch,
+                'netE': netE.state_dict(),
+                'netD': netD.state_dict(),
+                #'optimizerE': optimizerE.state_dict(),
+                #'optimizerD': optimizerD.state_dict()
+            }
+            if opt.swa and epoch >= opt.swa_start:
+                state_dict.update({
+                    'swa_modelE': swa_modelE.state_dict(),
+                    #'swa_schedulerE': swa_schedulerE.state_dict(),
+                })
+            torch.save(state_dict, latest_name)
+            if fid_inter < best_fid:
+                torch.save(state_dict, best_name)
+                save_mesh(best_mesh_name, netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
+                best_fid = fid_inter 
+
+        swa_modelE.cpu()        
         ############################
         # (3) Update Template
         ###########################
@@ -837,127 +967,4 @@ def trainer(opt, train_dataloader, test_dataloader):
                 netE.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay
         netE.train()
-
-    ###### After training, test the swa result
-    # Update bn statistics for the swa_model at the end
-    #torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
-
-        swa_modelE.cuda().eval()
-
-        for i, data in tqdm.tqdm(enumerate(test_dataloader)):
-            Xa = data['data']['images'].cuda()
-            paths = data['data']['path']
-
-            with torch.no_grad():
-                Ae = swa_modelE(Xa)
-                Xer, Ae = diffRender.render(**Ae)
-
-                Ai = deep_copy(Ae)
-                Ai2 = deep_copy(Ae)
-                Ae90 = deep_copy(Ae)
-                Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
-                Ai2['azimuths'] = Ai['azimuths'] + 90.0
-                Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
-                Ae90['azimuths'] += 90.0
-
-                Xir, Ai = diffRender.render(**Ai)
-                Xir2, Ai2 = diffRender.render(**Ai2)
-                Xer90, Ae90 = diffRender.render(**Ae90)
-
-                for i in range(len(paths)):
-                    path = paths[i]
-                    image_name = os.path.basename(path)
-                    rec_path = os.path.join(rec_dir, image_name)
-                    output_Xer = to_pil_image(Xer[i, :3].detach().cpu())
-                    output_Xer.save(rec_path, 'JPEG', quality=100)
-
-                    inter_path = os.path.join(inter_dir, image_name)
-                    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
-                    output_Xir.save(inter_path, 'JPEG', quality=100)
-
-                    inter_path2 = os.path.join(inter_dir, '2+'+image_name)
-                    output_Xir2 = to_pil_image(Xir2[i, :3].detach().cpu())
-                    output_Xir2.save(inter_path2, 'JPEG', quality=100)
-
-                    inter90_path = os.path.join(inter90_dir, image_name)
-                    output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
-                    output_Xer90.save(inter90_path, 'JPEG', quality=100)
-
-                # save files
-                textures = Ae['textures']
-
-                Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
-                Xer = (Xer * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
-                Xir = (Xir * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
-
-                Xa = torch.tensor(Xa, dtype=torch.float32) / 255.0
-                Xa = Xa.permute(0, 3, 1, 2)
-                Xer = torch.tensor(Xer, dtype=torch.float32) / 255.0
-                Xer = Xer.permute(0, 3, 1, 2)
-                Xir = torch.tensor(Xir, dtype=torch.float32) / 255.0
-                Xir = Xir.permute(0, 3, 1, 2)
-
-                vutils.save_image(Xa[:, :3],
-                    '%s/swa_test_Xa.png' % (opt.outf), normalize=True)
-
-                vutils.save_image(Xer[:, :3].detach(),
-                    '%s/swa_test_Xer.png' % (opt.outf), normalize=True)
-
-                vutils.save_image(Xir[:, :3].detach(),
-                    '%s/swa_test_Xir.png' % (opt.outf), normalize=True)
-
-                vutils.save_image(textures.detach(),
-                    '%s/swa_test_textures.png' % (opt.outf), normalize=True)
-
-            #vutils.save_image(Ea.detach(),
-            #        '%s/current_edge.png' % (opt.outf), normalize=True)
-
-                Ae = deep_copy(Ae, detach=True)
-                vertices = Ae['vertices']
-                faces = diffRender.faces
-                uvs = diffRender.uvs
-                textures = Ae['textures']
-                azimuths = Ae['azimuths']
-                elevations = Ae['elevations']
-                distances = Ae['distances']
-                lights = Ae['lights']
-
-                texure_maps = to_pil_image(textures[0].detach().cpu())
-                texure_maps.save('%s/swa_test_mesh_recon.png' % (opt.outf), 'PNG')
-
-            #tri_mesh = trimesh.Trimesh(vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy())
-            #tri_mesh.export('%s/current_mesh_recon.obj' % opt.outf)
-            #tri_mesh.export('%s/epoch_%03d_mesh_recon.obj' % (opt.outf, epoch))
-                save_mesh('%s/swa_test_mesh_recon.obj' % opt.outf, vertices[0].detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
-
-                rotate_path = os.path.join(opt.outf, 'swa_test_rotation.gif')
-                writer = imageio.get_writer(rotate_path, mode='I')
-                loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10)))
-                loop.set_description('Drawing Dib_Renderer SphericalHarmonics')
-                for delta_azimuth in loop:
-                    batch_size = Xa.shape[0]
-                    Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(batch_size).cuda()
-                    predictions, _ = diffRender.render(**Ae)
-                    predictions = predictions[:, :3]
-                    image = vutils.make_grid(predictions)
-                    image = image.permute(1, 2, 0).detach().cpu().numpy()
-                    image = (image * 255.0).astype(np.uint8)
-                    writer.append_data(image)
-                writer.close()
-
-        swa_modelE.cpu()
-
-        fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
-        print('SWA Test recon fid: %0.2f' % (fid_recon) )
-        summary_writer.add_scalar('Test/fid_recon', fid_recon, epoch + 1)
-        fid_inter = calculate_fid_given_paths([ori_dir, inter_dir], 64, True)
-        print('SWA Test rotation fid: %0.2f' % (fid_inter))
-        summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch + 1)
-        fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
-        print('SWA Test rotat90 fid: %0.2f' % (fid_90))
-        summary_writer.add_scalar('Test/fid_90', fid_90, epoch + 1)
-        with open(output_txt, 'a') as fp:
-            fp.write('SWA Test recon fid: %0.2f\n' % (fid_recon))
-            fp.write('SWA Test rotation fid: %0.2f\n' % (fid_inter))
-            fp.write('SWA Test rotate90 fid: %0.2f\n' % (fid_90))
 
