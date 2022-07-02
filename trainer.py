@@ -114,8 +114,8 @@ def trainer(opt, train_dataloader, test_dataloader):
     schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)
     schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=0.01*opt.lr)
     if opt.swa:
-         swa_modelE = AveragedModel(netE)
-         swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
+         swa_modelE = AveragedModel(netE).cpu()
+         #swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
 
     # if resume is True, restore from latest_ckpt.path
     start_iter = 0
@@ -137,7 +137,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             if opt.swa and start_epoch >= opt.swa_start:
                 try:
                     swa_modelE.load_state_dict(checkpoint['swa_modelE'])
-                    swa_schedulerE.load_state_dict(checkpoint['swa_schedulerE'])
+                    #swa_schedulerE.load_state_dict(checkpoint['swa_schedulerE'])
                 except:
                     print("=> swa model not found")
 
@@ -441,8 +441,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                 ) 
                 del lossD, lossD_real, lossD_fake, lossD_gp, lossR, lossR_fake, lossR_reg, lossR_data, lossR_IC, lossR_dis 
         if opt.swa and epoch >= opt.swa_start:
+            swa_modelE.cuda()
             swa_modelE.update_parameters(netE)
-            swa_schedulerE.step()
+            swa_modelE.cpu()
+            #swa_schedulerE.step()
         schedulerD.step()
         schedulerE.step()
 
