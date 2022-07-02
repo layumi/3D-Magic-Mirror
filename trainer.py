@@ -449,20 +449,12 @@ def trainer(opt, train_dataloader, test_dataloader):
         schedulerE.step()
 
 
-        if epoch % 5 == 0:  
+        ############################
+        # Evaluate Model
+        ###########################
+
+        if epoch % 10 == 0:  
             print('===========Saving JPEG===========')
-            #summary_writer.add_scalar('Train/lr', schedulerE.get_last_lr()[0], epoch)
-            #summary_writer.add_scalar('Train/lossD', lossD, epoch)
-            #summary_writer.add_scalar('Train/lossD_real', lossD_real, epoch)
-            #summary_writer.add_scalar('Train/lossD_fake', lossD_fake, epoch)
-            #summary_writer.add_scalar('Train/lossD_gp', lossD_gp, epoch)
-            #summary_writer.add_scalar('Train/lossR', lossR, epoch)
-            #summary_writer.add_scalar('Train/lossR_fake', lossR_fake, epoch)
-            #summary_writer.add_scalar('Train/lossR_reg', lossR_reg, epoch)
-            #summary_writer.add_scalar('Train/lossR_data', lossR_data, epoch)
-            #summary_writer.add_scalar('Train/lossR_IC', lossR_IC, epoch)
-            #summary_writer.add_scalar('Train/lossR_LC', lossR_LC, epoch)
-            #summary_writer.add_scalar('Train/lossR_flip', lossR_flip, epoch)
             textures = Ae['textures']
 
             Xa = (Xa * 255).permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
@@ -656,7 +648,6 @@ def trainer(opt, train_dataloader, test_dataloader):
             with Pool(4) as p:
                 p.map(save_img, zip(X_all, path_all) )        
 
-
             print('===========Evaluating SSIM & MaskIoU===========')
             ssim_score = []
             mask_score = []
@@ -701,8 +692,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
                 fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
 
-        if epoch % 20 == 0:
-            print('===========Saving Snapshot===========')
+            print('===========Saving Best Snapshot===========')
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
             latest_name = os.path.join(ckpt_dir, 'latest_ckpt.pth')
             best_name = os.path.join(ckpt_dir, 'best_ckpt.pth')
@@ -724,6 +714,12 @@ def trainer(opt, train_dataloader, test_dataloader):
                 torch.save(state_dict, best_name)
                 save_mesh(best_mesh_name, netE.vertices_init[0].clone().detach().cpu().numpy(), faces.detach().cpu().numpy(), uvs)
                 best_fid = fid_inter 
+
+        if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0:
+            print('Start SWA Test!')
+            swa_modelE.cuda().eval()
+
+
 
         ############################
         # (3) Update Template
@@ -843,10 +839,6 @@ def trainer(opt, train_dataloader, test_dataloader):
         netE.train()
 
     ###### After training, test the swa result
-        if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0:
-            print('Start SWA Test!')
-        else:
-            continue
     # Update bn statistics for the swa_model at the end
     #torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
 
