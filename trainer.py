@@ -843,7 +843,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         netE.train()
 
     ###### After training, test the swa result
-        if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0::
+        if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0:
             print('Start SWA Test!')
         else:
             continue
