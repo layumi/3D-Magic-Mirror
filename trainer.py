@@ -850,7 +850,7 @@ def trainer(opt, train_dataloader, test_dataloader):
     # Update bn statistics for the swa_model at the end
     #torch.optim.swa_utils.update_bn(train_dataloader, swa_modelE)
 
-        swa_modelE.eval()
+        swa_modelE.cuda().eval()
 
         for i, data in tqdm.tqdm(enumerate(test_dataloader)):
             Xa = data['data']['images'].cuda()
@@ -953,7 +953,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     writer.append_data(image)
                 writer.close()
 
-
+        swa_modelE.cpu()
 
         fid_recon = calculate_fid_given_paths([ori_dir, rec_dir], 64, True)
         print('SWA Test recon fid: %0.2f' % (fid_recon) )
