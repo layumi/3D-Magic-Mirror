@@ -23,7 +23,7 @@ import torchvision.utils as vutils
 from torchvision.transforms.transforms import ColorJitter
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim.swa_utils import AveragedModel, SWALR
+from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from sklearn.cluster import DBSCAN
 from networks import MS_Discriminator, Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
@@ -718,7 +718,9 @@ def trainer(opt, train_dataloader, test_dataloader):
 
         if opt.swa and epoch >= opt.swa_start and epoch % 20 == 0:
             print('===========Generating SWA Test Images===========')
-            swa_modelE.cuda().eval()
+            swa_modelE.cuda()
+            update_bn(train_dataloader, swa_modelE)
+            swa_modelE.eval()
             X_all = []
             path_all = []
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
