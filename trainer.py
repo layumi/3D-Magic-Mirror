@@ -444,6 +444,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             swa_modelE.cuda()
             swa_modelE.update_parameters(netE)
             swa_modelE.cpu()
+            print('How many models arer fused: %d'%swa_modelE.n_averaged)
             #swa_schedulerE.step()
         schedulerD.step()
         schedulerE.step()
