@@ -84,6 +84,7 @@ parser.add_argument('--smooth', type=float, default=0.5, help='using smooth temp
 parser.add_argument('--em', type=float, default=0.0, help='update template')
 parser.add_argument('--em_gap', type=int, default=1, help='update template evey xx epoch ')
 parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
+parser.add_argument('--swa_interval', type=int, default=1, help='averge model every interval epoch')
 parser.add_argument('--update_shape', type=int, default=1, help='train shape every XX iteration')
 parser.add_argument('--swa_lr', type=float, default=0.0003, help='swa learning rate')
 parser.add_argument('--lambda_gan', type=float, default=0.0001, help='parameter')

@@ -440,7 +440,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                         )
                 ) 
                 del lossD, lossD_real, lossD_fake, lossD_gp, lossR, lossR_fake, lossR_reg, lossR_data, lossR_IC, lossR_dis 
-        if opt.swa and epoch >= opt.swa_start:
+        if opt.swa and epoch >= opt.swa_start and epoch%opt.swa_interval==0:
             swa_modelE.cuda()
             swa_modelE.update_parameters(netE)
             swa_modelE.cpu()
