@@ -51,6 +51,9 @@ except ImportError:
 
 from inception import InceptionV3
 
+import torch.backends.cudnn as cudnn
+cudnn.benchmark = True
+
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument('path', type=str, nargs=2,
                     help=('Path to the generated images or '
