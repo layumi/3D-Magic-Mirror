@@ -111,8 +111,8 @@ def trainer(opt, train_dataloader, test_dataloader):
               ], betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
 
     # setup learning rate scheduler
-    schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=0.01*opt.lr)
-    schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=0.01*opt.lr)
+    schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=opt.gamma*opt.lr)
+    schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=opt.gamma*opt.lr)
     if opt.swa:
          swa_modelE = AveragedModel(netE).cpu()
          #swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
@@ -868,8 +868,8 @@ def trainer(opt, train_dataloader, test_dataloader):
         dist_max = float(dist_range[1])
         mean_elev = (elev_max + elev_min) /2
         mean_dist = (dist_max + dist_min) /2
-        # only updating in the first 80% epoch and fix the template for the final shape updating
-        if opt.em > 0 and epoch%opt.em_gap == 0: # and epoch<int(0.8*opt.niter):
+        # fix the template for the final swa model
+        if opt.em > 0 and epoch%opt.em_gap == 0 and epoch < opt.swa_start: # and epoch<int(0.8*opt.niter):
             print('===========Updating template===========')
             sample_number = len(train_dataloader.dataset)//opt.batchSize * opt.batchSize
             current_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
