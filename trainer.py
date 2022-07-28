@@ -968,6 +968,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                     new_template -= torch.mean(new_template, dim=1, keepdim = True) # 1*1*3
 
                 netE.vertices_init.data = new_template
+                if opt.swa: swa_modelE.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay
         netE.train()
 
