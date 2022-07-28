@@ -721,6 +721,26 @@ def trainer(opt, train_dataloader, test_dataloader):
             swa_modelE.cuda()
             update_bn(train_dataloader, swa_modelE)
             swa_modelE.eval()
+
+            
+            swa_Ae = swa_modelE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
+            print('===========Saving Gif-Azi===========')
+            rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation_swa.gif' % epoch)
+            writer = imageio.get_writer(rotate_path, mode='I')
+            loop = tqdm.tqdm(list(range(-int(opt.azi_scope/2), int(opt.azi_scope/2), 10))) # -180, 180
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
+            for delta_azimuth in loop:
+                swa_Ae['azimuths'] = - torch.tensor([delta_azimuth], dtype=torch.float32, device='cuda').repeat(batch_size)
+                predictions, _ = diffRender.render(**swa_Ae)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+            current_rotate_path = os.path.join(opt.outf, 'current_rotation_swa.gif')
+            shutil.copyfile(rotate_path, current_rotate_path)
+
             X_all = []
             path_all = []
             for i, data in tqdm.tqdm(enumerate(test_dataloader)):
@@ -970,5 +990,6 @@ def trainer(opt, train_dataloader, test_dataloader):
                 netE.vertices_init.data = new_template
                 if opt.swa: swa_modelE.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay
+                if opt.update_bn: update_bn(train_dataloader, netE)
         netE.train()
 
