@@ -22,6 +22,7 @@ import torchvision.utils as vutils
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
+from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 from networks import MS_Discriminator, Discriminator, DiffRender, Landmark_Consistency, AttributeEncoder, weights_init, deep_copy
 # import kaolin related
 import kaolin as kal
@@ -235,8 +236,13 @@ if __name__ == '__main__':
         # start_epoch = checkpoint['epoch']
         # start_iter = 0
         #netD.load_state_dict(checkpoint['netD'])
-        netE.load_state_dict(checkpoint['netE'], strict=True)
-
+        if opt.swa:
+            print('using swa')
+            netE = AveragedModel(netE)
+            netE.load_state_dict(checkpoint['swa_modelE'], strict=True)
+        else:
+            netE.load_state_dict(checkpoint['netE'], strict=True)
+       
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
 
@@ -444,8 +450,10 @@ if __name__ == '__main__':
     with open(output_txt, 'a') as fp:
         fp.write(dist_result+'\n')
         fp.write(elev_result + '\n')
-        fp.write('Test recon ssim: %0.2f\n' % np.mean(ssim_score))
+        fp.write('Test recon ssim: %0.3f\n' % np.mean(ssim_score))
+        fp.write('Test recon MaskIoU: %0.3f\n' % np.mean(mask_score))
         fp.write('Test recon fid: %0.2f\n' % (fid_recon))
         fp.write('Test rotation fid: %0.2f\n' % (fid_inter))
         fp.write('Test rotate90 fid: %0.2f\n' % (fid_90))
+
 
