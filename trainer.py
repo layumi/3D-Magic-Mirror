@@ -111,8 +111,17 @@ def trainer(opt, train_dataloader, test_dataloader):
               ], betas=(opt.beta1, 0.999), weight_decay=opt.wd, amsgrad=opt.amsgrad)
 
     # setup learning rate scheduler
-    schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=opt.gamma*opt.lr)
-    schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=opt.gamma*opt.lr)
+    if opt.scheduler == 'step':
+        schedulerD = torch.optim.lr_scheduler.StepLR(optimizerD, step_size = round(0.8*opt.niter), gamma=opt.gamma)
+        schedulerE = torch.optim.lr_scheduler.StepLR(optimizerE, step_size = round(0.8*opt.niter), gamma=opt.gamma)
+    elif  opt.scheduler == 'restart':
+        T_0 = opt.niter//(1+2+4)+1
+        schedulerD = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerD, T_0 = T_0, T_mult=2, eta_min=opt.gamma*opt.lr)
+        schedulerE = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerE, T_0 = T_0, T_mult=2, eta_min=opt.gamma*opt.lr)
+    else:
+        schedulerD = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerD, T_max=opt.niter, eta_min=opt.gamma*opt.lr)
+        schedulerE = torch.optim.lr_scheduler.CosineAnnealingLR(optimizerE, T_max=opt.niter, eta_min=opt.gamma*opt.lr)
+
     if opt.swa:
          swa_modelE = AveragedModel(netE).cpu()
          #swa_schedulerE = SWALR(optimizerE, swa_lr=opt.swa_lr)
