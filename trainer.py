@@ -469,6 +469,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         ############################
         # Evaluate Model
         ###########################
+        Xa_clone =  Xa.clone()
 
         if epoch % 10 == 0:  
             print('===========Saving JPEG===========')
@@ -603,8 +604,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             update_bn(train_dataloader, swa_modelE)
             swa_modelE.eval()
 
-
-            swa_Ae = swa_modelE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
+            swa_Ae = swa_modelE(Xa_clone, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
             print('===========Saving Gif-Azi===========')
             rotate_path = os.path.join(opt.outf, 'epoch_%03d_rotation_swa.gif' % epoch)
             writer = imageio.get_writer(rotate_path, mode='I')
