@@ -122,10 +122,10 @@ def trainer(opt, train_dataloader, test_dataloader):
         T_0 = opt.niter//(1+2)+1
         schedulerD = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerD, T_0 = T_0, T_mult=2, eta_min=opt.gamma*opt.lr)
         schedulerE = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerE, T_0 = T_0, T_mult=2, eta_min=opt.gamma*opt.lr)
-    elif  opt.scheduler == 'restart0.5':
-        T_0 = int(opt.niter/(1+0.5))+1
-        schedulerD = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerD, T_0 = T_0, T_mult=0.5, eta_min=opt.gamma*opt.lr)
-        schedulerE = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerE, T_0 = T_0, T_mult=0.5, eta_min=opt.gamma*opt.lr)
+    elif  opt.scheduler == 'restart1':
+        T_0 = int(opt.niter/(1+1))+1
+        schedulerD = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerD, T_0 = T_0, T_mult=1, eta_min=opt.gamma*opt.lr)
+        schedulerE = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerE, T_0 = T_0, T_mult=1, eta_min=opt.gamma*opt.lr)
     elif  opt.scheduler == 'exp':
         schedulerD = torch.optim.lr_scheduler.ExponentialLR(optimizerD, gamma=0.997)
         schedulerE = torch.optim.lr_scheduler.ExponentialLR(optimizerE, gamma=0.997)
