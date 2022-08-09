@@ -123,7 +123,7 @@ def trainer(opt, train_dataloader, test_dataloader):
         schedulerD = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerD, T_0 = T_0, T_mult=2, eta_min=opt.gamma*opt.lr)
         schedulerE = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerE, T_0 = T_0, T_mult=2, eta_min=opt.gamma*opt.lr)
     elif  opt.scheduler == 'restart0.5':
-        T_0 = opt.niter//(1+0.5)+1
+        T_0 = int(opt.niter/(1+0.5))+1
         schedulerD = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerD, T_0 = T_0, T_mult=0.5, eta_min=opt.gamma*opt.lr)
         schedulerE = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizerE, T_0 = T_0, T_mult=0.5, eta_min=opt.gamma*opt.lr)
     elif  opt.scheduler == 'exp':
