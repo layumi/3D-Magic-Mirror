@@ -104,6 +104,7 @@ parser.add_argument('--lambda_flat', type=float, default=0.001, help='parameter 
 parser.add_argument('--gamma', type=float, default=0.01, help='parameter')
 parser.add_argument('--dis1', type=float, default=0, help='parameter')
 parser.add_argument('--dis2', type=float, default=0, help='parameter')
+parser.add_argument('--lambda_contour', type=float, default=0, help='parameter')
 parser.add_argument('--lambda_lc', type=float, default=0, help='parameter')
 parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--gan_reg', type=float, default=10.0, help='parameter')

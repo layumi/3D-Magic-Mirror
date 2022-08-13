@@ -373,7 +373,7 @@ def trainer(opt, train_dataloader, test_dataloader):
                         lossR_fake += opt.lambda_gan * ( torch.mean((out1 - 1)**2) + opt.ganw*torch.mean((out2 - 1)**2)) / (1.0+opt.ganw)
 
                 # Image Recon loss.
-                lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg)
+                lossR_data = opt.lambda_data * diffRender.recon_data(Xer, Xa, no_mask = opt.bg, contour = opt.lambda_contour)
 
                 if opt.hmr > 0:
                     #print(Ae['vertices'].shape, Va.shape)

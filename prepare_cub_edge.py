@@ -21,7 +21,7 @@ for img_path in seg_list:
 
 
     w, h = seg.width, seg.height
-    coarse_edge = np.asarray(seg) - np.asarray(seg.resize((w//2,h//2)).resize((w, h)))
+    coarse_edge = np.asarray(seg) - np.asarray(seg.resize((w//8,h//8)).resize((w, h)))
     coarse_edge = Image.fromarray(np.uint8(np.abs(coarse_edge)))
     coarse_edge.save(img_path.replace('.png','_coarse_edge.png'))
 
