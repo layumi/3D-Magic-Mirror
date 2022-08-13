@@ -373,10 +373,12 @@ class DiffRender(object):
        
         if contour>0: 
             n, h, w = gt_mask.shape 
-            gt_contour = gt_mask - F.interpolate(F.interpolate(gt_mask, scale_factor=0.25), size=(h,w))
-            pred_contour = pred_mask - F.interpolate(F.interpolate(pred_mask, scale_factor=0.25), size=(h,w))
-            loss_contour = torch.mean(torch.abs(pred_contour) - torch.abs(gt_img))
+            gt_contour = gt_mask.unsqueeze(1) - F.interpolate(F.interpolate(gt_mask.unsqueeze(1), size=(h//4,w//4)), size=(h,w))
+            pred_contour = pred_mask.unsqueeze(1) - F.interpolate(F.interpolate(pred_mask.unsqueeze(1),  size=(h//4,w//4)), size=(h,w))
+            gt_contour, pred_contour = torch.abs(gt_contour), torch.abs(pred_contour)
+            loss_contour = torch.mean(torch.abs(pred_contour - gt_contour))
             loss_mask += loss_contour*contour
+            print(loss_contour)
 
         loss_data = image_weight * loss_image + mask_weight * loss_mask
         return loss_data
