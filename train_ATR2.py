@@ -94,6 +94,7 @@ parser.add_argument('--ganw', type=float, default=1, help='parameter for Xir. Si
 parser.add_argument('--lambda_reg', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_edge', type=float, default=0.001, help='parameter')
 parser.add_argument('--lambda_depth', type=float, default=0.001, help='parameter to prevent long z predictions, especially on the edge.')
+parser.add_argument('--lambda_depthR', type=float, default=0.001, help='parameter to prevent long z predictions, especially on the edge.')
 parser.add_argument('--lambda_deform', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_flipz', type=float, default=0.1, help='parameter')
 parser.add_argument('--lambda_data', type=float, default=1.0, help='parameter')
