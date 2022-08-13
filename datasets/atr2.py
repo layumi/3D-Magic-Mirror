@@ -37,7 +37,7 @@ class ATR2Dataset(data.Dataset):
             with open('datasets/ATR_train.txt', 'r') as f:
                 self.im_list = [root+'/'+line.strip() for line in f]
         else:
-            with open('datasets/ATR_train.txt', 'r') as f:
+            with open('datasets/ATR_test.txt', 'r') as f:
                 self.im_list = [root+'/'+line.strip() for line in f]
 
         self.transform = transform
