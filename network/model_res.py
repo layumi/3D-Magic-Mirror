@@ -414,7 +414,7 @@ class TextureEncoder(nn.Module):
         # 128*128*64
         up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(32), nn.Upsample(scale_factor=2)]
         # 256*256
-        up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Tanh()]
+        up6 = [Conv2dBlock(32, 2, 3, 1, 1, norm='none',  activation='none', padding_mode='zeros'), nn.Hardtanh()]
         if droprate >0:
             up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
 
