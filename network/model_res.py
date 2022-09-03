@@ -491,7 +491,7 @@ class TextureEncoder(nn.Module):
         # clear
         del x1,x2,x3,x4,x5,y
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
-        textures = F.grid_sample(img, uv_sampler, align_corners=False) # 32 x 3 x128x128
+        textures = F.grid_sample(img, uv_sampler, align_corners=True) # 32 x 3 x128x128
         # zzd: Here we need a network to make up the hole via re-fining.
         # back is different from front, but here we fix the back = front for optimization.
         if self.makeup:
