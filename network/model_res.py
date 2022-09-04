@@ -85,9 +85,7 @@ class BackgroundEncoder(nn.Module):
     def __init__(self, nc, droprate=0.0, coordconv=False): # input.shape == output.shape rgb 3 channel
         super(BackgroundEncoder, self).__init__()
         all_blocks = [Conv2dBlock(3, 32, 3, 2, 1, norm='none', activation='none', padding_mode='zeros'),
-                  ResBlock(32, norm='none'), 
-                  ResBlock(32, norm='none'), 
-                  ResBlock(32, norm='none'), 
+                  ResBlocks(3, 32, norm='none'), 
                   nn.Upsample(scale_factor=2),
                   nn.Dropout2d(droprate/2), #small drop for dense prediction
                   Conv2dBlock(32, 3, 3, 1, 1, norm='none', activation='none', padding_mode='zeros'),
@@ -394,8 +392,8 @@ class TextureEncoder(nn.Module):
         self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
         # 2-4-4-2
         self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)]) # 128 -> 64*64*64
-        self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
-        self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
+        self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlocks(3, 128, norm=norm)]) #ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
+        self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlocks(3, 256, norm=norm)]) #ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
         self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)]) # 16-> 8*8*512
         #avgpool = MMPool()
 
@@ -512,9 +510,9 @@ class Base_4C(nn.Module):
         # 2-4-4-3 = 12 resblocks = 24 conv
         block1 = Conv2dBlock(nc, 36, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
         block2 = [ResBlock_half(36, norm=norm), ResBlock(72, norm=norm)] #64 -> 32
-        block3 = [ResBlock_half(72, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm)]  #32 -> 16
-        block4 = [ResBlock_half(144, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
-        block5 = [ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
+        block3 = [ResBlock_half(72, norm=norm), ResBlocks(3, 144, norm=norm)]  #ResBlock(144, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm)]  #32 -> 16
+        block4 = [ResBlock_half(144, norm=norm), ResBlocks(3, 288, norm=norm)] #ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
+        block5 = [ResBlocks(3, 288, norm=norm)] #[ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
 
         all_blocks = [block1, *block2, *block3] #, avgpool]
         self.layer3 = nn.Sequential(*all_blocks)
@@ -640,6 +638,22 @@ class HRnet_4C(nn.Module):
         x = self.model.forward_features(x)
         return x
 
+class ResBlocks(nn.Module):
+    def __init__(self, num, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
+        super(ResBlocks, self).__init__()
+        model = []
+        for i in range(num):
+            model += [ResBlock(dim, norm, activation, padding_mode, res_type)]
+        self.model = nn.Sequential(*model)
+        ca = [nn.Conv2d(dim, dim//2, 1), nn.ReLU(), nn.Conv2d(dim//2, dim, 1), nn.Sigmoid()]
+        self.ca = nn.Sequential(*ca)
+        self.ca.apply(weights_init)
+    def forward(self, x):
+        out = self.model(x) # multiple ResBlocks
+        out_weight = self.ca( nn.functional.adaptive_avg_pool2d(out, (1,1)))
+        out = x + out_weight * out # to help initial learning
+        return out
+
 class ResBlock(nn.Module):
     def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
         super(ResBlock, self).__init__()
@@ -664,9 +678,8 @@ class ResBlock(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
-        residual = x
         out = self.model(x)
-        out += 0.2 * residual # to help initial learning
+        out += 0.2 * x # to help initial learning
         return out
 
 class ResBlock_half(nn.Module):
