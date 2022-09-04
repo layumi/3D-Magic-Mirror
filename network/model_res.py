@@ -318,7 +318,7 @@ class ShapeEncoder(nn.Module):
             delta_vertices = x.permute(0, 2, 1).reshape(bnum, -1) # 32x (642x3)
             #delta_vertices = self.encoder3(delta_vertices) # all points. init is close to 0
             delta_vertices = self.linear3(delta_vertices) # all points. init is close to 0
-        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the bias within [-0.4, 0.4]
+        delta_vertices = 0.5 * torch.tanh(delta_vertices) # limit the offset within [-0.5, 0.5]
         delta_vertices = delta_vertices.view(bnum, self.num_vertices, 3) 
         # - mean xyz
         delta_vertices_mean= torch.mean(delta_vertices, dim=1, keepdim=True)
@@ -394,7 +394,7 @@ class TextureEncoder(nn.Module):
         self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)]) # 128 -> 64*64*64
         self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlocks(3, 128, norm=norm)]) #ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
         self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlocks(3, 256, norm=norm)]) #ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
-        self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlock(512, norm=norm)]) # 16-> 8*8*512
+        self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlocks(2, 512, norm=norm)]) # 16-> 8*8*512
         #avgpool = MMPool()
 
         #################################################
@@ -402,9 +402,9 @@ class TextureEncoder(nn.Module):
         #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
 
         # 8*8*512
-        up1 = [Conv2dBlock(512, 256, 5, 1, 2, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(256), nn.Upsample(scale_factor=2, mode='bicubic')]
+        up1 = [Conv2dBlock(512, 256, 5, 1, 2, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(256), nn.Upsample(scale_factor=2)]
         # 16*16*256 + 16*16*256 = 16*16*512
-        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(128), nn.Upsample(scale_factor=2, mode='bicubic')]
+        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlock(128), nn.Upsample(scale_factor=2)]
         # 32*32*128 + 32*32*128 =  32*32*256
         up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlock(64), nn.Upsample(scale_factor=2)]
         # 64*64*64 + 64*64*64 = 64*64*128 
@@ -489,7 +489,7 @@ class TextureEncoder(nn.Module):
         # clear
         del x1,x2,x3,x4,x5,y
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
-        textures = F.grid_sample(img, uv_sampler, align_corners=True) # 32 x 3 x128x128
+        textures = F.grid_sample(img, uv_sampler, mode='bicubic', align_corners=True) # 32 x 3 x128x128
         # zzd: Here we need a network to make up the hole via re-fining.
         # back is different from front, but here we fix the back = front for optimization.
         if self.makeup:
@@ -646,7 +646,7 @@ class ResBlocks(nn.Module):
             model += [ResBlock(dim, norm, activation, padding_mode, res_type)]
         self.model = nn.Sequential(*model)
         ca = [nn.Conv2d(dim, dim//2, 1), nn.ReLU(), nn.Conv2d(dim//2, dim, 1), nn.Sigmoid()]
-        self.ca = nn.Sequential(*ca)
+        self.ca = nn.Sequential(*ca) # channel attention
         self.ca.apply(weights_init)
     def forward(self, x):
         out = self.model(x) # multiple ResBlocks
