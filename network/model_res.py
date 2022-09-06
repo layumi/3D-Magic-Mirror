@@ -391,7 +391,7 @@ class TextureEncoder(nn.Module):
         self.makeup = makeup
         self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
         # 2-4-4-2
-        self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlock(64, norm=norm)]) # 128 -> 64*64*64
+        self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlocks(1, 64, norm=norm)]) # 128 -> 64*64*64
         self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlocks(3, 128, norm=norm)]) #ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
         self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlocks(3, 256, norm=norm)]) #ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
         self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlocks(2, 512, norm=norm)]) # 16-> 8*8*512
@@ -509,7 +509,7 @@ class Base_4C(nn.Module):
         super(Base_4C, self).__init__()
         # 2-4-4-3 = 12 resblocks = 24 conv
         block1 = Conv2dBlock(nc, 36, nk, stride=2, padding=nk//2, coordconv=coordconv)  #128 -> 64
-        block2 = [ResBlock_half(36, norm=norm), ResBlock(72, norm=norm)] #64 -> 32
+        block2 = [ResBlock_half(36, norm=norm), ResBlocks(1, 72, norm=norm)] #64 -> 32
         block3 = [ResBlock_half(72, norm=norm), ResBlocks(3, 144, norm=norm)]  #ResBlock(144, norm=norm), ResBlock(144, norm=norm), ResBlock(144, norm=norm)]  #32 -> 16
         block4 = [ResBlock_half(144, norm=norm), ResBlocks(3, 288, norm=norm)] #ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #16 -> 8
         block5 = [ResBlocks(3, 288, norm=norm)] #[ResBlock(288, norm=norm), ResBlock(288, norm=norm), ResBlock(288, norm=norm)] #8->8
@@ -634,9 +634,15 @@ class HRnet_4C(nn.Module):
         model.conv1.weight.data[:, :3] = weight
         model.conv1.weight.data[:, 3] = torch.mean(weight, dim=1)  #model.conv1.weight[:, 0]
         self.model = model
+
+        dim = 2048
+        ca = [nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
+        self.ca = nn.Sequential(*ca) # channel attention
+        self.ca.apply(weights_init)
+
     def forward(self, x):
         x = self.model.forward_features(x)
-        return x
+        return x * self.ca(x)
 
 class ResBlocks(nn.Module):
     def __init__(self, num, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
@@ -645,7 +651,7 @@ class ResBlocks(nn.Module):
         for i in range(num):
             model += [ResBlock(dim, norm, activation, padding_mode, res_type)]
         self.model = nn.Sequential(*model)
-        ca = [nn.Conv2d(dim, dim//2, 1), nn.ReLU(), nn.Conv2d(dim//2, dim, 1), nn.Sigmoid()]
+        ca = [nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
         self.ca = nn.Sequential(*ca) # channel attention
         self.ca.apply(weights_init)
     def forward(self, x):
