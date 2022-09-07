@@ -410,9 +410,9 @@ class TextureEncoder(nn.Module):
         # 64*64*64 + 64*64*64 = 64*64*128 
         up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, 64), nn.Upsample(scale_factor=2)]
         # 128*128*64
-        up5 = [Conv2dBlock(64, 32, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, 32), nn.Upsample(scale_factor=2)]
+        up5 = [ASPP(64), Conv2dBlock(64, 32, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, 32), nn.Upsample(scale_factor=2)]
         # 256*256
-        up6 = [Conv2dBlock(32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
+        up6 = [ASPP(32), Conv2dBlock(32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
         if droprate >0:
             up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
 
@@ -636,7 +636,7 @@ class HRnet_4C(nn.Module):
         self.model = model
 
         dim = 2048
-        ca = [nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
+        ca = [nn.AdaptiveAvgPool2d((1,1)), nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
         self.ca = nn.Sequential(*ca) # channel attention
         self.ca.apply(weights_init)
 
@@ -651,12 +651,12 @@ class ResBlocks(nn.Module):
         for i in range(num):
             model += [ResBlock(dim, norm, activation, padding_mode, res_type)]
         self.model = nn.Sequential(*model)
-        ca = [nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
+        ca = [nn.AdaptiveAvgPool2d((1,1)), nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
         self.ca = nn.Sequential(*ca) # channel attention
         self.ca.apply(weights_init)
     def forward(self, x):
         out = self.model(x) # multiple ResBlocks
-        out_weight = self.ca( nn.functional.adaptive_avg_pool2d(out, (1,1)))
+        out_weight = self.ca( out)
         out = x + out_weight * out # to help initial learning
         return out
 
@@ -782,12 +782,13 @@ class AddCoords2d(nn.Module):
 
 
 class ASPP(nn.Module):
-    def __init__(self, input_dim)
+    def __init__(self, input_dim):
+        super(ASPP, self).__init__()
         self.conv1 = nn.Conv2d(input_dim, input_dim//4, 3, 1, padding = 1, padding_mode='reflect', dilation=1, bias=True)
         self.conv2 = nn.Conv2d(input_dim, input_dim//4, 3, 1, padding = 2, padding_mode='reflect', dilation=2, bias=True)
         self.conv3 = nn.Conv2d(input_dim, input_dim//4, 3, 1, padding = 4, padding_mode='reflect', dilation=4, bias=True)
-        self.conv4 = nn.Conv2d(input_dim, input_dim - input_dim//4, 3, 1, padding = 8, padding_mode='reflect', dilation=8, bias=True)
-        ca = [nn.Conv2d(input_dim, input_dim//16, 1), nn.ReLU(), nn.Conv2d(input_dim//16, input_dim, 1), nn.Sigmoid()]
+        self.conv4 = nn.Conv2d(input_dim, input_dim - 3*input_dim//4, 3, 1, padding = 8, padding_mode='reflect', dilation=8, bias=True)
+        ca = [nn.AdaptiveAvgPool2d((1,1)), nn.Conv2d(input_dim, input_dim//16, 1), nn.ReLU(), nn.Conv2d(input_dim//16, input_dim, 1), nn.Sigmoid()]
         self.ca = nn.Sequential(*ca)
        
         self.conv1.apply(weights_init)
