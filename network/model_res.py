@@ -780,6 +780,27 @@ class AddCoords2d(nn.Module):
 
         return ret
 
+
+class ASPP(nn.Module):
+    def __init__(self, input_dim)
+        self.conv1 = nn.Conv2d(input_dim, input_dim//4, 3, 1, padding = 1, padding_mode='reflect', dilation=1, bias=True)
+        self.conv2 = nn.Conv2d(input_dim, input_dim//4, 3, 1, padding = 2, padding_mode='reflect', dilation=2, bias=True)
+        self.conv3 = nn.Conv2d(input_dim, input_dim//4, 3, 1, padding = 4, padding_mode='reflect', dilation=4, bias=True)
+        self.conv4 = nn.Conv2d(input_dim, input_dim - input_dim//4, 3, 1, padding = 8, padding_mode='reflect', dilation=8, bias=True)
+        ca = [nn.Conv2d(input_dim, input_dim//16, 1), nn.ReLU(), nn.Conv2d(input_dim//16, input_dim, 1), nn.Sigmoid()]
+        self.ca = nn.Sequential(*ca)
+       
+        self.conv1.apply(weights_init)
+        self.conv2.apply(weights_init)
+        self.conv3.apply(weights_init)
+        self.conv4.apply(weights_init)
+        self.ca.apply(weights_init) 
+
+    def forward(self, x):
+        f = torch.cat([self.conv1(x), self.conv2(x), self.conv3(x), self.conv4(x)], dim=1)
+        return x + f * self.ca(f)
+
+
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim ,output_dim, kernel_size, stride,
                  padding=0, norm='none', activation='lrelu', padding_mode='zeros', dilation=1, fp16 = False, coordconv = False):
