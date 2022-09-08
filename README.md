@@ -59,10 +59,7 @@ $ cd 3D-Magic-Mirror/
 ```sh
 $ conda create --name magic --file spec-file.txt
 $ conda activate magic
-$ pip install tensorboard tensorboardx
-$ pip install opencv-python imageio trimesh typing-extensions
-$ pip install timm prettytable h5py imgaug smplx munkres joblib pycocotools lap plotly pandas
-$ pip install ipywidgets keyboard transforms3d chumpy
+$ pip install pytorch_msssim
 ```
 
 * gcc is needed by kaolin. If you have latest gcc, please skip this step. (Update your gcc if your gcc is too old (<=7.3) and you do not have sudo rights.)  
@@ -79,7 +76,7 @@ $ ln x86_64-conda-linux-gnu-g++ g++
 
 ```sh
 $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
-$ git checkout v0.9.1
+$ git checkout v0.12.0
 $ python setup.py develop
 ```
 
