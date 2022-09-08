@@ -376,9 +376,10 @@ class DiffRender(object):
             gt_contour = gt_mask.unsqueeze(1) - F.interpolate(F.interpolate(gt_mask.unsqueeze(1), size=(h//4,w//4)), size=(h,w))
             pred_contour = pred_mask.unsqueeze(1) - F.interpolate(F.interpolate(pred_mask.unsqueeze(1),  size=(h//4,w//4)), size=(h,w))
             gt_contour, pred_contour = torch.abs(gt_contour), torch.abs(pred_contour)
-            loss_contour = torch.mean(torch.abs(pred_contour - gt_contour))
+            #loss_contour = torch.mean(torch.abs(pred_contour - gt_contour))
+            loss_contour = torch.mean((pred_contour - gt_contour)**2)
             loss_mask += loss_contour*contour
-            print(loss_contour)
+            print('loss_contour: %f'%loss_contour)
 
         loss_data = image_weight * loss_image + mask_weight * loss_mask
         return loss_data
