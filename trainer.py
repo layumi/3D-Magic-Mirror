@@ -51,6 +51,28 @@ def save_img(output_name):
     output.save(name, 'JPEG', quality=100)
     return
 
+def regularization(diffRender, Ae, Ai, Aire, opt):
+    # lossR_reg, lossR_flip, lossR_IC = regularization(diffRender, Ae, Ai, opt)
+    lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
+    lossR_flip = opt.lambda_flipz * (diffRender.recon_flip(Ae, L1 = opt.flipL1) + diffRender.recon_flip(Ai, L1 = opt.flipL1) + diffRender.recon_flip(Aire, L1 = opt.flipL1)) / 3.0
+    # point not too close
+    if opt.lambda_edge>0:
+        lossR_reg += opt.lambda_edge * (diffRender.calc_reg_edge(Ae['vertices']) +  diffRender.calc_reg_edge(Ai['vertices'])) / 2.0
+    if opt.lambda_depth>0: # z^2
+        lossR_reg += opt.lambda_depth * (diffRender.calc_reg_depth(Ae['vertices']) +  diffRender.calc_reg_depth(Ai['vertices'])) / 2.0
+    if opt.lambda_depthR>0: #  z^2 * exp (x^2+(y/ratio)^2)
+        lossR_reg += opt.lambda_depthR * (diffRender.calc_reg_depthR(Ae['vertices']) +  diffRender.calc_reg_depthR(Ai['vertices'])) / 2.0
+    if opt.lambda_depthC>0: #  z^2 * exp (x^2+(y/ratio)^2)
+        lossR_reg += opt.lambda_depthC * (diffRender.calc_reg_depthC(Ae['vertices']) +  diffRender.calc_reg_depthC(Ai['vertices'])) / 2.0
+    if opt.lambda_deform>0:
+        lossR_reg += opt.lambda_deform* (diffRender.calc_reg_deform(Ae['delta_vertices']) +  diffRender.calc_reg_deform(Ai['delta_vertices'])) / 2.0
+
+    # interpolated cycle consistency. IC need warmup
+    #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
+    loss_cam, loss_shape, loss_texture, loss_light, loss_bias = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1, chamfer = opt.chamfer, azim = opt.azim)
+    lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light+loss_bias)
+    return lossR_reg, lossR_flip, lossR_IC
+
 def trainer(opt, train_dataloader, test_dataloader):
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight, lambda_lpl = opt.lambda_lpl, lambda_flat = opt.lambda_flat) #for market
     #save_mesh('init.obj', diffRender.vertices_init, template_file.faces, template_file.uvs)
@@ -66,6 +88,9 @@ def trainer(opt, train_dataloader, test_dataloader):
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)
     netE = netE.cuda()
+
+    if opt.fp16:
+        scaler = torch.cuda.amp.GradScaler()
     # init template delta
     last_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
     # netL: for Landmark Consistency
@@ -226,7 +251,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                      elif iter % 3 == 2:
                          train_shape = 5 # fix shape + texture, train camera
 
-                Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
+                if opt.fp16:
+                    with torch.cuda.amp.autocast():
+                        Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
+                else:
+                    Ae = netE(Xa, need_feats=(opt.lambda_lc>0), img_pth = img_path, train_shape = train_shape )
                 Xer, Ae = diffRender.render(**Ae, no_mask = opt.bg)
 
                 # hard
@@ -308,7 +337,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 #    inter_path = os.path.join(inter_dir, image_name)
                 #    output_Xir = to_pil_image(Xir[i, :3].detach().cpu())
                 #    output_Xir.save(inter_path, 'JPEG', quality=100)
-                # predicted 3D attributes from above render images 
+
+                #if opt.fp16:
+                #    with torch.cuda.amp.autocast():
+                        # predicted 3D attributes from above render images
+                #        Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0), train_shape = 0 ) #, img_pth = tmp_path)
+                #else:
+                    # predicted 3D attributes from above render images 
                 Aire = netE(Xir.detach().clone(), need_feats=(opt.lambda_lc>0), train_shape = 0 ) #, img_pth = tmp_path)
                 # render again to update predicted 3D Aire 
                 _, Aire = diffRender.render(**Aire, no_mask = opt.bg)
@@ -333,7 +368,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                 # Since no batch norm is used in Discriminator, there will be no side effect to 
                 # forward Ma, Ner90, Mir together
                 ##########################
-                outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
+                if opt.fp16:
+                    with torch.cuda.amp.autocast():
+                        outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
+                else:
+                    outs = netD( torch.cat( (Ma.detach().clone(), Mer90.detach().clone(), Mir.detach().clone()), dim=0))
                 lossD, lossD_real, lossD_fake, lossD_gp  = 0, 0, 0, 0
  
                 if opt.gan_type == 'wgan': # WGAN-GP
@@ -353,8 +392,12 @@ def trainer(opt, train_dataloader, test_dataloader):
                                     opt.ganw*compute_gradient_penalty_list(netD, Ma.data, Mir.data)) / (1.0+opt.ganw)
                     lossD = lossD_fake + lossD_real + lossD_gp 
                 lossD *= warm_up
-                lossD.backward()
-                optimizerD.step()
+                if opt.fp16:
+                    scaler.scale(lossD).backward()
+                    scaler.step(optimizerD)
+                else:
+                    lossD.backward()
+                    optimizerD.step()
 
                 ############################
                 # (2) Update G network
@@ -363,7 +406,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                 optimizerE.zero_grad()
                 # GAN loss
                 lossR_fake = 0
-                outs = netD(torch.cat( (Mer90, Mir), dim=0))
+                if opt.fp16:
+                    with torch.cuda.amp.autocast():
+                        outs = netD(torch.cat( (Mer90, Mir), dim=0))
+                else:
+                    outs = netD(torch.cat( (Mer90, Mir), dim=0))
                 if opt.gan_type == 'wgan':
                     outs1,outs2 = torch.split(outs, batch_size, dim= 0)
                     lossR_fake = opt.lambda_gan * (-outs1.mean() - opt.ganw*outs2.mean()) / (1.0+opt.ganw)
@@ -379,33 +426,24 @@ def trainer(opt, train_dataloader, test_dataloader):
                     #print(Ae['vertices'].shape, Va.shape)
                     cham_dist, cham_normals = chamfer_distance(Ae['vertices'], Va)
                     lossR_data += opt.hmr * cham_dist
+
                 # mesh regularization
-                lossR_reg = opt.lambda_reg * (diffRender.calc_reg_loss(Ae) +  diffRender.calc_reg_loss(Ai)) / 2.0
-                lossR_flip = opt.lambda_flipz * (diffRender.recon_flip(Ae, L1 = opt.flipL1) + diffRender.recon_flip(Ai, L1 = opt.flipL1) + diffRender.recon_flip(Aire, L1 = opt.flipL1)) / 3.0
-                # point not too close
-                if opt.lambda_edge>0:
-                    lossR_reg += opt.lambda_edge * (diffRender.calc_reg_edge(Ae['vertices']) +  diffRender.calc_reg_edge(Ai['vertices'])) / 2.0
-                if opt.lambda_depth>0: # z^2
-                    lossR_reg += opt.lambda_depth * (diffRender.calc_reg_depth(Ae['vertices']) +  diffRender.calc_reg_depth(Ai['vertices'])) / 2.0
-                if opt.lambda_depthR>0: #  z^2 * exp (x^2+(y/ratio)^2) 
-                    lossR_reg += opt.lambda_depthR * (diffRender.calc_reg_depthR(Ae['vertices']) +  diffRender.calc_reg_depthR(Ai['vertices'])) / 2.0
-                if opt.lambda_depthC>0: #  z^2 * exp (x^2+(y/ratio)^2)
-                    lossR_reg += opt.lambda_depthC * (diffRender.calc_reg_depthC(Ae['vertices']) +  diffRender.calc_reg_depthC(Ai['vertices'])) / 2.0
-                if opt.lambda_deform>0:
-                    lossR_reg += opt.lambda_deform* (diffRender.calc_reg_deform(Ae['delta_vertices']) +  diffRender.calc_reg_deform(Ai['delta_vertices'])) / 2.0
-
-                # interpolated cycle consistency. IC need warmup
-                #if epoch>=opt.warm_epoch: # Ai is not good at the begining.
-                loss_cam, loss_shape, loss_texture, loss_light, loss_bias = diffRender.recon_att(Aire, deep_copy(Ai, detach=True), L1 = opt.L1, chamfer = opt.chamfer, azim = opt.azim)
-                lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light+loss_bias)
-
+                if opt.fp16:
+                    with torch.cuda.amp.autocast():
+                        lossR_reg, lossR_flip, lossR_IC = regularization(diffRender, Ae, Ai, Aire, opt)
+                else:
+                    lossR_reg, lossR_flip, lossR_IC = regularization(diffRender, Ae, Ai, Aire, opt)
                 # disentangle regularization
                 lossR_dis = 0.0
                 if opt.dis1>0 or opt.dis2>0:
                     bnum = Ae['vertices'].shape[0]
                     # change camera & light direction, keep shape and texture
                     if opt.dis1>0:
-                        Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
+                        if opt.fp16:
+                            with torch.cuda.amp.autocast():
+                                Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
+                        else:
+                            Ae_fliplr = netE(fliplr(Xa), need_feats=False, img_pth = img_path)
                         l_text = torch.abs( fliplr(Ae_fliplr['textures']) - Ae['textures']).mean()
                         Na = Ae['vertices'].clone()
                         Na[..., 0] *=-1 # flip x 
@@ -418,7 +456,11 @@ def trainer(opt, train_dataloader, test_dataloader):
                     # jitter = ColorJitter(brightness=.5, hue=.3)
                     if opt.dis2>0:
                         re = torchvision.transforms.RandomErasing(p=1)
-                        Ae_jitter = netE(re(Xa), need_feats=False, img_pth = img_path)
+                        if opt.fp16:
+                            with torch.cuda.amp.autocast():
+                                Ae_jitter = netE(re(Xa), need_feats=False, img_pth = img_path)
+                        else:
+                            Ae_jitter = netE(re(Xa), need_feats=False, img_pth = img_path)
                         if opt.chamfer:
                             l_shape, _  = chamfer_distance(Ae_jitter['vertices'],  Ae['vertices'])
                         else: #L2 loss
@@ -449,8 +491,13 @@ def trainer(opt, train_dataloader, test_dataloader):
                 lossR = lossR_fake + lossR_reg + lossR_flip  + lossR_data + lossR_IC +  lossR_LC + lossR_dis
 
                 lossR *= warm_up
-                lossR.backward()
-                optimizerE.step()
+                if opt.fp16:
+                    scaler.scale(lossR).backward()
+                    scaler.step(optimizerE)
+                    scaler.update()
+                else:
+                    lossR.backward()
+                    optimizerE.step()
 
                 print('Name: ', opt.outf)
                 print('[%d/%d][%d/%d]\n'
@@ -472,7 +519,6 @@ def trainer(opt, train_dataloader, test_dataloader):
             #swa_schedulerE.step()
         schedulerD.step()
         schedulerE.step()
-
 
         ############################
         # Evaluate Model
