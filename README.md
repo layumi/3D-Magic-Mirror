@@ -74,7 +74,7 @@ $ ln x86_64-conda-linux-gnu-g++ g++
 ```
 
 * install Kaolin Library
-
+(You need to mute/comment some warning like cython to install it.)
 ```sh
 $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
 $ git checkout v0.12.0
