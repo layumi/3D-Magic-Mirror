@@ -67,8 +67,7 @@ $ pip install pytorch_msssim
 
 ```sh
 $ conda config --add channels conda-forge # add conda forge channel
-$ conda install gcc_linux-64=9.4.0 gcc_impl_linux-64=9.4.0
-$ conda install gxx_linux-64=9.4.0 gxx_impl_linux-64=9.4.0
+#$ conda install gcc_linux-64=9.4.0 gcc_impl_linux-64=9.4.0  gxx_linux-64=9.4.0 gxx_impl_linux-64=9.4.0 # I have included in spec-file.txt
 $ ln x86_64-conda-linux-gnu-gcc gcc # cd your_anaconda/envs/magic/bin
 $ ln x86_64-conda-linux-gnu-g++ g++ 
 ```
