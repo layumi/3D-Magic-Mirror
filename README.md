@@ -62,7 +62,8 @@ $ conda activate magic
 $ pip install pytorch_msssim
 ```
 
-* gcc is needed by kaolin. If you have latest gcc, please skip this step. (Update your gcc if your gcc is too old (<=7.3) and you do not have sudo rights.)  
+* gcc is needed by kaolin. If you have gcc about 7.3.0 - 9.5.0 (latest gcc may not work as well), please skip this step. 
+(Update your gcc as follows if your gcc is too old (<=7.3) and you do not have sudo rights.)  
 
 ```sh
 $ conda config --add channels conda-forge # add conda forge channel
