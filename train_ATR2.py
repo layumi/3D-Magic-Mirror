@@ -35,7 +35,7 @@ from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr2 import ATR2Dataset # height/width ratio=2
 
-torch.autograd.set_detect_anomaly(True)
+#torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='ATR2_baseline', help='folder to output images and model checkpoints')
