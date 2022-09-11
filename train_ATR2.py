@@ -48,6 +48,7 @@ parser.add_argument('--category', type=str, default='bird', help='list of object
 parser.add_argument('--pretrain', type=str, default='hr18sv2', help='pretrain shape encoder. default is hr18sv2 or hr18 or none or hr18sv1')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
+parser.add_argument('--prefetch_factor', type=int, help='number of prefetch batch', default=2)
 parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
@@ -132,6 +133,11 @@ print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
 
+import multiprocessing
+cpu_count = multiprocessing.cpu_count()
+if cpu_count>=32:
+    opt.workers = 8
+    opt.prefetch_factor = 4
 ### save option
 with open('log/%s/opts.yaml'%opt.name,'w') as fp:
     yaml.dump(vars(opt), fp, default_flow_style=False)
@@ -145,7 +151,7 @@ test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
-                                         prefetch_factor=2, persistent_workers=True) # for pytorch>1.6.0
+                                         prefetch_factor=opt.prefetch_factor, persistent_workers=True) # for pytorch>1.6.0
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
                                          shuffle=False, pin_memory=True, 
                                          num_workers=int(opt.workers), prefetch_factor=2)
