@@ -127,6 +127,8 @@ os.makedirs('./log', exist_ok=True)
 if not os.path.isdir(opt.outf):
     os.mkdir(opt.outf)
 
+opt.swa_start = opt.niter - 100 # set swa only last 100.
+
 if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
 print("Random Seed: ", opt.manualSeed)

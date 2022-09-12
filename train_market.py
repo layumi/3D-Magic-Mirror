@@ -53,7 +53,7 @@ parser.add_argument('--batchSize', type=int, default=32, help='input batch size'
 parser.add_argument('--imageSize', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
 parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
-parser.add_argument('--niter', type=int, default=500, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=600, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.0001, help='leaning rate, default=0.0001')
 parser.add_argument('--scheduler', default='cosine', help='scheduler')
 parser.add_argument('--azim', type=float, default=1.0, help='recon weight for azim. default=1.0')
@@ -86,7 +86,7 @@ parser.add_argument('--swa', action='store_true', default=True, help='using swa.
 parser.add_argument('--smooth', type=float, default=0.5, help='using smooth template.')
 parser.add_argument('--em', type=float, default=0.0, help='update template')
 parser.add_argument('--em_gap', type=int, default=1, help='update template evey xx epoch ')
-parser.add_argument('--swa_start', type=int, default=400, help='switch to swa at epoch swa_start')
+parser.add_argument('--swa_start', type=int, default=500, help='switch to swa at epoch swa_start')
 parser.add_argument('--swa_interval', type=int, default=1, help='averge model every interval epoch')
 parser.add_argument('--update_shape', type=int, default=1, help='train shape every XX iteration')
 parser.add_argument('--update_bn', action='store_true', default=False, help='update model after template update')
@@ -128,6 +128,8 @@ print(opt)
 os.makedirs('./log', exist_ok=True)
 if not os.path.isdir(opt.outf):
     os.mkdir(opt.outf)
+
+opt.swa_start = opt.niter - 100 # set swa only last 100.
 
 if opt.manualSeed is None:
     opt.manualSeed = random.randint(1, 10000)
