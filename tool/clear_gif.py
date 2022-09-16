@@ -12,7 +12,7 @@ for f in os.listdir(root):
     for ff in os.listdir(dir_name):
         if 'epoch' in ff:
             epoch = int(ff.split('_')[1])
-            if (not epoch%20 == 0) or epoch<100:
+            if (not epoch%20 == 0) or epoch<400:
                 print(dir_name+'/'+ff)
                 os.remove(dir_name+'/'+ff)
 
