@@ -5,7 +5,6 @@ Licensed under the CC BY-NC-SA 4.0 license
 """
 import os.path
 from PIL import Image, ImageFilter, ImageOps
-import glob
 
 import torch.utils.data as data
 import torch

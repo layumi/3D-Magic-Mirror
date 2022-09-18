@@ -36,7 +36,7 @@ class CUBDataset(data.Dataset):
             self.im_list = glob.glob(os.path.join(self.root, 'train', '*/*.jpg'))
             self.class_dir = glob.glob(os.path.join(self.root, 'train', '*'))
         else:
-            self.im_list = glob.glob(os.path.join(self.root, 'test', '*/*.jpg'))
+            self.im_list = sorted(glob.glob(os.path.join(self.root, 'test', '*/*.jpg')))
             self.class_dir = glob.glob(os.path.join(self.root, 'test', '*'))
 
         self.transform = transform
