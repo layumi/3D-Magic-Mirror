@@ -168,13 +168,39 @@ if "MKT" in opt.name:
     selected_index = np.arange(1, 3368, int(3368//opt.batchSize)) 
     print(selected_index) 
     # more challenge cases
-    selected_index[0] = 2415
-    selected_index[1] = 106
-    selected_index[2] = 2558
-    selected_index[3] = 1458
-    selected_index[4] = 211
-    selected_index[5] = 2101
-    selected_index[6] = 3151
+    selected_index[0] = 2328
+    selected_index[1] = 2614
+    selected_index[2] = 2114
+    selected_index[3] = 1897
+    selected_index[4] = 2852
+    selected_index[5] = 1236
+    selected_index[6] = 2333
+    selected_index[7] = 388
+    selected_index[8] = 1300
+    selected_index[9] = 83
+    selected_index[10] = 2293
+    selected_index[11] = 503
+    selected_index[12] = 1586
+    selected_index[13] = 3100
+    selected_index[14] = 1121
+    selected_index[15] = 1082
+    selected_index[16] = 1997
+    selected_index[17] = 2061
+    selected_index[18] = 77
+    selected_index[19] = 2238 
+    selected_index[20] = 1236
+    selected_index[21] = 1268
+    selected_index[22] = 2232
+    selected_index[23] = 863
+    selected_index[24] = 3258
+    selected_index[25] = 3213
+    selected_index[26] = 555
+    selected_index[27] = 2582
+    selected_index[28] = 867
+    selected_index[29] = 1290
+    selected_index[30] = 2333
+    selected_index[31] = 3155
+
 
     #print(selected_index) 
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
@@ -207,7 +233,6 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
                                          shuffle=False, pin_memory=True,
                                          num_workers=int(opt.workers), prefetch_factor=2)
-
 
 
 if __name__ == '__main__':
@@ -275,6 +300,7 @@ if __name__ == '__main__':
     #for i, data in tqdm.tqdm(enumerate(train_dataloader)):
         Xa = Variable(data['data']['images']).cuda()
         paths = data['data']['path']
+        print(paths)
         # Xa = fliplr(Xa)
         with torch.no_grad():
             Ae = netE(Xa)

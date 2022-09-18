@@ -168,17 +168,39 @@ if "MKT" in opt.name:
     selected_index = np.arange(1, 3368, int(3368//opt.batchSize)) 
     print(selected_index) 
     # more challenge cases
-    selected_index[0] = 2415
-    selected_index[10] = 3315
-    selected_index[11] = 2558
-    selected_index[12] = 1175
-    selected_index[14] = 802
-    selected_index[18] = 527
-    selected_index[19] = 1794
-    selected_index[24] = 2520
-    selected_index[25] = 244
-    selected_index[26] = 777 
-    selected_index[28] = 1456
+    selected_index[0] = 2328
+    selected_index[1] = 2614
+    selected_index[2] = 2852
+    selected_index[3] = 2184
+    selected_index[4] = 2476
+    selected_index[5] = 598
+    selected_index[6] = 2354
+    selected_index[7] = 388
+    selected_index[8] = 1300
+    selected_index[9] = 83
+    selected_index[10] = 3273
+    selected_index[11] = 2114
+    selected_index[12] = 2383
+    selected_index[13] = 3100
+    selected_index[14] = 437
+    selected_index[15] = 1082
+    selected_index[16] = 1997
+    selected_index[17] = 2061
+    selected_index[18] = 601
+    selected_index[19] = 1781
+    selected_index[20] = 1236
+    selected_index[21] = 1268
+    selected_index[22] = 2232
+    selected_index[23] = 863
+    selected_index[24] = 3259
+    selected_index[25] = 3026
+    selected_index[26] = 990
+    selected_index[27] = 2582
+    selected_index[28] = 1897
+    selected_index[29] = 1290
+    selected_index[30] = 2333
+    selected_index[31] = 3155
+
     #print(selected_index) 
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, selected_index = selected_index)

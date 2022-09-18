@@ -40,9 +40,12 @@ class MarketDataset(data.Dataset):
             old_im_list = glob.glob(os.path.join(self.root, 'train_all', '*/*.png'))
             self.class_dir = glob.glob(os.path.join(self.root, 'train_all', '*'))
         else:
-            old_im_list = glob.glob(os.path.join(self.root, 'query', '*/*.png'))
+            #old_im_list = glob.glob(os.path.join(self.root, 'query', '*/*.png'))
+            old_im_list = sorted(glob.glob(os.path.join(self.root, 'query', '*/*.png')))
             self.class_dir = glob.glob(os.path.join(self.root, 'query', '*'))
-
+         
+            #for index, i in enumerate(old_im_list): 
+            #    print(index, i)
         # threshold
         for index, name in enumerate(old_im_list):
             precentage = float(name[-8:-4])
