@@ -223,9 +223,10 @@ else:
     opt.batchSize  = 16
     selected_index = np.arange(50, 1650, 1600//opt.batchSize)
     print(selected_index)
-    selected_index[1] = 400
+    selected_index[1] = 1900
     selected_index[2] = 1100 
-    selected_index[12] = 500
+    selected_index[9] = 600
+    selected_index[12] = 1600 
     selected_index[14] = 1200
     selected_index[15] = 800 
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
