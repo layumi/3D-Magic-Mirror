@@ -200,8 +200,6 @@ if "MKT" in opt.name:
     selected_index[29] = 1290
     selected_index[30] = 2333
     selected_index[31] = 3155
-
-
     #print(selected_index) 
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, selected_index = selected_index)
@@ -221,9 +219,11 @@ elif "ATR" in opt.name:
     print('ATR-human: %d'% len(test_dataset))
     ratio = 1
 else:
+    selected_index = np.arange(0, 5748, 5748//opt.batchSize)
+    print(selected_index)
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
-    print('CUB')
+    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg,  selected_index = selected_index)
+    print('CUB:%d'%len(test_dataset))
     ratio = 1
 
 torch.set_num_threads(int(opt.workers)*2)

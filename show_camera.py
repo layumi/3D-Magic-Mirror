@@ -220,9 +220,17 @@ elif "ATR" in opt.name:
     print('ATR-human: %d'% len(test_dataset))
     ratio = 1
 else:
+    opt.batchSize  = 16
+    selected_index = np.arange(50, 1650, 1600//opt.batchSize)
+    print(selected_index)
+    selected_index[1] = 400
+    selected_index[2] = 1100 
+    selected_index[12] = 500
+    selected_index[14] = 1200
+    selected_index[15] = 800 
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
-    print('CUB')
+    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg, selected_index = selected_index)
+    print('CUB: %d'%len(test_dataset))
     ratio = 1
 
 torch.set_num_threads(int(opt.workers)*2)
