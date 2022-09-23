@@ -315,3 +315,4 @@ if __name__ == '__main__':
                 name_list = name_list + [p[:-8].replace('Market', 'Magic_Market')+'%03d.jpg'%delta_azimuth for p in paths]
             with Pool(4) as p:
                 p.map(save_img, zip(im_list, name_list))
+            os.system('rsync -r ../Market/pytorch/* ../Magic_Market/hq/pytorch/')
