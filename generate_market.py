@@ -287,7 +287,7 @@ if __name__ == '__main__':
             name_list = []
             print('===========Saving Gif-Azi===========')
             A_tmp = deep_copy(Ae, detach=True)
-            loop = tqdm.tqdm(list([-30, -15, 15, 30])) # 30, 60 
+            loop = tqdm.tqdm(list([-60, -30, 30, 60])) # 30, 60 
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
 
             bg = Xa[:,:3] #* (1 - Xa[:,3].unsqueeze(1))
@@ -313,6 +313,6 @@ if __name__ == '__main__':
                     out_image = Image.fromarray(np.uint8(out_image.cpu().numpy().transpose(1,2,0)*255))    
                     im_list.append(out_image)
                 name_list = name_list + [p[:-8].replace('Market', 'Magic_Market')+'%03d.jpg'%delta_azimuth for p in paths]
-            with Pool(4) as p:
-                p.map(save_img, zip(im_list, name_list))
-            os.system('rsync -r ../Market/pytorch/* ../Magic_Market/hq/pytorch/')
+        with Pool(4) as p:
+            p.map(save_img, zip(im_list, name_list))
+    os.system('rsync -r ../Market/pytorch/* ../Magic_Market/hq/pytorch/')
