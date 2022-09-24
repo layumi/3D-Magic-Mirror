@@ -315,7 +315,7 @@ if __name__ == '__main__':
             name_list = []
             print('===========Saving Gif-Azi===========')
             A_tmp = deep_copy(Ae, detach=True)
-            loop = tqdm.tqdm(list([-30, -15, 15, 30])) # 30, 60 
+            loop = tqdm.tqdm(list([-45, 0, 45])) # 30, 60 
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
 
             bg = Xa[:,:3] #* (1 - Xa[:,3].unsqueeze(1))
