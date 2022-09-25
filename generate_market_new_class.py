@@ -51,6 +51,7 @@ from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, 
 def save_img(output_name):
     output, name = output_name
     os.makedirs(os.path.dirname(name), exist_ok=True)
+    os.makedirs(os.path.dirname(name.replace('train_all','val')), exist_ok=True)
     output.save(name, 'JPEG', quality=100)
     return
 
@@ -220,8 +221,6 @@ if __name__ == '__main__':
                             pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
                             coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix) # height = 2 * width
 
-    #if opt.multigpus:
-    netE = netE.cuda()
 
     # restore from latest_ckpt.path
     resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
@@ -236,7 +235,9 @@ if __name__ == '__main__':
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
 
+    netE = netE.cuda()
     netE = netE.eval()
+    #if opt.multigpus:
     #netE = torch.nn.DataParallel(netE)
     dists = torch.tensor([]).cuda()
     azimuths = torch.tensor([]).cuda()
@@ -260,6 +261,7 @@ if __name__ == '__main__':
     os.makedirs(opt.outf+'/hq', exist_ok=True)
     os.makedirs(opt.outf+'/hq/pytorch', exist_ok=True)
     os.makedirs(opt.outf+'/hq/pytorch/train_all', exist_ok=True)
+    os.makedirs(opt.outf+'/hq/pytorch/val', exist_ok=True)
     os.makedirs(opt.outf+'/hq/pytorch/gallery', exist_ok=True)
     os.makedirs(opt.outf+'/hq/pytorch/query', exist_ok=True)
 
@@ -339,8 +341,8 @@ if __name__ == '__main__':
                     single_image = image[i,:,:,:] # bg is white 1
                     single_mask  = mask[i,:,:] # bg is black 0, fg is white 1
                     blur_mask = gaussian_blur(single_mask.unsqueeze(0))
-                    blur_bg = gaussian_blur(bg[i,:,:,:])
-                    blur_bg = imresize(blur_bg)
+                    # random background in the batchsize
+                    blur_bg = imresize(gaussian_blur(bg[random.randint(0, current_batchSize-1),:,:,:]))
                     out_image = single_image * blur_mask + blur_bg * (1-blur_mask)
                     out_image = Image.fromarray(np.uint8(out_image.cpu().numpy().transpose(1,2,0)*255))    
                     im_list.append(out_image)
@@ -353,8 +355,8 @@ if __name__ == '__main__':
                         continue
                     else:
                         dir_id = new_id+old_id
-                    outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
+                    outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market2')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
                     name_list.append(outp)
             with Pool(4) as p:
                 p.map(save_img, zip(im_list, name_list))
-        os.system('rsync -r ../Market/pytorch/* ../Magic_Market/hq/pytorch/')
+        os.system('rsync -r ../Market/pytorch/* ../Magic_Market2/hq/pytorch/')
