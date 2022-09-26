@@ -51,7 +51,7 @@ from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, 
 def save_img(output_name):
     output, name = output_name
     os.makedirs(os.path.dirname(name), exist_ok=True)
-    os.makedirs(os.path.dirname(name.replace('train_all','val')), exist_ok=True)
+    #os.makedirs(os.path.dirname(name.replace('train_all','val')), exist_ok=True)
     output.save(name, 'JPEG', quality=100)
     return
 
@@ -256,7 +256,7 @@ if __name__ == '__main__':
         nrow = 4
 
     #############
-    opt.outf = '../Magic_Market2/'
+    opt.outf = '../Magic_Market9/'
     os.makedirs(opt.outf, exist_ok=True)
     os.makedirs(opt.outf+'/hq', exist_ok=True)
     os.makedirs(opt.outf+'/hq/pytorch', exist_ok=True)
@@ -324,39 +324,39 @@ if __name__ == '__main__':
             padding  = torch.nn.ReflectionPad2d(16)
             imresize = torchvision.transforms.Resize(size= (Xa.shape[2], Xa.shape[3]))
             bg = padding(bg)
-            gaussian_blur = torchvision.transforms.GaussianBlur(kernel_size=31, sigma=2.0)
+            gaussian_blur = torchvision.transforms.GaussianBlur(kernel_size=7)
             current_batchSize = Xa.shape[0]
-
-            rand_person_id = torch.randperm(751)[0:current_batchSize].cuda()
-            for delta_azimuth in loop:
-                A_tmp['azimuths'] = Ae['azimuths'] - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(current_batchSize).cuda()
-                A_tmp['distances'] = Ae['distances'] - 0.5*torch.randn(current_batchSize).cuda()
-                A_tmp['elevations'] = Ae['elevations'] - 0.1*torch.randn(current_batchSize).cuda()
-                #A_tmp['textures'] = 0.5 * Ae['textures'] + 0.5 * mean_tensor[rand_person_id].repeat(current_batchSize,1,1,1)
-                A_tmp['textures'] =  0.5 * Ae['textures'] + 0.5 * torch.index_select(mean_tensor, dim=0, index = rand_person_id)
-                predictions, _ = diffRender.render(**A_tmp)
-                mask = predictions[:, 3]#.unsqueeze(1) # B*C*H*W
-                image = predictions[:, :3]
-                for i in range(current_batchSize): 
-                    single_image = image[i,:,:,:] # bg is white 1
-                    single_mask  = mask[i,:,:] # bg is black 0, fg is white 1
-                    blur_mask = gaussian_blur(single_mask.unsqueeze(0))
-                    # random background in the batchsize
-                    blur_bg = imresize(gaussian_blur(bg[random.randint(0, current_batchSize-1),:,:,:]))
-                    out_image = single_image * blur_mask + blur_bg * (1-blur_mask)
-                    out_image = Image.fromarray(np.uint8(out_image.cpu().numpy().transpose(1,2,0)*255))    
-                    im_list.append(out_image)
-                    p = paths[i]
-                    old_id = os.path.basename(p).split('_')[0]
-                    new_id = mean_name[rand_person_id[i]]
-                    if int(old_id) < int(new_id):
-                        dir_id = old_id+new_id
-                    elif int(old_id) == int(new_id):
-                        continue
-                    else:
-                        dir_id = new_id+old_id
-                    outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market2')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
-                    name_list.append(outp)
+            
+            for repeat in range(3):
+                rand_person_id = torch.randperm(751)[0:current_batchSize].cuda()
+                for delta_azimuth in loop:
+                    A_tmp['azimuths'] = Ae['azimuths'] - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(current_batchSize).cuda()
+                    A_tmp['distances'] = Ae['distances'] - 0.5*torch.randn(current_batchSize).cuda()
+                    A_tmp['elevations'] = Ae['elevations'] - 0.1*torch.randn(current_batchSize).cuda()
+                    A_tmp['textures'] =  0.5 * Ae['textures'] + 0.5 * torch.index_select(mean_tensor, dim=0, index = rand_person_id)
+                    predictions, _ = diffRender.render(**A_tmp)
+                    mask = predictions[:, 3]#.unsqueeze(1) # B*C*H*W
+                    image = predictions[:, :3]
+                    for i in range(current_batchSize): 
+                        single_image = image[i,:,:,:] # bg is white 1
+                        single_mask  = mask[i,:,:] # bg is black 0, fg is white 1
+                        blur_mask = gaussian_blur(single_mask.unsqueeze(0))
+                        # random background in the batchsize
+                        blur_bg = imresize(gaussian_blur(bg[random.randint(0, current_batchSize-1),:,:,:]))
+                        out_image = single_image * blur_mask + blur_bg * (1-blur_mask)
+                        out_image = Image.fromarray(np.uint8(out_image.cpu().numpy().transpose(1,2,0)*255))    
+                        p = paths[i]
+                        old_id = os.path.basename(p).split('_')[0]
+                        new_id = mean_name[rand_person_id[i]]
+                        if int(old_id) < int(new_id):
+                            dir_id = old_id+new_id
+                        elif int(old_id) == int(new_id):
+                            continue # we skip the same id.
+                        else:
+                            dir_id = new_id+old_id
+                        outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market9')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
+                        im_list.append(out_image)
+                        name_list.append(outp)
             with Pool(4) as p:
                 p.map(save_img, zip(im_list, name_list))
-    os.system('rsync -r ../Market/pytorch/* ../Magic_Market2/hq/pytorch/')
+    os.system('rsync -r ../Market/pytorch/* ../Magic_Market9/hq/pytorch/')

@@ -8,6 +8,7 @@ import imageio
 import numpy as np
 import trimesh
 import yaml
+import scipy.io
 from multiprocessing import Pool
 # import torch related
 from scipy.ndimage import laplace
@@ -50,9 +51,9 @@ from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, 
 def save_img(output_name):
     output, name = output_name
     os.makedirs(os.path.dirname(name), exist_ok=True)
+    #os.makedirs(os.path.dirname(name.replace('train_all','val')), exist_ok=True)
     output.save(name, 'JPEG', quality=100)
     return
-
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -67,7 +68,7 @@ parser.add_argument('--category', type=str, default='bird', help='list of object
 parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--nk', type=int, default=5, help='size of kerner')
 parser.add_argument('--nf', type=int, default=32, help='dim of unit channel')
@@ -127,7 +128,7 @@ if not os.path.isdir(opt.outf):
     os.mkdir(opt.outf)
 
 if opt.manualSeed is None:
-    opt.manualSeed = random.randint(1, 10000)
+    opt.manualSeed = 666  #random.randint(1, 10000)
 print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
@@ -220,9 +221,6 @@ if __name__ == '__main__':
                             pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
                             coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix) # height = 2 * width
 
-    if opt.multigpus:
-        netE = torch.nn.DataParallel(netE)
-    netE = netE.cuda()
 
     # restore from latest_ckpt.path
     resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
@@ -237,7 +235,10 @@ if __name__ == '__main__':
         print("=> loaded checkpoint '{}' (epoch {})"
                 .format(resume_path, checkpoint['epoch']))
 
+    netE = netE.cuda()
     netE = netE.eval()
+    #if opt.multigpus:
+    #netE = torch.nn.DataParallel(netE)
     dists = torch.tensor([]).cuda()
     azimuths = torch.tensor([]).cuda()
     biases = torch.tensor([]).cuda()
@@ -254,7 +255,44 @@ if __name__ == '__main__':
     else: 
         nrow = 4
 
+    #############
+    opt.outf = '../Magic_Market2/'
+    os.makedirs(opt.outf, exist_ok=True)
+    os.makedirs(opt.outf+'/hq', exist_ok=True)
+    os.makedirs(opt.outf+'/hq/pytorch', exist_ok=True)
+    os.makedirs(opt.outf+'/hq/pytorch/train_all', exist_ok=True)
+    os.makedirs(opt.outf+'/hq/pytorch/val', exist_ok=True)
+    os.makedirs(opt.outf+'/hq/pytorch/gallery', exist_ok=True)
+    os.makedirs(opt.outf+'/hq/pytorch/query', exist_ok=True)
+
+
+    mean_textures = {}
     #for i, data in tqdm.tqdm(enumerate(test_dataloader)):
+    for i, data in tqdm.tqdm(enumerate(train_dataloader)):
+        Xa = data['data']['images'].cuda()
+        paths = data['data']['path']
+        with torch.no_grad():
+            Ae = netE(Xa)
+            Xer, Ae = diffRender.render(**Ae)
+
+            Ae = deep_copy(Ae, detach=True)
+            textures = Ae['textures'].cpu()
+            for i in range(Xa.shape[0]):
+                person_id = os.path.basename(paths[i]).split('_')[0]
+                if str(person_id) in mean_textures:
+                    mean_textures[str(person_id)].append(textures[i])
+                else:
+                    mean_textures[str(person_id)] = [textures[i]]
+
+    count = 0
+    mean_tensor = torch.FloatTensor(751, 3, 256, 64).cuda()
+    mean_name = []
+    for person_id in mean_textures:
+        mean_textures[person_id] = torch.mean( torch.stack(mean_textures[person_id]), dim=0)
+        mean_tensor[count,:,:,:] = mean_textures[person_id]
+        mean_name.append(person_id)
+        count += 1
+
     for i, data in tqdm.tqdm(enumerate(train_dataloader)):
         Xa = data['data']['images'].cuda()
         paths = data['data']['path']
@@ -264,14 +302,6 @@ if __name__ == '__main__':
             Ae = netE(Xa)
             Xer, Ae = diffRender.render(**Ae)
 
-            #############
-            opt.outf = '../Magic_Market/'
-            os.makedirs(opt.outf, exist_ok=True)
-            os.makedirs(opt.outf+'/hq', exist_ok=True)
-            os.makedirs(opt.outf+'/hq/pytorch', exist_ok=True)
-            os.makedirs(opt.outf+'/hq/pytorch/train_all', exist_ok=True)
-            os.makedirs(opt.outf+'/hq/pytorch/gallery', exist_ok=True)
-            os.makedirs(opt.outf+'/hq/pytorch/query', exist_ok=True)
             ########
             Ae = deep_copy(Ae, detach=True)
             vertices = Ae['vertices']
@@ -287,7 +317,7 @@ if __name__ == '__main__':
             name_list = []
             print('===========Saving Gif-Azi===========')
             A_tmp = deep_copy(Ae, detach=True)
-            loop = tqdm.tqdm(list([-60, -30, 30, 60])) # 30, 60 
+            loop = tqdm.tqdm(list([-45, 0, 45])) # 30, 60 
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
 
             bg = Xa[:,:3] #* (1 - Xa[:,3].unsqueeze(1))
@@ -296,23 +326,37 @@ if __name__ == '__main__':
             bg = padding(bg)
             gaussian_blur = torchvision.transforms.GaussianBlur(kernel_size=31, sigma=2.0)
             current_batchSize = Xa.shape[0]
+
+            rand_person_id = torch.randperm(751)[0:current_batchSize].cuda()
             for delta_azimuth in loop:
                 A_tmp['azimuths'] = Ae['azimuths'] - torch.tensor([delta_azimuth], dtype=torch.float32).repeat(current_batchSize).cuda()
                 A_tmp['distances'] = Ae['distances'] - 0.5*torch.randn(current_batchSize).cuda()
                 A_tmp['elevations'] = Ae['elevations'] - 0.1*torch.randn(current_batchSize).cuda()
+                #A_tmp['textures'] = 0.5 * Ae['textures'] + 0.5 * mean_tensor[rand_person_id].repeat(current_batchSize,1,1,1)
+                A_tmp['textures'] =  0.5 * Ae['textures'] + 0.5 * torch.index_select(mean_tensor, dim=0, index = rand_person_id)
                 predictions, _ = diffRender.render(**A_tmp)
                 mask = predictions[:, 3]#.unsqueeze(1) # B*C*H*W
                 image = predictions[:, :3]
-                for i in range(image.shape[0]): 
+                for i in range(current_batchSize): 
                     single_image = image[i,:,:,:] # bg is white 1
                     single_mask  = mask[i,:,:] # bg is black 0, fg is white 1
                     blur_mask = gaussian_blur(single_mask.unsqueeze(0))
-                    blur_bg = gaussian_blur(bg[i,:,:,:])
-                    blur_bg = imresize(blur_bg)
+                    # random background in the batchsize
+                    blur_bg = imresize(gaussian_blur(bg[random.randint(0, current_batchSize-1),:,:,:]))
                     out_image = single_image * blur_mask + blur_bg * (1-blur_mask)
                     out_image = Image.fromarray(np.uint8(out_image.cpu().numpy().transpose(1,2,0)*255))    
                     im_list.append(out_image)
-                name_list = name_list + [p[:-8].replace('Market', 'Magic_Market')+'%03d.jpg'%delta_azimuth for p in paths]
+                    p = paths[i]
+                    old_id = os.path.basename(p).split('_')[0]
+                    new_id = mean_name[rand_person_id[i]]
+                    if int(old_id) < int(new_id):
+                        dir_id = old_id+new_id
+                    elif int(old_id) == int(new_id):
+                        continue # we skip the same id.
+                    else:
+                        dir_id = new_id+old_id
+                    outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market2')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
+                    name_list.append(outp)
             with Pool(4) as p:
                 p.map(save_img, zip(im_list, name_list))
-    os.system('rsync -r ../Market/pytorch/* ../Magic_Market/hq/pytorch/')
+    os.system('rsync -r ../Market/pytorch/* ../Magic_Market2/hq/pytorch/')
