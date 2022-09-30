@@ -209,7 +209,8 @@ if __name__ == '__main__':
         epoch = checkpoint['epoch']
         
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight)
-    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
+    #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
+    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
     #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
     #print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
     diffRender.vertices_init = latest_template_file.vertices
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     netE = netE.cuda()
 
     # restore from latest_ckpt.path
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
     if os.path.exists(resume_path):
         # Map model to be loaded to specified single gpu.
         # checkpoint has been loaded
