@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
 
     # load updated template
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
     #resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
     if os.path.exists(resume_path):
         checkpoint = torch.load(resume_path)
