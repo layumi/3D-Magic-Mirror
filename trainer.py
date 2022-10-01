@@ -754,16 +754,16 @@ def trainer(opt, train_dataloader, test_dataloader):
                     # SSIM
                     ori_path = ori_dir + '/' + name
                     rec_path = rec_dir + '/' + name
-                    ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-                    rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
+                    rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
                     ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
                     rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
                     ssim_score.append(ssim(ori, rec, data_range=1))
                     # Mask IoU
                     ori_path = ori_mask_dir + '/' + name
                     rec_path = rec_mask_dir + '/' + name
-                    ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-                    rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    ori = Image.open(ori_path).convert('L').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
+                    rec = Image.open(rec_path).convert('L').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
                     ori = torchvision.transforms.functional.to_tensor(ori)
                     rec = torchvision.transforms.functional.to_tensor(rec)
                     mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
@@ -888,16 +888,16 @@ def trainer(opt, train_dataloader, test_dataloader):
                     # SSIM
                     ori_path = ori_dir + '/' + name
                     rec_path = rec_dir + '/' + name
-                    ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-                    rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
+                    rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
                     ori = torchvision.transforms.functional.to_tensor(ori).unsqueeze(0)
                     rec = torchvision.transforms.functional.to_tensor(rec).unsqueeze(0)
                     ssim_score.append(ssim(ori, rec, data_range=1))
                     # Mask IoU
                     ori_path = ori_mask_dir + '/' + name
                     rec_path = rec_mask_dir + '/' + name
-                    ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-                    rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+                    ori = Image.open(ori_path).convert('L').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
+                    rec = Image.open(rec_path).convert('L').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
                     ori = torchvision.transforms.functional.to_tensor(ori)
                     rec = torchvision.transforms.functional.to_tensor(rec)
                     mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
