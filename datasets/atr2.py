@@ -28,7 +28,7 @@ def seg_loader(path):
 
 class ATR2Dataset(data.Dataset):
     # ratio=2
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, bg=False, selected_index = []):
+    def __init__(self, root, image_size, transform=None, ratio = 2, loader=default_loader, train=True, return_paths=False, bg=False, selected_index = []):
         super(ATR2Dataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -50,6 +50,7 @@ class ATR2Dataset(data.Dataset):
         self.train = train
         self.image_size = image_size
         self.selected_index = selected_index
+        self.ratio = ratio
         print('Succeed loading dataset!')
 
     def __getitem__(self, index):
@@ -60,7 +61,7 @@ class ATR2Dataset(data.Dataset):
         img_path, label = self.imgs[index]
         if len(self.selected_index) >0:
             print(original_index, img_path)
-        target_height, target_width = 2*self.image_size, self.image_size
+        target_height, target_width = round(self.ratio*self.image_size), self.image_size
 
         # image and its flipped image
         seg_path = img_path.replace('JPEGImages','SegmentationClassAug').replace('.jpg', '.png')

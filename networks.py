@@ -292,7 +292,7 @@ class DiffRender(object):
         ]
 
         image_features, soft_mask, face_idx = dibr_rasterization(
-            self.ratio*self.image_size, self.image_size, face_vertices_camera[:, :, :, -1],
+            round(self.ratio*self.image_size), self.image_size, face_vertices_camera[:, :, :, -1],
             face_vertices_image, face_attributes, face_normals[:, :, -1])
 
         # image_features is a tuple in composed of the interpolated attributes of face_attributes

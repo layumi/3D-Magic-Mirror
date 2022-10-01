@@ -421,7 +421,7 @@ if __name__ == '__main__':
             elev_range = opt.elev_range.split('~')
             elev_min = int(elev_range[0])
             elev_max = int(elev_range[1])
-            loop = tqdm.tqdm(list(np.linspace(elev_min, elev_max, num=18))) # -15 ~ 15 
+            loop = tqdm.tqdm(list(np.linspace(elev_min, elev_max, num=12))) # -15 ~ 15 
             print('#elevation: %d'%len(list(range(elev_min, elev_max, 5))))
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_ele)')
             A_tmp = deep_copy(Ae, detach=True)
@@ -441,7 +441,7 @@ if __name__ == '__main__':
             dist_range = opt.dist_range.split('~')
             dist_min = int(dist_range[0])
             dist_max = int(dist_range[1])
-            loop = tqdm.tqdm(list(np.linspace(dist_min, dist_max, num=18))) 
+            loop = tqdm.tqdm(list(np.linspace(dist_min, dist_max, num=12))) 
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_dist)')
             A_tmp = deep_copy(Ae, detach=True)
             for delta_dist in loop:
@@ -458,7 +458,7 @@ if __name__ == '__main__':
             print('===========Saving Gif-XY===========')
             rotate_path = os.path.join(opt.outf, 'current_rotation_XY.gif')
             writer = imageio.get_writer(rotate_path, mode='I')
-            loop = tqdm.tqdm(list(np.linspace(-0.5, 0.5, num=9))) #
+            loop = tqdm.tqdm(list(np.linspace(-0.5, 0.5, num=6))) #
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_biases)')
             A_tmp = deep_copy(Ae, detach=True)
             for delta_biases in loop:
