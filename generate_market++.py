@@ -175,8 +175,8 @@ if torch.cuda.is_available():
 
 if "MKT" in opt.name:
     #print(selected_index) 
-    train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, sub='train_all')
-    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
+    train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold = 0.25, bg = opt.bg, hmr = opt.hmr, sub='train_all')
+    test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold = 0.25, bg = opt.bg, hmr = opt.hmr)
     print('Market-1501:%d'% len(test_dataset))
     ratio = 2
 elif "ATR" in opt.name:
@@ -265,7 +265,7 @@ if __name__ == '__main__':
         nrow = 4
 
     #############
-    opt.outf = '../Magic_Market+/'
+    opt.outf = '../Magic_Market++/'
     os.makedirs(opt.outf, exist_ok=True)
     os.makedirs(opt.outf+'/hq', exist_ok=True)
     os.makedirs(opt.outf+'/hq/pytorch', exist_ok=True)
@@ -297,7 +297,7 @@ if __name__ == '__main__':
             name_list = []
             print('===========Saving Gif-Azi===========')
             A_tmp = deep_copy(Ae, detach=True)
-            loop = tqdm.tqdm(list([-45, 0, 45])) # 30, 60 
+            loop = tqdm.tqdm(list([-60, -30, 0, 30, 60])) # 30, 60 
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
 
             bg = Xa[:,:3] #* (1 - Xa[:,3].unsqueeze(1))
@@ -305,12 +305,12 @@ if __name__ == '__main__':
             imresize = torchvision.transforms.Resize(size= (Xa.shape[2], Xa.shape[3]))
             bg = padding(bg)
             imresize = torchvision.transforms.Resize(size= (Xa.shape[2], Xa.shape[3]))
-            gaussian_blur = torchvision.transforms.GaussianBlur(kernel_size=3)
+            gaussian_blur = torchvision.transforms.GaussianBlur(kernel_size=5)
             padding_mask  = torch.nn.ReplicationPad2d((3, 3, 3, 3))
             gaussian_blur_mask = torchvision.transforms.GaussianBlur(kernel_size=5, sigma=3)
             current_batchSize = Xa.shape[0]
             
-            for repeat in range(9):
+            for repeat in range(2):
                 try:
                     _, data2 = train2_iter.__next__()
                 except StopIteration:
@@ -330,7 +330,7 @@ if __name__ == '__main__':
                     predictions, _ = diffRender.render(**A_tmp)
                     mask = predictions[:, 3]#.unsqueeze(1) # B*C*H*W
                     image = predictions[:, :3]
-                    for i in range(current_batchSize//3):
+                    for i in range(current_batchSize//2):
                         selected = diff_indices[i] 
                         #selected = i 
                         single_image = image[selected,:,:,:] # bg is white 1
@@ -352,9 +352,9 @@ if __name__ == '__main__':
                             continue # we skip the same id.
                         else:
                             dir_id = new_id + old_id
-                        outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market+')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
+                        outp = os.path.dirname(os.path.dirname(p)).replace('Market', 'Magic_Market++')+'/'+ dir_id +'/'+os.path.basename(p)[:-8]+'%03d.jpg'%delta_azimuth
                         im_list.append(out_image)
                         name_list.append(outp)
             with Pool(4) as p:
                 p.map(save_img, zip(im_list, name_list))
-    os.system('rsync -r ../Market/pytorch/* ../Magic_Market+/hq/pytorch/')
+    os.system('rsync -r ../Market/pytorch/* ../Magic_Market++/hq/pytorch/')
