@@ -42,6 +42,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
+from datasets.atr2 import ATR2Dataset
 from smr_utils import save_mesh, fliplr, mask, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 from network.model_res import VGG19, CameraEncoder, ShapeEncoder, LightEncoder, TextureEncoder
 
@@ -206,6 +207,19 @@ if "MKT" in opt.name:
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, selected_index = selected_index)
     print('Market-1501')
     ratio = 2
+elif "ATR2" in opt.name:
+    selected_index = np.arange(70, 16000, 16000//opt.batchSize)
+    print(selected_index)
+    selected_index[0] = 13596
+    selected_index[4] = 11001
+    selected_index[11] = 8004
+    selected_index[13] = 1005
+    selected_index[14] = 14080
+    selected_index[15] = 13580
+    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg, ratio = opt.ratio)
+    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg, ratio = opt.ratio, selected_index = selected_index)
+    print('ATR2-human: %d'% len(test_dataset)) # For ATR2 visualization, I use train set.
+    ratio = opt.ratio
 elif "ATR" in opt.name:
     selected_index = np.arange(70, 16000, 16000//opt.batchSize) 
     print(selected_index)
@@ -302,6 +316,8 @@ if __name__ == '__main__':
 
     if  opt.ratio == 2: 
         nrow = 8
+    elif opt.ratio >1:
+        nrow = 6
     else: 
         nrow = 4
 
@@ -378,7 +394,7 @@ if __name__ == '__main__':
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
             A_tmp = deep_copy(Ae, detach=True, index = [0,1,2,3,4,5,6,7])
             batch_tmp = 8
-            predictions_all = torch.ones((9, 9, 3, opt.imageSize * opt.ratio, opt.imageSize))
+            predictions_all = torch.ones((9, 9, 3, round(opt.imageSize * opt.ratio), opt.imageSize))
             predictions_all[0, 1:, :, :, : ] = Xa[0:8, :3]
             for delta_azimuth in loop:
                 for i in range(batch_tmp):
@@ -388,7 +404,7 @@ if __name__ == '__main__':
                     predictions = torch.cat( (Xa[i, :3].unsqueeze(0), predictions[:, :3].cpu()), dim=0)
                     predictions_all[i+1, :, :, :, : ] = predictions
                    
-                predictions_save = predictions_all.view(-1, 3, opt.imageSize * opt.ratio, opt.imageSize)
+                predictions_save = predictions_all.view(-1, 3, round(opt.imageSize * opt.ratio), opt.imageSize)
                 image = vutils.make_grid(predictions_save, nrow=9)
                 image = image.permute(1, 2, 0).detach().cpu().numpy()
                 image = (image * 255.0).astype(np.uint8)
