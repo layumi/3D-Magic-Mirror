@@ -263,6 +263,12 @@ python train_market.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_dat
                        --beta1 0.9
 ```
 
+### Illustrations. 
+- `smooth` is for the accumulated template movement. If we set smooth=1, the movement will be the neighbor move. If we set smooth=0, the movement will be the single point move. by default 0.5 
+
+- `clip` is to truncate the movement. by default 0.05
+
+- `em_step` is the initial moving speed, which is decay by 0.99 during training. by default 0.1
 
 ## Citation
 
