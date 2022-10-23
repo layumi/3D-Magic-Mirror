@@ -44,7 +44,7 @@ from fid_score import calculate_fid_given_paths
 from datasets.bird import CUBDataset
 from datasets.market import MarketDataset
 from datasets.atr import ATRDataset
-from smr_utils import angle2xy, white, iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
+from smr_utils import face_clocks, angle2xy, white, iou_pytorch, save_mesh, mask, ChannelShuffle, fliplr, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, compute_gradient_penalty_list, Timer
 
 def save_img(output_name):
     output, name = output_name
@@ -1063,6 +1063,9 @@ def trainer(opt, train_dataloader, test_dataloader):
                 if opt.white:
                     new_template -= torch.mean(new_template, dim=1, keepdim = True) # 1*1*3
 
+                #whether_invisible_faces = torch.sum(torch.nn.functional.relu(face_clocks(new_template, faces.cuda())))
+                #print('whether_invisible_faces:%f'%whether_invisible_faces)
+                #if whether_invisible_faces==0: # only update when no counter-clock wise
                 netE.vertices_init.data = new_template
                 if opt.swa: swa_modelE.module.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay

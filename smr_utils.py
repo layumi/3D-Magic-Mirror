@@ -17,6 +17,41 @@ from typing import Any, BinaryIO, List, Optional, Tuple, Union
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 
+def _base_face_clocks(face_vertices_0, face_vertices_1, face_vertices_2):
+    """Base function to compute the face areas."""
+    x1, x2, x3 = torch.split(face_vertices_0 - face_vertices_1, 1, dim=-1)
+    y1, y2, y3 = torch.split(face_vertices_1 - face_vertices_2, 1, dim=-1)
+
+    a = x2 * y3 - x3 * y2
+    b = x3 * y1 - x1 * y3
+    c = x1 * y2 - x2 * y1
+    clocks = 0.5*(a + b + c)
+
+    return clocks
+
+def face_clocks(vertices, faces):
+    """Compute the areas of each face of triangle meshes.
+    Args:
+        vertices (torch.Tensor):
+            The vertices of the meshes,
+            of shape :math:`(\\text{batch_size}, \\text{num_vertices}, 3)`.
+        faces (torch.LongTensor):
+            the faces of the meshes, of shape :math:`(\\text{num_faces}, 3)`.
+    Returns:
+        (torch.Tensor):
+            the face areas of same type as vertices and of shape
+            :math:`(\\text{batch_size}, \\text{num_faces})`.
+    """
+    if faces.shape[-1] != 3:
+        raise NotImplementedError("face_areas is only implemented for triangle meshes")
+    faces_0, faces_1, faces_2 = torch.split(faces, 1, dim=1)
+    face_v_0 = torch.index_select(vertices, 1, faces_0.reshape(-1))
+    face_v_1 = torch.index_select(vertices, 1, faces_1.reshape(-1))
+    face_v_2 = torch.index_select(vertices, 1, faces_2.reshape(-1))
+
+    clocks = _base_face_clocks(face_v_0, face_v_1, face_v_2)
+    return clocks.squeeze(-1)
+
 def make_grid(
     tensor: Union[torch.Tensor, List[torch.Tensor]],
     nrow: int = 8,

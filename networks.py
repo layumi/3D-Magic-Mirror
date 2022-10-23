@@ -12,7 +12,7 @@ from kaolin.render.mesh import dibr_rasterization, texture_mapping, \
 #from models.model import TextureEncoder
 from network.model_res import VGG19, TextureEncoder, BackgroundEncoder, CameraEncoder, ShapeEncoder, LightEncoder
 from network.utils import weights_init, weights_init_classifier
-from smr_utils import camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
+from smr_utils import face_clocks, camera_position_from_spherical_angles, generate_transformation_matrix, compute_gradient_penalty, Timer
 from fid_score import calculate_fid_given_paths
 from pytorch3d.loss import chamfer_distance
 #import sys
@@ -268,7 +268,7 @@ class DiffRender(object):
 
         faces = self.faces.to(device)
         face_uvs = self.face_uvs.to(device)
-        face_areas = kal.ops.mesh.face_areas(vertices, faces)
+        #face_areas = kal.ops.mesh.face_areas(vertices, faces)
 
         num_faces = faces.shape[0]
         #object_pos = torch.tensor([[0., 0., 0.]], dtype=torch.float, device=device).repeat(batch_size, 1)
@@ -314,9 +314,9 @@ class DiffRender(object):
         rgbs = torch.cat([render_img, render_silhouttes], axis=-1).permute(0, 3, 1, 2)
 
         attributes['face_normals'] = face_normals
-        attributes['face_areas'] = face_areas
-        attributes['faces_image'] = face_vertices_image.mean(dim=2)
-        attributes['visiable_faces'] = face_normals[:, :, -1] > 0.1
+        #attributes['face_areas'] = face_areas
+        #attributes['faces_image'] = face_vertices_image.mean(dim=2)
+        #attributes['visiable_faces'] = face_normals[:, :, -1] > 0.1
         return rgbs, attributes
 
     def recon_att(self, pred_att, target_att, L1 = False, chamfer = False, azim=1):
@@ -418,8 +418,14 @@ class DiffRender(object):
         loss_flat = torch.mean((faces_cos - 1) ** 2) * edge2faces.shape[0]
 
         # face normal loss # inner face, which cosine < -0.5
-        loss_invisible = torch.mean(torch.nn.functional.relu(-faces_cos-0.5)**2)* edge2faces.shape[0]
-        loss_flat += loss_invisible 
+        #clocks = face_clocks(att['vertices'], self.faces.cuda())
+        #loss_clock = torch.nn.functional.relu(clocks)**2
+        #print(torch.sum(loss_clock>1e-6, dim=1))
+        #loss_clock = torch.mean(torch.sum(loss_clock, dim =1))
+        #print('loss_clock:%f'%loss_clock)
+        #loss_flat += loss_clock*10
+        #loss_invisible = torch.mean(torch.nn.functional.relu(-faces_cos-0.5)**2)* edge2faces.shape[0]
+        #loss_flat += loss_invisible 
 
         # area loss
         #face_areas = att['face_areas']
@@ -427,7 +433,7 @@ class DiffRender(object):
         #bias_areas = face_areas-mean_areas
         #loss_areas = torch.mean(torch.norm(bias_areas, p=2, dim=1))
         #print('loss_invisible:%.2f, loss_area;%2f'%(loss_invisible, loss_areas))
-        print('loss_invisible:%.2f'%loss_invisible)
+        #print('loss_invisible:%.2f'%loss_invisible)
         loss_reg = laplacian_weight * loss_laplacian + flat_weight * loss_flat #+ 0.1*loss_areas
         return loss_reg
 
