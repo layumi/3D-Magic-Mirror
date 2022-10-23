@@ -268,9 +268,9 @@ class DiffRender(object):
 
         faces = self.faces.to(device)
         face_uvs = self.face_uvs.to(device)
+        face_areas = kal.ops.mesh.face_areas(vertices, faces)
 
         num_faces = faces.shape[0]
-
         #object_pos = torch.tensor([[0., 0., 0.]], dtype=torch.float, device=device).repeat(batch_size, 1)
         object_pos = torch.cat((biases, torch.zeros(batch_size, 1, device=device)), dim=1) # N*2 + 0 ->N*3
         camera_up = torch.tensor([[0., 1., 0.]], dtype=torch.float, device=device).repeat(batch_size, 1)
@@ -314,6 +314,7 @@ class DiffRender(object):
         rgbs = torch.cat([render_img, render_silhouttes], axis=-1).permute(0, 3, 1, 2)
 
         attributes['face_normals'] = face_normals
+        attributes['face_areas'] = face_areas
         attributes['faces_image'] = face_vertices_image.mean(dim=2)
         attributes['visiable_faces'] = face_normals[:, :, -1] > 0.1
         return rgbs, attributes
@@ -416,7 +417,18 @@ class DiffRender(object):
         faces_cos = torch.sum(mesh_normals_e1 * mesh_normals_e2, dim=2)
         loss_flat = torch.mean((faces_cos - 1) ** 2) * edge2faces.shape[0]
 
-        loss_reg = laplacian_weight * loss_laplacian + flat_weight * loss_flat
+        # face normal loss # inner face, which cosine < -0.5
+        loss_invisible = torch.mean(torch.nn.functional.relu(-faces_cos-0.5)**2)* edge2faces.shape[0]
+        loss_flat += loss_invisible 
+
+        # area loss
+        #face_areas = att['face_areas']
+        #mean_areas = torch.mean(face_areas, dim=1, keepdim=True)
+        #bias_areas = face_areas-mean_areas
+        #loss_areas = torch.mean(torch.norm(bias_areas, p=2, dim=1))
+        #print('loss_invisible:%.2f, loss_area;%2f'%(loss_invisible, loss_areas))
+        print('loss_invisible:%.2f'%loss_invisible)
+        loss_reg = laplacian_weight * loss_laplacian + flat_weight * loss_flat #+ 0.1*loss_areas
         return loss_reg
 
     def calc_reg_edge(self, pred): # pred is  att['vertices'] 
@@ -426,6 +438,7 @@ class DiffRender(object):
         mean_length = torch.mean(edge_length, dim=1, keepdim=True)
         bias_length = edge_length-mean_length
         loss_edge = edge_weight*torch.mean(torch.norm(bias_length, p=2, dim=1) ) # have to be mse , otherwise sparse L1 case.
+
         return loss_edge
 
     def calc_reg_depth(self, pred): # pred is  att['vertices']
