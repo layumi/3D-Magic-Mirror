@@ -150,7 +150,7 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
-train_noaug_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
+train_noaug_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=0.25, bg = opt.bg, hmr = opt.hmr)
 test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
 
 torch.set_num_threads(int(opt.workers)*2)
@@ -158,7 +158,7 @@ train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.bat
                                          shuffle=True, drop_last=True, pin_memory=True, num_workers=int(opt.workers),
                                          prefetch_factor=opt.prefetch_factor, persistent_workers=True) # for pytorch>1.6.0
 train_noaug_dataloader = torch.utils.data.DataLoader(train_noaug_dataset, batch_size=opt.batchSize,
-                                         shuffle=True, drop_last=False, pin_memory=True, num_workers=2,
+                                         shuffle=True, drop_last=True, pin_memory=True, num_workers=2,
                                          prefetch_factor=opt.prefetch_factor, persistent_workers=True)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batchSize,
                                          shuffle=False, pin_memory=True, 

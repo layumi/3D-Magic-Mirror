@@ -73,7 +73,7 @@ def regularization(diffRender, Ae, Ai, Aire, opt):
     lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light+loss_bias)
     return lossR_reg, lossR_flip, lossR_IC
 
-def trainer(opt, train_dataloader, test_dataloader):
+def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight, lambda_lpl = opt.lambda_lpl, lambda_flat = opt.lambda_flat) #for market
     #save_mesh('init.obj', diffRender.vertices_init, template_file.faces, template_file.uvs)
 
@@ -1049,11 +1049,10 @@ def trainer(opt, train_dataloader, test_dataloader):
                 last_delta_vertices = current_delta_vertices.cuda() * 1.0 / count 
                 if opt.smooth>0:
                     delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), last_delta_vertices)
-                    last_delta_vertices += delta_vertices_laplacian* opt.smooth  # move to the middle point towards the neighbor
                     if opt.em == 6:
                         # once more time to know neighbor's neighbor
-                        delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), last_delta_vertices)
-                        last_delta_vertices += delta_vertices_laplacian* opt.smooth
+                        delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), delta_vertices_laplacian)
+                    last_delta_vertices += delta_vertices_laplacian* opt.smooth  # move to the middle point towards the neighbor
                 last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
                 last_delta_vertices[last_delta_vertices<-opt.clip] = - opt.clip # clip
                 new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
