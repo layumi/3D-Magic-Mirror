@@ -159,5 +159,5 @@ test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=opt.batch
                                          num_workers=int(opt.workers), prefetch_factor=2)
 
 if __name__ == '__main__':
-    trainer(opt, train_dataloader, test_dataloader)
+    trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader)
 

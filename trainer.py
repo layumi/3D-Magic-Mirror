@@ -967,7 +967,7 @@ def trainer(opt, train_dataloader, test_dataloader):
             current_delta_vertices = torch.zeros(diffRender.vertices_init.shape[0], 3).cuda()
             all_vertices = torch.zeros(sample_number, diffRender.vertices_init.shape[0], 3) # all
             all_delta_vertices = torch.zeros(sample_number, diffRender.vertices_init.shape[0], 3) # all
-            for iter, data in enumerate(train_dataloader):
+            for iter, data in enumerate(train_noaug_dataloader):
                 Xa = data['data']['images'].cuda()
                 with torch.no_grad():
                     Ae = netE(Xa)
