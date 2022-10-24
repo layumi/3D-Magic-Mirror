@@ -28,7 +28,7 @@ def seg_loader(path):
         return seg
 
 class CUBDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, bg = False, selected_index = []):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, aug=False, return_paths=False, bg = False, selected_index = []):
         super(CUBDataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -49,6 +49,7 @@ class CUBDataset(data.Dataset):
 
         self.return_paths = return_paths
         self.train = train
+        self.aug = aug
         self.image_size = image_size
 
         self.selected_index = selected_index
@@ -66,7 +67,7 @@ class CUBDataset(data.Dataset):
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path) # Pillow Image Behavior is not stable. So the convert is neccessary. 
         W, H = img.size
-        if self.train:
+        if self.train and self.aug:
             if random.uniform(0, 1) < 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 seg = seg.transpose(Image.FLIP_LEFT_RIGHT)

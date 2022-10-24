@@ -30,7 +30,7 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, return_paths=False, threshold=0.09, bg=False, hmr = 0.0, selected_index = [], sub=''):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, aug=False, return_paths=False, threshold=0.09, bg=False, hmr = 0.0, selected_index = [], sub=''):
         super(MarketDataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -66,6 +66,7 @@ class MarketDataset(data.Dataset):
 
         self.return_paths = return_paths
         self.train = train
+        self.aug = aug
         self.image_size = image_size
         self.selected_index = selected_index
         print('Succeed loading dataset!')
@@ -92,7 +93,7 @@ class MarketDataset(data.Dataset):
         else:
             obj = -1
 
-        if self.train:
+        if self.train and self.aug:
             # resize 128x64 (the effective part is 128x64)
             #ratio_h = random.uniform(1.0, 1.1)
             #ratio_w = random.uniform(1.0, 1.1)

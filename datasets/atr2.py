@@ -28,7 +28,7 @@ def seg_loader(path):
 
 class ATR2Dataset(data.Dataset):
     # ratio=2
-    def __init__(self, root, image_size, transform=None, ratio = 2, loader=default_loader, train=True, return_paths=False, bg=False, selected_index = []):
+    def __init__(self, root, image_size, transform=None, ratio = 2, loader=default_loader, train=True, aug=False, return_paths=False, bg=False, selected_index = []):
         super(ATR2Dataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -48,6 +48,7 @@ class ATR2Dataset(data.Dataset):
 
         self.return_paths = return_paths
         self.train = train
+        self.aug = aug
         self.image_size = image_size
         self.selected_index = selected_index
         self.ratio = ratio
@@ -69,7 +70,7 @@ class ATR2Dataset(data.Dataset):
         seg = self.seg_loader(seg_path)
         W, H = img.size
 
-        if self.train:
+        if self.train and self.aug:
             if random.uniform(0, 1) < 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
                 seg = seg.transpose(Image.FLIP_LEFT_RIGHT)
