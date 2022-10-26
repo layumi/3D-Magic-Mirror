@@ -150,7 +150,7 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
-train_noaug_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=0.25, bg = opt.bg, hmr = opt.hmr)
+train_noaug_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=0.3, bg = opt.bg, hmr = opt.hmr)
 test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
 
 torch.set_num_threads(int(opt.workers)*2)
