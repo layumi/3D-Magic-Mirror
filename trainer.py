@@ -1049,10 +1049,11 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 last_delta_vertices = current_delta_vertices.cuda() * 1.0 / count 
                 if opt.smooth>0:
                     delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), last_delta_vertices)
+                    last_delta_vertices += delta_vertices_laplacian* opt.smooth  # move to the middle point towards the neighbor
                     if opt.em == 6:
                         # once more time to know neighbor's neighbor
-                        delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), delta_vertices_laplacian)
-                    last_delta_vertices += delta_vertices_laplacian* opt.smooth  # move to the middle point towards the neighbor
+                        delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), last_delta_vertices)
+                        last_delta_vertices += delta_vertices_laplacian* opt.smooth
                 last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
                 last_delta_vertices[last_delta_vertices<-opt.clip] = - opt.clip # clip
                 new_template = netE.vertices_init.data + warm_up*opt.em_step*last_delta_vertices
