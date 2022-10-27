@@ -40,7 +40,7 @@ from datasets.atr import ATRDataset
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='ATR_baseline', help='folder to output images and model checkpoints')
 parser.add_argument('--configs_yml', default='configs/image.yml', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='../ATR/humanparsing/JPEGImages', help='path to dataset root dir')
+parser.add_argument('--dataroot', default='../ATR/humanparsing/SegmentationClassAug', help='path to dataset root dir')
 parser.add_argument('--ratio', type=int, default=1, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
@@ -147,9 +147,9 @@ with open('log/%s/opts.yaml'%opt.name,'w') as fp:
 if torch.cuda.is_available():
     cudnn.benchmark = True
 
-train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, aug=True, bg = opt.bg)
-train_noaug_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, aug=False, bg = opt.bg)
-test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, aug=False, bg = opt.bg)
+train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.threshold, bg = opt.bg)
+train_noaug_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold = opt.threshold, bg = opt.bg)
+test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold = opt.threshold, bg = opt.bg)
 
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,

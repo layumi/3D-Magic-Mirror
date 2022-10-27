@@ -27,16 +27,24 @@ def seg_loader(path):
         return seg
 
 class ATRDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, aug=False, return_paths=False, bg=False, selected_index = []):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, aug=False, return_paths=False, threshold = 0.09, bg=False, selected_index = []):
         super(ATRDataset, self).__init__()
         self.root = root
         self.bg = bg
+        self.im_list = []
         if train:
             with open('datasets/ATR_train.txt', 'r') as f:
-                self.im_list = [root+'/'+line.strip() for line in f]
+                old_im_list = [root+'/'+line.strip() for line in f]
         else:
             with open('datasets/ATR_test.txt', 'r') as f:
-                self.im_list = [root+'/'+line.strip() for line in f]
+                old_im_list = [root+'/'+line.strip() for line in f]
+
+        # threshold
+        for index, name in enumerate(old_im_list):
+            precentage = float(name[-8:-4])
+            if precentage>threshold and precentage<0.64:
+                self.im_list.append(name)
+        print(len(old_im_list),'After threshold:',len(self.im_list))
 
         self.transform = transform
         self.loader = loader
@@ -57,13 +65,15 @@ class ATRDataset(data.Dataset):
             original_index = index
             index = self.selected_index[index]
  
-        img_path, label = self.imgs[index]
+        seg_path, label = self.imgs[index]
         if len(self.selected_index) >0:
-            print(original_index, img_path)
+            print(original_index, seg_path)
         target_height, target_width = self.image_size, self.image_size
 
         # image and its flipped image
-        seg_path = img_path.replace('JPEGImages','SegmentationClassAug').replace('.jpg', '.png')
+        #seg_path = img_path.replace('JPEGImages','SegmentationClassAug').replace('.jpg', '.png')
+        img_path = seg_path.replace('SegmentationClassAug','JPEGImages').replace('.png', '.jpg')
+        img_path = img_path[:-9]+'.jpg'
         img = self.loader(img_path)
         seg = self.seg_loader(seg_path)
         W, H = img.size
