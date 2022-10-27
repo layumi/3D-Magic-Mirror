@@ -114,6 +114,7 @@ parser.add_argument('--gan_reg', type=float, default=10.0, help='parameter')
 parser.add_argument('--em_step', type=float, default=0.1, help='parameter')
 parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
 parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
+parser.add_argument('--clean_threshold', type=float, default=0.3, help='parameter')
 parser.add_argument('--topK', type=float, default=0.01, help='topK for em5')
 parser.add_argument('--eps', type=float, default=0.2, help='parameter for DBSCAN only')
 parser.add_argument('--bias_range', type=float, default=0.5, help='parameter bias range')
@@ -150,7 +151,7 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
-train_noaug_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=0.3, bg = opt.bg, hmr = opt.hmr)
+train_noaug_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=opt.clean_threshold, bg = opt.bg, hmr = opt.hmr)
 test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
 
 torch.set_num_threads(int(opt.workers)*2)
