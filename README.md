@@ -145,6 +145,7 @@ Note to modify the dataset path to your own path.
 ```bash
 python prepare_market.py         
 python prepare_ATR.py
+python prepare_cub.py
 ```
 
 
