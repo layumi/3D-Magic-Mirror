@@ -30,7 +30,7 @@ def seg_loader(path):
         return seg
 
 class MarketDataset(data.Dataset):
-    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, aug=False, return_paths=False, threshold=0.09, bg=False, hmr = 0.0, selected_index = [], sub=''):
+    def __init__(self, root, image_size, transform=None, loader=default_loader, train=True, aug=False, return_paths=False, threshold='0.09,0.64', bg=False, hmr = 0.0, selected_index = [], sub=''):
         super(MarketDataset, self).__init__()
         self.root = root
         self.bg = bg
@@ -48,10 +48,13 @@ class MarketDataset(data.Dataset):
             self.class_dir = glob.glob(os.path.join(self.root, 'query', '*'))
          
         # threshold
+        threshold = threshold.replace(' ','').split(',')
         for index, name in enumerate(old_im_list):
             precentage = float(name[-8:-4])
-            if precentage>threshold and precentage<0.64:
+            if precentage>float(threshold[0]) and precentage<float(threshold[1]):
                 self.im_list.append(name)
+        if not train:
+            self.im_list = old_im_list
         print(len(old_im_list),'After threshold:',len(self.im_list))
         #self.im_list = old_im_list
         self.transform = transform

@@ -40,7 +40,7 @@ from datasets.atr2 import ATR2Dataset # height/width ratio=2
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='ATR2_baseline', help='folder to output images and model checkpoints')
 parser.add_argument('--configs_yml', default='configs/image.yml', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='../ATR/humanparsing/SegmentationClassAug', help='path to dataset root dir')
+parser.add_argument('--dataroot', default='../ATR/humanparsing/Seg', help='path to dataset root dir')
 parser.add_argument('--ratio', type=float, default=2, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
@@ -113,7 +113,7 @@ parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--gan_reg', type=float, default=10.0, help='parameter')
 parser.add_argument('--em_step', type=float, default=0.1, help='parameter')
 parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
-parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
+parser.add_argument('--threshold', type=str, default='0.09,0.49', help='parameter')
 parser.add_argument('--bias_range', type=float, default=0.5, help='parameter bias range')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
@@ -148,8 +148,8 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.threshold, bg = opt.bg, ratio = opt.ratio)
-train_noaug_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.threshold, bg = opt.bg, ratio = opt.ratio)
-test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold = opt.threshold, bg = opt.bg, ratio = opt.ratio)
+train_noaug_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = '0.16,0.36', bg = opt.bg, ratio = opt.ratio)
+test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold = '0,1', bg = opt.bg, ratio = opt.ratio)
 
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,

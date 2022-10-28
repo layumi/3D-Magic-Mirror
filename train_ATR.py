@@ -40,7 +40,7 @@ from datasets.atr import ATRDataset
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='ATR_baseline', help='folder to output images and model checkpoints')
 parser.add_argument('--configs_yml', default='configs/image.yml', help='folder to output images and model checkpoints')
-parser.add_argument('--dataroot', default='../ATR/humanparsing/SegmentationClassAug', help='path to dataset root dir')
+parser.add_argument('--dataroot', default='../ATR/humanparsing/Seg', help='path to dataset root dir')
 parser.add_argument('--ratio', type=int, default=1, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')

@@ -143,7 +143,8 @@ During training, we will drop few wrong masks or ill-detected person.
 Note to modify the dataset path to your own path.
 
 ```bash
-python prepare_market.py          # only Market is needed.
+python prepare_market.py         
+python prepare_ATR.py
 ```
 
 
