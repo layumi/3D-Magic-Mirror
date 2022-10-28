@@ -452,19 +452,25 @@ class DiffRender(object):
         loss_depth = torch.mean(pred[:,:,2]**2 ) 
         return loss_depth
 
-    def calc_reg_depthR(self, pred): # exp Circle. pred is  att['vertices']
+    def calc_reg_depthR(self, pred, eps = 0.001): # exp Circle. pred is  att['vertices']
         # L2 regularization on depth w R
         x = pred[:,:,0].detach()
         y = pred[:,:,1].detach()
-        loss_depth = torch.mean(pred[:,:,2]**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)))
-        return loss_depth
+        z = pred[:,:,2].detach()
+        loss_depth = pred[:,:,2]**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2))
+        # keep sign
+        #loss_depth = (z>=0)* (pred[:,:,2]-eps)**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)) + (z<0)*(pred[:,:,2]+eps)**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)) # prevent all to zero. positive to 0.001, negative to -0.001.
+        return torch.mean(loss_depth)
 
-    def calc_reg_depthC(self, pred): # Circle . pred is  att['vertices']
+    def calc_reg_depthC(self, pred, eps = 0.001): # Circle . pred is  att['vertices']
         # L2 regularization on depth w R
         x = pred[:,:,0].detach()
         y = pred[:,:,1].detach()
-        loss_depth = torch.mean(pred[:,:,2]**2 * (x**2 + (y/self.ratio)**2))
-        return loss_depth
+        z = pred[:,:,2].detach()
+        loss_depth = pred[:,:,2]**2 * (x**2 + (y/self.ratio)**2)
+        # keep sign
+        #loss_depth = (z>=0)* (pred[:,:,2]-eps)**2 * (x**2 + (y/self.ratio)**2) + (z<0)* (pred[:,:,2]+eps)**2 * (x**2 + (y/self.ratio)**2)
+        return torch.mean(loss_depth)
 
     def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
         batchsize = pred.shape[0] 
