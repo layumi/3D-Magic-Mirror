@@ -247,6 +247,7 @@ class DiffRender(object):
         vertices_laplacian_matrix = kal.ops.mesh.uniform_laplacian(self.num_vertices, faces)
 
         self.vertices_init = vertices_init
+        self.sign_init = torch.sign(vertices_init[:,2]).cuda()
         self.faces = faces
         self.face_uvs = face_uvs
         self.edge2faces = edge2faces
@@ -391,10 +392,19 @@ class DiffRender(object):
         Nf[..., 2] *= -1
         # control the symmetry along the z axis.
         if L1: # encourage hand to move out. 
-            loss_norm = torch.abs(Na - Nf).mean()
+            loss_norm = torch.abs(Na - Nf)
         else:
-            loss_norm = (Na - Nf).norm(dim=2).mean()
-        return loss_norm
+            loss_norm = (Na - Nf).norm(dim=2)
+        # print(Na.shape, loss_norm.shape)
+        # ignore the wrong sign. swapping edge
+        # Finding swapped points. Same sign, mask_a = 1;  otherwise mask_a=0
+        mask_a = torch.nn.functional.relu(torch.sign(Na[:,:,2]) * self.sign_init)
+        mask_f = mask_a.index_select(1, self.flip_index.to(Na.device))
+        # Finding swapped point pairs.  mask = 0; otherwise mask=1
+        mask = torch.logical_and(mask_a,mask_f)
+        #print(mask)
+        loss_norm = loss_norm* mask
+        return torch.mean(loss_norm)
 
     def calc_reg_loss(self, att):
         laplacian_weight = self.lambda_lpl #0.1
@@ -456,20 +466,19 @@ class DiffRender(object):
         # L2 regularization on depth w R
         x = pred[:,:,0].detach()
         y = pred[:,:,1].detach()
-        z = pred[:,:,2].detach()
-        loss_depth = pred[:,:,2]**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2))
+        #loss_depth = pred[:,:,2]**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2))
         # keep sign
-        #loss_depth = (z>=0)* (pred[:,:,2]-eps)**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)) + (z<0)*(pred[:,:,2]+eps)**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)) # prevent all to zero. positive to 0.001, negative to -0.001.
+        loss_depth = (self.sign_init>=0)* (pred[:,:,2]-eps)**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)) + (self.sign_init<0)*(pred[:,:,2]+eps)**2 * torch.exp( 2*(x**2 + (y/self.ratio)**2)) # prevent all to zero. positive to 0.001, negative to -0.001.
         return torch.mean(loss_depth)
 
     def calc_reg_depthC(self, pred, eps = 0.001): # Circle . pred is  att['vertices']
         # L2 regularization on depth w R
         x = pred[:,:,0].detach()
         y = pred[:,:,1].detach()
-        z = pred[:,:,2].detach()
-        loss_depth = pred[:,:,2]**2 * (x**2 + (y/self.ratio)**2)
+        #z = pred[:,:,2].detach()
+        #loss_depth = pred[:,:,2]**2 * (x**2 + (y/self.ratio)**2)
         # keep sign
-        #loss_depth = (z>=0)* (pred[:,:,2]-eps)**2 * (x**2 + (y/self.ratio)**2) + (z<0)* (pred[:,:,2]+eps)**2 * (x**2 + (y/self.ratio)**2)
+        loss_depth = (self.sign_init>=0)* (pred[:,:,2]-eps)**2 * (x**2 + (y/self.ratio)**2) + (self.sign_init<0)* (pred[:,:,2]+eps)**2 * (x**2 + (y/self.ratio)**2)
         return torch.mean(loss_depth)
 
     def calc_reg_deform(self, pred): # pred is  att['delta_vertices'], x,y,z. B*N*3
