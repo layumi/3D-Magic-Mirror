@@ -114,6 +114,7 @@ parser.add_argument('--gan_reg', type=float, default=10.0, help='parameter')
 parser.add_argument('--em_step', type=float, default=0.1, help='parameter')
 parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
 parser.add_argument('--threshold', type=str, default='0.09,0.49', help='parameter')
+parser.add_argument('--clean_threshold', type=str, default='0.16,0.36', help='parameter')
 parser.add_argument('--bias_range', type=float, default=0.5, help='parameter bias range')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="-15~15", help='~ elevantion')
@@ -148,7 +149,7 @@ if torch.cuda.is_available():
     cudnn.benchmark = True
 
 train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.threshold, bg = opt.bg, ratio = opt.ratio)
-train_noaug_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = '0.16,0.36', bg = opt.bg, ratio = opt.ratio)
+train_noaug_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.clean_threshold, bg = opt.bg, ratio = opt.ratio)
 test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold = '0,1', bg = opt.bg, ratio = opt.ratio)
 
 torch.set_num_threads(int(opt.workers)*2)
