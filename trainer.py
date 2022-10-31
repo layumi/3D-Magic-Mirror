@@ -1063,10 +1063,12 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 if opt.white:
                     new_template -= torch.mean(new_template, dim=1, keepdim = True) # 1*1*3
 
-                #whether_invisible_faces = torch.sum(torch.nn.functional.relu(face_clocks(new_template, faces.cuda())))
-                #print('whether_invisible_faces:%f'%whether_invisible_faces)
-                #if whether_invisible_faces==0: # only update when no counter-clock wise
+                old_template = netE.vertices_init.cuda()
+                whether_cross = torch.sum(torch.nn.functional.relu(-torch.sign(new_template[:,:,2])*torch.sign(old_template[:,:,2])))
+                print('whether_cross:%f'%whether_cross)
                 netE.vertices_init.data = new_template
+                if whether_cross>0 and opt.cross: # only update when no point over depth
+                    netE.vertices_init.data = old_template      
                 if opt.swa: swa_modelE.module.vertices_init.data = new_template
                 opt.em_step = opt.em_step*0.99 # decay
                 if opt.update_bn: update_bn(train_dataloader, netE)
