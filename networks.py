@@ -388,13 +388,13 @@ class DiffRender(object):
 
     def recon_flip(self, att, L1):
         Na = att['delta_vertices']
-        Nf = Na.index_select(1, self.flip_index.to(Na.device))
+        Nf = Na.index_select(1, self.flip_index.to(Na.device)).detach()
         Nf[..., 2] *= -1
         # control the symmetry along the z axis.
         if L1: # encourage hand to move out. 
-            loss_norm = torch.abs(Na - Nf.detach())
+            loss_norm = torch.abs(Na - Nf)
         else:
-            loss_norm = (Na - Nf.detach()).norm(dim=2)
+            loss_norm = (Na - Nf).norm(dim=2)
         # print(Na.shape, loss_norm.shape)
         # ignore the wrong sign. swapping edge
         # Finding swapped points. Same sign, mask_a = 1;  otherwise mask_a=0
@@ -403,7 +403,7 @@ class DiffRender(object):
         # Finding swapped point pairs.  mask = 0; otherwise mask=1
         #mask = torch.logical_and(mask_a,mask_f)
         #print(mask)
-        loss_norm = loss_norm* mask_f # if target sign is correct, we learn it!
+        loss_norm = loss_norm* mask_f*2 # if target sign is correct, we learn it!
         return torch.mean(loss_norm)
 
     def calc_reg_loss(self, att):
