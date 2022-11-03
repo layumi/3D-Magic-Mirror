@@ -61,7 +61,7 @@ def regularization(diffRender, Ae, Ai, Aire, opt):
     if opt.lambda_depth>0: # z^2
         lossR_reg += opt.lambda_depth * (diffRender.calc_reg_depth(Ae['vertices']) +  diffRender.calc_reg_depth(Ai['vertices'])) / 2.0
     if opt.lambda_depthR>0: #  z^2 * exp (x^2+(y/ratio)^2)
-        lossR_reg += opt.lambda_depthR * (diffRender.calc_reg_depthR(Ae['vertices']) +  diffRender.calc_reg_depthR(Ai['vertices'])) / 2.0
+        lossR_reg += opt.lambda_depthR * (diffRender.calc_reg_depthR(Ae['vertices'], temp = opt.temp) +  diffRender.calc_reg_depthR(Ai['vertices'], temp=opt.temp) ) / 2.0
     if opt.lambda_depthC>0: #  z^2 * exp (x^2+(y/ratio)^2)
         lossR_reg += opt.lambda_depthC * (diffRender.calc_reg_depthC(Ae['vertices']) +  diffRender.calc_reg_depthC(Ai['vertices'])) / 2.0
     if opt.lambda_deform>0:
