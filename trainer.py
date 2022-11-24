@@ -73,7 +73,12 @@ def regularization(diffRender, Ae, Ai, Aire, opt):
     lossR_IC = opt.lambda_ic * (loss_cam + loss_shape + loss_texture + loss_light+loss_bias)
     return lossR_reg, lossR_flip, lossR_IC
 
+
 def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
+    # backup trainer.py and networks.py
+    os.system('cp trainer.py %s'%opt.outf)
+    os.system('cp networks.py %s'%opt.outf)
+
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight, lambda_lpl = opt.lambda_lpl, lambda_flat = opt.lambda_flat) #for market
     #save_mesh('init.obj', diffRender.vertices_init, template_file.faces, template_file.uvs)
 
