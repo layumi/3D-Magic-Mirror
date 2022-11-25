@@ -162,7 +162,7 @@ def deep_copy(att, index=None, detach=False):
 
 
 class DiffRender(object):
-    def __init__(self, mesh_name, image_size, ratio=1, image_weight=0.1, lambda_lpl = 0.1, lambda_flat = 0.001):
+    def __init__(self, mesh_name, image_size, ratio=1, init_ellipsoid = 1, image_weight=0.1, lambda_lpl = 0.1, lambda_flat = 0.001):
         self.image_size = image_size
         self.image_weight = image_weight
         self.lambda_lpl = lambda_lpl
@@ -185,10 +185,10 @@ class DiffRender(object):
         vertices = (vertices - vertices_min) / (vertices_max - vertices_min)
         vertices_init = vertices * 2.0 - 1.0 # (V, 3)
         vertices_init[:,2] = vertices_init[:,2] / 2 # depth = 1/2 * height. z axis is different from x axis. 
-        if 'ellipsoid' in mesh_name:
+        if init_ellipsoid != 1:
             print('using the ellipsoid template')
-            vertices_init[:,0] = vertices_init[:,0] / 2  # width = 1/2 * height
-            vertices_init[:,2] = vertices_init[:,2] / 2 # depth = 1/4 * height
+            vertices_init[:,0] = vertices_init[:,0] / init_ellipsoid  # width = 1/2 * height
+            vertices_init[:,2] = vertices_init[:,2] / init_ellipsoid  # depth = 1/4 * height
         vertices_init *= 0.9 # scale a little small
         # get face_uvs
         faces = mesh.faces
@@ -388,7 +388,7 @@ class DiffRender(object):
 
     def recon_flip(self, att, L1):
         Na = att['delta_vertices']
-        Nf = Na.index_select(1, self.flip_index.to(Na.device)).detach()
+        Nf = Na.index_select(1, self.flip_index.to(Na.device)) #.detach()
         Nf[..., 2] *= -1
         # control the symmetry along the z axis.
         if L1: # encourage hand to move out. 
@@ -401,9 +401,9 @@ class DiffRender(object):
         mask_a = torch.nn.functional.relu(torch.sign(Na[:,:,2]) * self.sign_init)
         mask_f = mask_a.index_select(1, self.flip_index.to(Na.device))
         # Finding swapped point pairs.  mask = 0; otherwise mask=1
-        #mask = torch.logical_and(mask_a,mask_f)
+        mask = torch.logical_and(mask_a,mask_f)
         #print(mask)
-        loss_norm = loss_norm* mask_f*2 # if target sign is correct, we learn it!
+        loss_norm = loss_norm* mask_f 
         return torch.mean(loss_norm)
 
     def calc_reg_loss(self, att):

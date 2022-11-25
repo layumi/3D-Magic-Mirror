@@ -43,6 +43,7 @@ parser.add_argument('--dataroot', default='./data/CUB_Data', help='path to datas
 parser.add_argument('--ratio', type=int, default=1, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
+parser.add_argument('--ellipsoid', type=float, default = 1, help='init sphere to ellipsoid' )
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
 parser.add_argument('--pretrain', type=str, default='hr18sv2', help='pretrain shape encoder. default is hr18sv2 or hr18 or none or hr18sv1')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')

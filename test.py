@@ -62,7 +62,8 @@ parser.add_argument('--configs_yml', default='configs/image.yml', help='folder t
 parser.add_argument('--dataroot', default='../Market/hq/seg_hmr', help='path to dataset root dir')
 parser.add_argument('--ratio', type=int, default=2, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
-parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
+parser.add_argument('--template_path', default='./template/sphere.obj', help='template mesh path')
+parser.add_argument('--ellipsoid', type=float, default = 2, help='init sphere to ellipsoid' )
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
 parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
@@ -159,6 +160,7 @@ opt.norm = config['norm']
 opt.threshold = config['threshold']
 opt.droprate = config['droprate']
 opt.ratio = config['ratio']
+opt.ellipsoid = config['ellipsoid']
 
 print(opt)
 
@@ -208,7 +210,7 @@ if __name__ == '__main__':
         checkpoint = torch.load(resume_path)
         epoch = checkpoint['epoch']
         
-    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight)
+    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, init_ellipsoid = opt.ellipsoid, image_weight=opt.image_weight)
     #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
     latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
     #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
