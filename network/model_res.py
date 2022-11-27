@@ -115,25 +115,27 @@ class CameraEncoder(nn.Module):
         self.dist_min = float(dist_range[0])
         self.dist_max = float(dist_range[1])
 
-        #if pretrain=='none':
+        if pretrain=='none':
             # 2-4-4-3 = 12 resblocks = 24 conv
-        self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
-        self.encoder1.apply(weights_init)
-        in_dim = 288
-        #elif pretrain=='unet': #unet from scratch
-        #    self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
-        #    in_dim = 32
-        #elif pretrain=='res18':
-        #    self.encoder1 = Resnet_4C(pretrain)
-        #    in_dim = 512
-        #elif pretrain=='res50':
-        #    self.encoder1 = Resnet_4C(pretrain)
-        #    in_dim = 2048
-        #elif 'hr18' in pretrain:
-        #    self.encoder1 = HRnet_4C(pretrain = 'hr18sv1') # set as small hrnet for fast inference.
-        #    in_dim = 2048
-        #else:
-        #    print('unknown network')
+            self.encoder1 = Base_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            self.encoder1.apply(weights_init)
+            in_dim = 288
+            print('--vanilla camera network--')
+        elif pretrain=='unet': #unet from scratch
+            self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
+            in_dim = 32
+        elif pretrain=='res18':
+            self.encoder1 = Resnet_4C(pretrain)
+            in_dim = 512
+        elif pretrain=='res50':
+            self.encoder1 = Resnet_4C(pretrain)
+            in_dim = 2048
+        elif 'hr18' in pretrain:
+            self.encoder1 = HRnet_4C(pretrain = 'hr18sv1') # set as small hrnet for fast inference.
+            in_dim = 2048
+            print('--hr18 camera network--')
+        else:
+            print('unknown network')
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         self.avgpool1 = MMPool((2,2))
@@ -332,9 +334,9 @@ class LightEncoder(nn.Module):
 
         block1 = Conv2dBlock(nc, 32, nk, stride=2, padding=nk//2, norm = norm, coordconv=coordconv)
         block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, norm = norm, coordconv=coordconv)
-        block3 = Conv2dBlock(64, 128, nk, stride=2, padding=nk//2, norm = norm)
-        block4 = Conv2dBlock(128, 256, nk, stride=2, padding=nk//2, norm = norm)
-        block5 = Conv2dBlock(256, 128, nk, stride=2, padding=nk//2, norm = norm)
+        block3 = Conv2dBlock(64, 96, nk, stride=2, padding=nk//2, norm = norm)
+        block4 = Conv2dBlock(96, 192, nk, stride=2, padding=nk//2, norm = norm)
+        block5 = Conv2dBlock(192, 128, nk, stride=2, padding=nk//2, norm = norm)
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
@@ -603,6 +605,8 @@ class Resnet_4C(nn.Module):
         model.layer4[0].downsample[0].stride = (1,1)
         model.layer4[0].conv1.stride = (1,1)
         model.layer4[0].conv2.stride = (1,1)
+        model.fc = nn.Sequential() # save memory
+        model.classifier = nn.Sequential() # save memory
         self.model = model
     def forward(self, x):
         x = self.model.conv1(x)
@@ -628,7 +632,8 @@ class HRnet_4C(nn.Module):
             model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
         elif pretrain == 'hr18sv1':
             model = timm.create_model('hrnet_w18_small', pretrained=True)
-        #print(model) # bias?
+        #print(model) 
+        model.classifier = nn.Sequential() # save memory
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=3, stride=2, padding=1, bias=False) #here 4 indicates 4-channel input
         model.conv1.weight.data[:, :3] = weight
@@ -656,9 +661,7 @@ class ResBlocks(nn.Module):
         self.ca.apply(weights_init)
     def forward(self, x):
         out = self.model(x) # multiple ResBlocks
-        out_weight = self.ca( out)
-        out = x + out_weight * out # to help initial learning
-        return out
+        return x + self.ca(out) * out # to help initial learning
 
 class ResBlock(nn.Module):
     def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
@@ -684,9 +687,7 @@ class ResBlock(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
-        out = self.model(x)
-        out += 0.2 * x # to help initial learning
-        return out
+        return x + 0.2*self.model(x) # to help initial learning
 
 class ResBlock_half(nn.Module):
     def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
@@ -714,8 +715,7 @@ class ResBlock_half(nn.Module):
     def forward(self, x):
         residual = nn.functional.avg_pool2d(x, kernel_size=3, stride=2, padding=1)
         out = self.model(x)
-        out = torch.cat([out,residual], dim=1)
-        return out
+        return torch.cat([out,residual], dim=1)
 
 class AddCoords1d(nn.Module):
 
@@ -806,7 +806,10 @@ class Conv2dBlock(nn.Module):
     def __init__(self, input_dim ,output_dim, kernel_size, stride,
                  padding=0, norm='none', activation='lrelu', padding_mode='zeros', dilation=1, fp16 = False, coordconv = False):
         super(Conv2dBlock, self).__init__()
-        self.use_bias = True
+        if norm == 'bn':
+            self.use_bias = False
+        else: 
+            self.use_bias = True
 
         # initialize convolution
         self.coordconv = coordconv
