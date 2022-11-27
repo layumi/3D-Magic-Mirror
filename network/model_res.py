@@ -240,7 +240,7 @@ class ShapeEncoder(nn.Module):
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048 
         elif 'hr18' in pretrain:
-            self.encoder1 = HRnet_4C(pretrain)
+            self.encoder1 = HRnet_4C(pretrain) # default is hr18sv2
             in_dim = 2048 
         else: 
             print('unknown network')
@@ -387,7 +387,7 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn' ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn', pretrain='none' ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
@@ -400,8 +400,25 @@ class TextureEncoder(nn.Module):
         #avgpool = MMPool()
 
         #################################################
-        #model_ft = Resnet50_4C()
-        #self.encoder1 = nn.Sequential(*[model_ft, avgpool])
+        if 'res50' in pretrain:
+            encoder = Resnet_4C(pretrain, stride=2)
+            self.block1 = nn.Sequential(*[encoder.conv1, encoder.bn1, encoder.relu, encoder.maxpool]) #64
+            self.block2 = encoder.layer1 # 256
+            self.block3 = encoder.layer2 # 512
+            self.block4 = encoder.layer3 # 1024
+            self.block5 = encoder.layer4 # 2048
+        else:
+            self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
+        # 2-4-4-2
+            self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlocks(1, 64, norm=norm)]) # 128 -> 64*64*64
+            self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlocks(3, 128, norm=norm)]) #ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
+            self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlocks(3, 256, norm=norm)]) #ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
+            self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlocks(2, 512, norm=norm)]) # 16-> 8*8*512
+            self.block1.apply(weights_init)
+            self.block2.apply(weights_init)
+            self.block3.apply(weights_init)
+            self.block4.apply(weights_init)
+            self.block5.apply(weights_init)
 
         # 8*8*512
         up1 = [Conv2dBlock(512, 256, 5, 1, 2, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, 256), nn.Upsample(scale_factor=2)]
@@ -455,11 +472,6 @@ class TextureEncoder(nn.Module):
         self.up6 = nn.Sequential(*up6)
 
         # Initialize with Xavier Glorot
-        self.block1.apply(weights_init)
-        self.block2.apply(weights_init)
-        self.block3.apply(weights_init)
-        self.block4.apply(weights_init)
-        self.block5.apply(weights_init)
         self.up1.apply(weights_init)
         self.up2.apply(weights_init)
         self.up3.apply(weights_init)
@@ -581,7 +593,7 @@ class UNet_4C(nn.Module):
 
 
 class Resnet_4C(nn.Module):
-    def __init__(self, pretrain):
+    def __init__(self, pretrain, stride = 1):
         super(Resnet_4C, self).__init__()
         if pretrain == 'res50':
             model = models.resnet50(pretrained=True)
@@ -602,9 +614,10 @@ class Resnet_4C(nn.Module):
         model.conv1.weight.data[:, 3] = torch.mean(weight, dim=1) 
         model.relu = nn.ReLU()
 
-        model.layer4[0].downsample[0].stride = (1,1)
-        model.layer4[0].conv1.stride = (1,1)
-        model.layer4[0].conv2.stride = (1,1)
+        if stride == 1:
+            model.layer4[0].downsample[0].stride = (1,1)
+            model.layer4[0].conv1.stride = (1,1)
+            model.layer4[0].conv2.stride = (1,1)
         model.fc = nn.Sequential() # save memory
         model.classifier = nn.Sequential() # save memory
         self.model = model
@@ -639,6 +652,7 @@ class HRnet_4C(nn.Module):
         model.conv1.weight.data[:, :3] = weight
         model.conv1.weight.data[:, 3] = torch.mean(weight, dim=1)  #model.conv1.weight[:, 0]
         self.model = model
+        print(model) 
 
         dim = 2048
         ca = [nn.AdaptiveAvgPool2d((1,1)), nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
