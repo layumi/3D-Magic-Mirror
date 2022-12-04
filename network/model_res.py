@@ -197,7 +197,6 @@ class CameraEncoder(nn.Module):
             uv_sampler = current_position[:,:,:,0:2].cuda().detach() # 32 x642x1x2
             local = F.grid_sample(x, uv_sampler, mode='bilinear', align_corners=False) # 32 x in_dim x 642x1
             x = torch.cat( (self.avgpool1(x), self.avgpool2(local)), dim=1)
-        print(x.shape)
         x = x.view(bnum, -1)
         Dist_output = self.linear1(x)
         Azim_output = self.linear2(x)
