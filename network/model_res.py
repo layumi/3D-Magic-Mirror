@@ -701,7 +701,7 @@ class ResBlock(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
-        return x + 0.2*self.model(x) # to help initial learning
+        return 0.2 * x + self.model(x) # to help initial learning
 
 class ResBlock_half(nn.Module):
     def __init__(self, dim, norm='bn', activation='lrelu', padding_mode='zeros', res_type='basic'):
