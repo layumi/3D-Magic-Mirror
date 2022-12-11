@@ -391,14 +391,6 @@ class TextureEncoder(nn.Module):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
-        self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
-        # 2-4-4-2
-        self.block2 = nn.Sequential(*[ResBlock_half(32, norm=norm), ResBlocks(1, 64, norm=norm)]) # 128 -> 64*64*64
-        self.block3 = nn.Sequential(*[ResBlock_half(64, norm=norm), ResBlocks(3, 128, norm=norm)]) #ResBlock(128, norm=norm), ResBlock(128, norm=norm), ResBlock(128, norm=norm)]) # 64->32*32*128
-        self.block4 = nn.Sequential(*[ResBlock_half(128, norm=norm), ResBlocks(3, 256, norm=norm)]) #ResBlock(256, norm=norm), ResBlock(256, norm=norm), ResBlock(256, norm=norm)]) # 32 -> 16*16*256
-        self.block5 = nn.Sequential(*[ResBlock_half(256, norm=norm), ResBlocks(2, 512, norm=norm)]) # 16-> 8*8*512
-        #avgpool = MMPool()
-
         #################################################
         if 'res50' in pretrain:
             encoder = Resnet_4C(pretrain, stride=2)
