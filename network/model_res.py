@@ -336,14 +336,14 @@ class LightEncoder(nn.Module):
         block2 = Conv2dBlock(32, 64, nk, stride=2, padding=nk//2, norm = norm, coordconv=coordconv)
         block3 = Conv2dBlock(64, 96, nk, stride=2, padding=nk//2, norm = norm)
         block4 = Conv2dBlock(96, 192, nk, stride=2, padding=nk//2, norm = norm)
-        block5 = Conv2dBlock(192, 128, nk, stride=2, padding=nk//2, norm = norm)
+        block5 = Conv2dBlock(192, 96, nk, stride=2, padding=nk//2, norm = norm)
 
         #avgpool = nn.AdaptiveAvgPool2d(1)
         avgpool = MMPool()
 
-        linear1 = self.linearblock(128, 64, relu=False)
+        linear1 = self.linearblock(96, 48, relu=False)
         #linear2 = self.linearblock(32, 32)
-        self.linear3 = nn.Linear(64, 9)
+        self.linear3 = nn.Linear(48, 9)
 
         #################################################
         all_blocks = [block1, block2, block3, block4, block5, avgpool]
@@ -387,18 +387,19 @@ class LightEncoder(nn.Module):
         return lightparam
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn', pretrain='none' ):
+    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn', pretrain='res34' ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
         #################################################
-        if 'res50' in pretrain:
-            encoder = Resnet_4C(pretrain, stride=2)
-            self.block1 = nn.Sequential(*[encoder.conv1, encoder.bn1, encoder.relu, encoder.maxpool]) #64
-            self.block2 = encoder.layer1 # 256
-            self.block3 = encoder.layer2 # 512
-            self.block4 = encoder.layer3 # 1024
-            self.block5 = encoder.layer4 # 2048
+        if 'res' in pretrain:
+            encoder = Resnet_4C(pretrain='res34', stride=2)
+            self.block1 = nn.Sequential(*[encoder.model.conv1, encoder.model.bn1, encoder.model.relu]) #64
+            self.block2 = nn.Sequential(*[encoder.model.maxpool, encoder.model.layer1]) # 256
+            self.block3 = encoder.model.layer2 # 512
+            self.block4 = encoder.model.layer3 # 1024
+            self.block5 = encoder.model.layer4 # 2048
+            outdim = 512
         else:
             self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
         # 2-4-4-2
@@ -411,19 +412,20 @@ class TextureEncoder(nn.Module):
             self.block3.apply(weights_init)
             self.block4.apply(weights_init)
             self.block5.apply(weights_init)
+            outdim=512
 
         # 8*8*512
-        up1 = [Conv2dBlock(512, 256, 5, 1, 2, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, 256), nn.Upsample(scale_factor=2)]
+        up1 = [Conv2dBlock(outdim, outdim//2, 5, 1, 2, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, outdim//2), nn.Upsample(scale_factor=2)]
         # 16*16*256 + 16*16*256 = 16*16*512
-        up2 = [Conv2dBlock(512, 128, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, 128), nn.Upsample(scale_factor=2)]
+        up2 = [Conv2dBlock(outdim, outdim//4, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, outdim//4), nn.Upsample(scale_factor=2)]
         # 32*32*128 + 32*32*128 =  32*32*256
-        up3 = [Conv2dBlock(256, 64, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, 64), nn.Upsample(scale_factor=2)]
+        up3 = [Conv2dBlock(outdim//2, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//8), nn.Upsample(scale_factor=2)]
         # 64*64*64 + 64*64*64 = 64*64*128 
-        up4 = [Conv2dBlock(128, 64, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, 64), nn.Upsample(scale_factor=2)]
+        up4 = [Conv2dBlock(outdim//4, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//8), nn.Upsample(scale_factor=2)]
         # 128*128*64
-        up5 = [ASPP(64), Conv2dBlock(64, 32, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, 32), nn.Upsample(scale_factor=2)]
+        up5 = [ASPP(outdim//8), Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//16), nn.Upsample(scale_factor=2)]
         # 256*256
-        up6 = [ASPP(32), Conv2dBlock(32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
+        up6 = [ASPP(outdim//16), Conv2dBlock(outdim//16, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
         if droprate >0:
             up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
 
@@ -598,6 +600,8 @@ class Resnet_4C(nn.Module):
                 os.system('gdrive download 1pFyAdt9BOZCtzaLiE-W3CsX_kgWABKK6 --path ~/.cache/torch/checkpoints/')
             model = models.resnet50()
             model.load_state_dict(torch.load("/home/zzd/.cache/torch/checkpoints/lup_moco_r50.pth"), strict=False)
+        elif pretrain =='res34':
+            model = models.resnet34()
         else:
             model = models.resnet18(pretrained=True)
         weight = model.conv1.weight.clone()

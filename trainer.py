@@ -1074,7 +1074,7 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 netE.vertices_init.data = new_template
                 if whether_cross>0 and opt.cross: # only update when no point over depth
                     netE.vertices_init.data = old_template      
-                if opt.swa: swa_modelE.module.vertices_init.data = new_template
+                if opt.swa: swa_modelE.module.vertices_init.data = netE.vertices_init.data
                 opt.em_step = opt.em_step*0.99 # decay
                 if opt.update_bn: update_bn(train_dataloader, netE)
         netE.train()
