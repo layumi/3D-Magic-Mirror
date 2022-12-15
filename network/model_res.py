@@ -386,6 +386,108 @@ class LightEncoder(nn.Module):
     
         return lightparam
 
+class TextureFPN(nn.Module):
+    def __init__(self, outdim, droprate = 0, coordconv=False, norm='bn'):
+        super(TextureFPN, self).__init__()
+        # 8*8*512
+        up1 = [Conv2dBlock(outdim, outdim//2, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), nn.Upsample(scale_factor=2)]
+        # 16*16*256 + 16*16*256 = 16*16*512
+        up2 = [Conv2dBlock(outdim, outdim//4, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, outdim//4), nn.Upsample(scale_factor=2)]
+        # 32*32*128 + 32*32*128 =  32*32*256
+        up3 = [Conv2dBlock(outdim//2, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//8), nn.Upsample(scale_factor=2)]
+        # 64*64*64 + 64*64*64 = 64*64*128
+        up4 = [Conv2dBlock(outdim//4, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//8), nn.Upsample(scale_factor=2)]
+        # 128*128*64
+        up5 = [ASPP(outdim//8), Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//16), nn.Upsample(scale_factor=2)]
+        # 256*256
+        up6 = [ASPP(outdim//16), Conv2dBlock(outdim//16, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
+        if droprate >0:
+            up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
+        self.up1 = nn.Sequential(*up1)
+        self.up2 = nn.Sequential(*up2)
+        self.up3 = nn.Sequential(*up3)
+        self.up4 = nn.Sequential(*up4)
+        self.up5 = nn.Sequential(*up5)
+        self.up6 = nn.Sequential(*up6)
+        # Initialize with Xavier Glorot
+        self.up1.apply(weights_init)
+        self.up2.apply(weights_init)
+        self.up3.apply(weights_init)
+        self.up4.apply(weights_init)
+        self.up5.apply(weights_init)
+        self.up6.apply(weights_init_classifier)
+    def forward(self, x5, x4, x3, x2):
+        y = self.up1(x5)
+        y = self.up2(torch.cat((y,x4),dim=1))
+        y = self.up3(torch.cat((y,x3),dim=1))
+        y = self.up4(torch.cat((y,x2),dim=1))
+        return self.up6(self.up5(y))
+
+class BiFPN(nn.Module):
+    def __init__(self, outdim, coordconv=False, norm='bn', down=True):
+        super(BiFPN, self).__init__()
+        # 8*8*512
+        up1 = [Conv2dBlock(outdim, outdim//2, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), nn.Upsample(scale_factor=2)]
+        # 16*16*256 + 16*16*256 -> 16*16*256
+        up2 = [Conv2dBlock(outdim//2, outdim//4, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv),  nn.Upsample(scale_factor=2)]
+        # 32*32*128 + 32*32*128 =  32*32*256
+        up3 = [Conv2dBlock(outdim//4, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'),  nn.Upsample(scale_factor=2)]
+        # 64*64*64 + 64*64*64 = 64*64*128
+        up4 = [Conv2dBlock(outdim//8, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros')]
+        self.up1 = nn.Sequential(*up1)
+        self.up2 = nn.Sequential(*up2)
+        self.up3 = nn.Sequential(*up3)
+        self.up4 = nn.Sequential(*up4)
+
+        self.down1 = Conv2dBlock(outdim//8, outdim//4, 3, 2, 1, norm=norm, padding_mode='zeros')
+        self.down2 = Conv2dBlock(outdim//4, outdim//2, 3, 2, 1, norm=norm, padding_mode='zeros')
+        self.down3 = Conv2dBlock(outdim//2, outdim, 3, 2, 1, norm=norm, padding_mode='zeros')
+
+        # Initialize with Xavier Glorot
+        self.up1.apply(weights_init)
+        self.up2.apply(weights_init)
+        self.up3.apply(weights_init)
+        self.up4.apply(weights_init)
+        self.down1.apply(weights_init)
+        self.down2.apply(weights_init)
+        self.down3.apply(weights_init)
+
+        self.down=down
+
+    def forward(self, x5, x4, x3, x2):
+        y5 = x5 # dim
+        y4 = self.up1(y5) + x4 # dim //2
+        y3 = self.up2(y4) + x3 # dim //4
+        y2 = self.up4( self.up3(y3) + x2) # dim //8
+        if self.down:
+            y3 = y3 + self.down1(y2) # dim/4
+            y4 = y4 + self.down2(y3) # dim/2
+            y5 = y5 + self.down3(y4) # dim
+            return y5, y4, y3, y2
+        return y2
+
+class TextureBiFPN(nn.Module):
+    def __init__(self, outdim, droprate = 0, coordconv=False, norm='bn'):
+        super(TextureBiFPN, self).__init__()
+        self.bifpn1 = BiFPN(outdim, coordconv=False, norm='bn', down=True)
+        self.bifpn2 = BiFPN(outdim, coordconv=False, norm='bn', down=True)
+        self.bifpn3 = BiFPN(outdim, coordconv=False, norm='bn', down=False)
+        up5 = [ASPP(outdim//8), Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'),  nn.Upsample(scale_factor=2)]
+        # 256*256
+        up6 = [ASPP(outdim//16), Conv2dBlock(outdim//16, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
+        if droprate >0:
+            up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
+        self.up5 = nn.Sequential(*up5)
+        self.up6 = nn.Sequential(*up6)
+        self.up5.apply(weights_init)
+        self.up6.apply(weights_init_classifier)
+
+    def forward(self, x5, x4, x3, x2):
+        x5, x4, x3, x2 = self.bifpn1(x5, x4, x3, x2)
+        x5, x4, x3, x2 = self.bifpn2(x5, x4, x3, x2)
+        x2 = self.bifpn3(x5, x4, x3, x2)
+        return self.up6(self.up5(x2))
+
 class TextureEncoder(nn.Module):
     def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn', pretrain='res34' ):
         super(TextureEncoder, self).__init__()
@@ -414,20 +516,8 @@ class TextureEncoder(nn.Module):
             self.block5.apply(weights_init)
             outdim=512
 
-        # 8*8*512
-        up1 = [Conv2dBlock(outdim, outdim//2, 5, 1, 2, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, outdim//2), nn.Upsample(scale_factor=2)]
-        # 16*16*256 + 16*16*256 = 16*16*512
-        up2 = [Conv2dBlock(outdim, outdim//4, 3, 1, 1, norm=norm, padding_mode='zeros', coordconv=coordconv), ResBlocks(1, outdim//4), nn.Upsample(scale_factor=2)]
-        # 32*32*128 + 32*32*128 =  32*32*256
-        up3 = [Conv2dBlock(outdim//2, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//8), nn.Upsample(scale_factor=2)]
-        # 64*64*64 + 64*64*64 = 64*64*128 
-        up4 = [Conv2dBlock(outdim//4, outdim//8, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//8), nn.Upsample(scale_factor=2)]
-        # 128*128*64
-        up5 = [ASPP(outdim//8), Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'), ResBlocks(1, outdim//16), nn.Upsample(scale_factor=2)]
-        # 256*256
-        up6 = [ASPP(outdim//16), Conv2dBlock(outdim//16, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
-        if droprate >0:
-            up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
+        #self.decoder = TextureFPN(outdim, droprate, coordconv, norm)
+        self.decoder = TextureBiFPN(outdim, droprate, coordconv, norm)
 
         if self.makeup==1: # identify
             self.make = nn.Sequential(*[nn.Dropout(droprate), # drop at the begin
@@ -456,22 +546,8 @@ class TextureEncoder(nn.Module):
         elif self.makeup==5: # identity mapping
             self.make = nn.Sequential()
             # remove the last tahnh
-            up6 = up6[:-1]
+            self.decoder.up6 = self.decoder.up6[:-1]
 
-        self.up1 = nn.Sequential(*up1)
-        self.up2 = nn.Sequential(*up2)
-        self.up3 = nn.Sequential(*up3)
-        self.up4 = nn.Sequential(*up4)
-        self.up5 = nn.Sequential(*up5)
-        self.up6 = nn.Sequential(*up6)
-
-        # Initialize with Xavier Glorot
-        self.up1.apply(weights_init)
-        self.up2.apply(weights_init)
-        self.up3.apply(weights_init)
-        self.up4.apply(weights_init)
-        self.up5.apply(weights_init)
-        self.up6.apply(weights_init_classifier)
         if self.makeup:
             self.make.apply(weights_init)
             if len(self.make) > 0:
@@ -482,20 +558,14 @@ class TextureEncoder(nn.Module):
         x = normalize_batch_4C(x)
         batch_size = x.shape[0]
         # down
-        x1 = self.block1(x)
-        x2 = self.block2(x1)
+        x2 = self.block2(self.block1(x))
         x3 = self.block3(x2)
         x4 = self.block4(x3)
         x5 = self.block5(x4)
-        # up 
-        y = self.up1(x5)
-        y = self.up2(torch.cat((y,x4),dim=1))
-        y = self.up3(torch.cat((y,x3),dim=1))
-        y = self.up4(torch.cat((y,x2),dim=1))
-        y = self.up5(y)
-        texture_flow = self.up6(y)
+        # up
+        texture_flow = self.decoder(x5, x4, x3, x2)
         # clear
-        del x1,x2,x3,x4,x5,y
+        del x2,x3,x4,x5
         uv_sampler = texture_flow.permute(0, 2, 3, 1) # 32 x256x256x2
         textures = F.grid_sample(img, uv_sampler, mode='bicubic', align_corners=True) # 32 x 3 x128x128
         # zzd: Here we need a network to make up the hole via re-fining.
