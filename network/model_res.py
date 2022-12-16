@@ -473,8 +473,8 @@ class TextureBiFPN(nn.Module):
         self.bifpn2 = BiFPN(outdim, coordconv=False, norm='bn', down=True)
         self.bifpn3 = BiFPN(outdim, coordconv=False, norm='bn', down=False)
         # conv 3*3 + ASPP
-        up5 = [Conv2dBlock(outdim//8, outdim//16, 3, 1, 2, norm=norm, padding_mode='zeros'), ASPP(outdim//16), nn.Upsample(scale_factor=2)]
-        up5a = [Conv2dBlock(outdim//16, outdim//32, 3, 1, 2, norm=norm, padding_mode='zeros'), ASPP(outdim//32), nn.Upsample(scale_factor=2)]
+        up5 = [Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'), ASPP(outdim//16), nn.Upsample(scale_factor=2)]
+        up5a = [Conv2dBlock(outdim//16, outdim//32, 3, 1, 1, norm=norm, padding_mode='zeros'), ASPP(outdim//32), nn.Upsample(scale_factor=2)]
         # final conv 5*5 + norelu
         up6 = [Conv2dBlock(outdim//32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
         if droprate >0:
