@@ -473,20 +473,23 @@ class TextureBiFPN(nn.Module):
         self.bifpn2 = BiFPN(outdim, coordconv=False, norm='bn', down=True)
         self.bifpn3 = BiFPN(outdim, coordconv=False, norm='bn', down=False)
         up5 = [ASPP(outdim//8), Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'),  nn.Upsample(scale_factor=2)]
+        up5a = [ASPP(outdim//16), Conv2dBlock(outdim//16, outdim//32, 3, 1, 1, norm=norm, padding_mode='zeros'),  nn.Upsample(scale_factor=2)]
         # 256*256
-        up6 = [ASPP(outdim//16), Conv2dBlock(outdim//16, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
+        up6 = [ASPP(outdim//32), Conv2dBlock(outdim//32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
         if droprate >0:
             up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
         self.up5 = nn.Sequential(*up5)
+        self.up5a = nn.Sequential(*up5a)
         self.up6 = nn.Sequential(*up6)
         self.up5.apply(weights_init)
+        self.up5a.apply(weights_init)
         self.up6.apply(weights_init_classifier)
 
     def forward(self, x5, x4, x3, x2):
         x5, x4, x3, x2 = self.bifpn1(x5, x4, x3, x2)
         x5, x4, x3, x2 = self.bifpn2(x5, x4, x3, x2)
         x2 = self.bifpn3(x5, x4, x3, x2)
-        return self.up6(self.up5(x2))
+        return self.up6(self.up5a(self.up5(x2)))
 
 class TextureEncoder(nn.Module):
     def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn', pretrain='res34' ):
