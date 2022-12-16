@@ -439,32 +439,32 @@ class BiFPN(nn.Module):
         self.up3 = nn.Sequential(*up3)
         self.up4 = nn.Sequential(*up4)
 
-        self.down1 = Conv2dBlock(outdim//8, outdim//4, 3, 2, 1, norm=norm, padding_mode='zeros')
-        self.down2 = Conv2dBlock(outdim//4, outdim//2, 3, 2, 1, norm=norm, padding_mode='zeros')
-        self.down3 = Conv2dBlock(outdim//2, outdim, 3, 2, 1, norm=norm, padding_mode='zeros')
+        if down:
+            self.down1 = Conv2dBlock(outdim//8, outdim//4, 3, 2, 1, norm=norm, padding_mode='zeros')
+            self.down2 = Conv2dBlock(outdim//4, outdim//2, 3, 2, 1, norm=norm, padding_mode='zeros')
+            self.down3 = Conv2dBlock(outdim//2, outdim, 3, 2, 1, norm=norm, padding_mode='zeros')
+            self.down1.apply(weights_init)
+            self.down2.apply(weights_init)
+            self.down3.apply(weights_init)
 
         # Initialize with Xavier Glorot
         self.up1.apply(weights_init)
         self.up2.apply(weights_init)
         self.up3.apply(weights_init)
         self.up4.apply(weights_init)
-        self.down1.apply(weights_init)
-        self.down2.apply(weights_init)
-        self.down3.apply(weights_init)
 
         self.down=down
 
     def forward(self, x5, x4, x3, x2):
-        y5 = x5 # dim
-        y4 = self.up1(y5) + x4 # dim //2
-        y3 = self.up2(y4) + x3 # dim //4
-        y2 = self.up4( self.up3(y3) + x2) # dim //8
+        x4 = self.up1(x5) + x4 # dim //2
+        x3 = self.up2(x4) + x3 # dim //4
+        x2 = self.up4( self.up3(x3) + x2) # dim //8
         if self.down:
-            y3 = y3 + self.down1(y2) # dim/4
-            y4 = y4 + self.down2(y3) # dim/2
-            y5 = y5 + self.down3(y4) # dim
-            return y5, y4, y3, y2
-        return y2
+            x3 = x3 + self.down1(x2) # dim/4
+            x4 = x4 + self.down2(x3) # dim/2
+            x5 = x5 + self.down3(x4) # dim
+            return x5, x4, x3, x2
+        return x2
 
 class TextureBiFPN(nn.Module):
     def __init__(self, outdim, droprate = 0, coordconv=False, norm='bn'):
@@ -472,10 +472,11 @@ class TextureBiFPN(nn.Module):
         self.bifpn1 = BiFPN(outdim, coordconv=False, norm='bn', down=True)
         self.bifpn2 = BiFPN(outdim, coordconv=False, norm='bn', down=True)
         self.bifpn3 = BiFPN(outdim, coordconv=False, norm='bn', down=False)
-        up5 = [ASPP(outdim//8), Conv2dBlock(outdim//8, outdim//16, 3, 1, 1, norm=norm, padding_mode='zeros'),  nn.Upsample(scale_factor=2)]
-        up5a = [ASPP(outdim//16), Conv2dBlock(outdim//16, outdim//32, 3, 1, 1, norm=norm, padding_mode='zeros'),  nn.Upsample(scale_factor=2)]
-        # 256*256
-        up6 = [ASPP(outdim//32), Conv2dBlock(outdim//32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
+        # conv 3*3 + ASPP
+        up5 = [Conv2dBlock(outdim//8, outdim//16, 3, 1, 2, norm=norm, padding_mode='zeros'), ASPP(outdim//16), nn.Upsample(scale_factor=2)]
+        up5a = [Conv2dBlock(outdim//16, outdim//32, 3, 1, 2, norm=norm, padding_mode='zeros'), ASPP(outdim//32), nn.Upsample(scale_factor=2)]
+        # final conv 5*5 + norelu
+        up6 = [Conv2dBlock(outdim//32, 2, 5, 1, 2, norm='none',  activation='none', padding_mode='reflect'), nn.Hardtanh()]
         if droprate >0:
             up6 = [nn.Dropout(droprate/2)] + up6 # small drop for dense prediction. Dropout 2D may be too strong. so I still use dropout
         self.up5 = nn.Sequential(*up5)
@@ -489,6 +490,7 @@ class TextureBiFPN(nn.Module):
         x5, x4, x3, x2 = self.bifpn1(x5, x4, x3, x2)
         x5, x4, x3, x2 = self.bifpn2(x5, x4, x3, x2)
         x2 = self.bifpn3(x5, x4, x3, x2)
+        del x5, x4, x3
         return self.up6(self.up5a(self.up5(x2)))
 
 class TextureEncoder(nn.Module):
@@ -504,6 +506,7 @@ class TextureEncoder(nn.Module):
             self.block3 = encoder.model.layer2 # 512
             self.block4 = encoder.model.layer3 # 1024
             self.block5 = encoder.model.layer4 # 2048
+            del encoder
             outdim = 512
         else:
             self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
