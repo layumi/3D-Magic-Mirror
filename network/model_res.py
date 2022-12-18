@@ -501,11 +501,11 @@ class TextureEncoder(nn.Module):
         #################################################
         if 'res' in pretrain:
             encoder = Resnet_4C(pretrain='res34', stride=2)
-            self.block1 = nn.Sequential(*[encoder.model.conv1, encoder.model.bn1, encoder.model.relu]) #64
-            self.block2 = nn.Sequential(*[encoder.model.maxpool, encoder.model.layer1]) # 256
-            self.block3 = encoder.model.layer2 # 512
-            self.block4 = encoder.model.layer3 # 1024
-            self.block5 = encoder.model.layer4 # 2048
+            self.block1 = nn.Sequential(*[encoder.model.conv1, encoder.model.bn1, encoder.model.relu]) #32
+            self.block2 = nn.Sequential(*[encoder.model.maxpool, encoder.model.layer1]) # 64
+            self.block3 = encoder.model.layer2 # 128
+            self.block4 = encoder.model.layer3 # 256
+            self.block5 = encoder.model.layer4 # 512
             del encoder
             outdim = 512
         else:
@@ -676,8 +676,10 @@ class Resnet_4C(nn.Module):
                 os.system('gdrive download 1pFyAdt9BOZCtzaLiE-W3CsX_kgWABKK6 --path ~/.cache/torch/checkpoints/')
             model = models.resnet50()
             model.load_state_dict(torch.load("/home/zzd/.cache/torch/checkpoints/lup_moco_r50.pth"), strict=False)
+        elif pretrain =='res34d': # modify 1*1 conv stride 2 to mean pooling.
+            model = timm.create_model('resnet34d', pretrained=True)
         elif pretrain =='res34':
-            model = models.resnet34()
+            model = models.resnet34(pretrained=True)
         else:
             model = models.resnet18(pretrained=True)
         weight = model.conv1.weight.clone()
