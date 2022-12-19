@@ -455,16 +455,22 @@ class BiFPN(nn.Module):
 
         self.down=down
 
-    def forward(self, x5, x4, x3, x2):
-        x4 = self.up1(x5) + x4 # dim //2
-        x3 = self.up2(x4) + x3 # dim //4
-        x2 = self.up4( self.up3(x3) + x2) # dim //8
+    def forward(self, inputs):
+        x5, x4, x3, x2 = inputs
+
+        # 0.2 for initial.
+        # Top-down. Keep the highest info flow..
+        t4 = self.up1(x5) + 0.2*x4 # dim //2
+        t3 = self.up2(t4) + 0.2*x3 # dim //4
+        t2 = self.up3(t3) + 0.2*x2 # dim //8
         if self.down:
-            x3 = x3 + self.down1(x2) # dim/4
-            x4 = x4 + self.down2(x3) # dim/2
-            x5 = x5 + self.down3(x4) # dim
-            return x5, x4, x3, x2
-        return x2
+            # bottom up. still keep origin info is first!
+            b2 = x2 + 0.2*self.up4(t2)
+            b3 = x3 + 0.2*t3 + 0.2*self.down1(b2) # dim/4
+            b4 = x4 + 0.2*t4 + 0.2*self.down2(b3) # dim/2
+            b5 = x5 + 0.2*self.down3(b4) # dim
+            return [b5, b4, b3, b2]
+        return t2
 
 class TextureBiFPN(nn.Module):
     def __init__(self, outdim, droprate = 0, coordconv=False, norm='bn'):
@@ -487,10 +493,7 @@ class TextureBiFPN(nn.Module):
         self.up6.apply(weights_init_classifier)
 
     def forward(self, x5, x4, x3, x2):
-        x5, x4, x3, x2 = self.bifpn1(x5, x4, x3, x2)
-        x5, x4, x3, x2 = self.bifpn2(x5, x4, x3, x2)
-        x2 = self.bifpn3(x5, x4, x3, x2)
-        del x5, x4, x3
+        x2 = self.bifpn3(self.bifpn2(self.bifpn1([x5, x4, x3, x2])))
         return self.up6(self.up5a(self.up5(x2)))
 
 class TextureEncoder(nn.Module):
