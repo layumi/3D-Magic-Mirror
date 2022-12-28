@@ -131,12 +131,12 @@ class CameraEncoder(nn.Module):
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048
         elif 'hr18' in pretrain:
-            self.encoder1 = HRnet_4C(pretrain = 'hr18sv1') # set as small hrnet for fast inference.
+            self.encoder1 = HRnet_4C(pretrain) # set as small hrnet for fast inference.
             in_dim = 2048
-            print('--hr18 camera network--')
         else:
             print('unknown network')
 
+        print('camera network:'+pretrain)
         #avgpool = nn.AdaptiveAvgPool2d(1)
         self.avgpool1 = MMPool((2,2))
         self.avgpool2 = MMPool((2,2))
@@ -244,6 +244,8 @@ class ShapeEncoder(nn.Module):
             in_dim = 2048 
         else: 
             print('unknown network')
+
+        print('shape network:'+pretrain)
         ################################################# Compress 2D 
         norm = [] #[nn.InstanceNorm1d(in_dim*3 + 3, affine=True)]
         linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=False )
@@ -497,7 +499,7 @@ class TextureBiFPN(nn.Module):
         return self.up6(self.up5a(self.up5(x2)))
 
 class TextureEncoder(nn.Module):
-    def __init__(self, nc, nf, nk, num_vertices, ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn', pretrain='res34' ):
+    def __init__(self, nc, nf, nk, num_vertices, pretrain='res34', ratio=1, makeup=0, droprate = 0, coordconv=False, norm='bn' ):
         super(TextureEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.makeup = makeup
