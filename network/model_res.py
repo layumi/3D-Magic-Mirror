@@ -136,7 +136,7 @@ class CameraEncoder(nn.Module):
         else:
             print('unknown network')
 
-        print('camera network:'+pretrain)
+        print('\033[93m Camera network:'+pretrain)
         #avgpool = nn.AdaptiveAvgPool2d(1)
         self.avgpool1 = MMPool((2,2))
         self.avgpool2 = MMPool((2,2))
@@ -245,7 +245,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
 
-        print('shape network:'+pretrain)
+        print('\033[91m Shape network:'+pretrain)
         ################################################# Compress 2D 
         norm = [] #[nn.InstanceNorm1d(in_dim*3 + 3, affine=True)]
         linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=False )
@@ -527,6 +527,7 @@ class TextureEncoder(nn.Module):
             self.block5.apply(weights_init)
             outdim=512
 
+        print('\033[92m Texture encoder:'+pretrain+'\033[0m')
         #self.decoder = TextureFPN(outdim, droprate, coordconv, norm)
         self.decoder = TextureBiFPN(outdim, droprate, coordconv, norm)
 
@@ -731,7 +732,7 @@ class HRnet_4C(nn.Module):
         model.conv1.weight.data[:, :3] = weight
         model.conv1.weight.data[:, 3] = torch.mean(weight, dim=1)  #model.conv1.weight[:, 0]
         self.model = model
-        print(model) 
+        #print(model) 
 
         dim = 2048
         ca = [nn.AdaptiveAvgPool2d((1,1)), nn.Conv2d(dim, dim//16, 1), nn.ReLU(), nn.Conv2d(dim//16, dim, 1), nn.Sigmoid()]
