@@ -124,7 +124,7 @@ class CameraEncoder(nn.Module):
         elif pretrain=='unet': #unet from scratch
             self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
             in_dim = 32
-        elif pretrain=='res18':
+        elif pretrain=='res18' or pretrain=='res34':
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512
         elif pretrain=='res50':
@@ -136,7 +136,7 @@ class CameraEncoder(nn.Module):
         else:
             print('unknown network')
 
-        print('\033[93m Camera network:'+pretrain)
+        print('\033[93m Camera network:'+pretrain+'\033[0m')
         #avgpool = nn.AdaptiveAvgPool2d(1)
         self.avgpool1 = MMPool((2,2))
         self.avgpool2 = MMPool((2,2))
@@ -233,7 +233,7 @@ class ShapeEncoder(nn.Module):
             self.encoder1 = UNet_4C(nc=nc, nk=nk, norm = norm, coordconv=coordconv)
             self.encoder1.apply(weights_init)
             in_dim = 32
-        elif pretrain=='res18':
+        elif pretrain=='res18' or pretrain=='res34':
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
         elif 'res50' in pretrain:
@@ -245,7 +245,7 @@ class ShapeEncoder(nn.Module):
         else: 
             print('unknown network')
 
-        print('\033[91m Shape network:'+pretrain)
+        print('\033[91m Shape network:'+pretrain+'\033[0m')
         ################################################# Compress 2D 
         norm = [] #[nn.InstanceNorm1d(in_dim*3 + 3, affine=True)]
         linear1 = self.Conv1d(in_dim*3 + 3, 256, relu=True, droprate = droprate, coordconv=False )
