@@ -134,6 +134,7 @@ class CameraEncoder(nn.Module):
             self.encoder1 = HRnet_4C(pretrain) # set as small hrnet for fast inference.
             in_dim = 2048
         else:
+            pretrain =  'Unknowm!!'
             print('unknown network')
 
         print('\033[93m Camera network:'+pretrain+'\033[0m')
@@ -242,7 +243,8 @@ class ShapeEncoder(nn.Module):
         elif 'hr18' in pretrain:
             self.encoder1 = HRnet_4C(pretrain) # default is hr18sv2
             in_dim = 2048 
-        else: 
+        else:
+            pretrain =  'Unknowm!!'
             print('unknown network')
 
         print('\033[91m Shape network:'+pretrain+'\033[0m')
