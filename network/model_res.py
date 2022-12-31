@@ -237,7 +237,7 @@ class ShapeEncoder(nn.Module):
         elif pretrain=='res18' or pretrain=='res34':
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
-        elif 'res50' in pretrain:
+        elif 'res50' in pretrain or 'rex50' in pretrain:
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048 
         elif 'hr18' in pretrain:
