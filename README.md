@@ -43,7 +43,9 @@ We have supported:
 
 - Linux
 - Python >= 3.7
-- CUDA >= 10.0.130 (with `nvcc` installed)
+- CUDA >= 11 (with `nvcc` installed)
+
+If you use CUDA 10, please download the corresponding pytorch and kaolin 0.9 to match.  
 
 ## Getting Started
 ### Installation
@@ -60,6 +62,7 @@ $ cd 3D-Magic-Mirror/
 $ conda create --name magic --file spec-file.txt
 $ conda activate magic
 $ pip install pytorch_msssim
+$ pip install gdown
 ```
 
 * gcc is needed by kaolin. If you have gcc about 7.3.0 - 9.5.0 (latest gcc may not work as well), please skip this step. 
@@ -104,6 +107,8 @@ Download the dataset:
 Download the processed data from [Google Drive](https://drive.google.com/file/d/10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
+gdown 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
+OR 
 gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 ```
 
@@ -112,6 +117,8 @@ gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
+gdown 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
+OR 
 gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 ```
 
@@ -121,6 +128,8 @@ gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
+gdown 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
+OR 
 gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
 ```
 
@@ -129,6 +138,8 @@ gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL/view). Or use the gdrive tool to download:
 
 ```
+gdown 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
+OR
 gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 ```
 

@@ -401,7 +401,7 @@ class DiffRender(object):
         mask_a = torch.nn.functional.relu(torch.sign(Na[:,:,2]) * self.sign_init)
         mask_f = mask_a.index_select(1, self.flip_index.to(Na.device))
         # Finding swapped point pairs.  mask = 0; otherwise mask=1
-        mask = torch.logical_and(mask_a,mask_f)
+        mask = torch.logical_and(mask_a.detach(), mask_f.detach())
         #print(mask)
         loss_norm = loss_norm* mask_f 
         return torch.mean(loss_norm)
