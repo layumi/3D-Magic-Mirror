@@ -677,6 +677,8 @@ class Resnet_4C(nn.Module):
             model = models.resnet50(pretrained=True)
         elif pretrain =='res50_swsl':
             model = timm.create_model('swsl_resnet50', pretrained=True)
+        elif pretrain =='rex50_swsl':
+            model = timm.create_model('swsl_resnext50_32x4d', pretrained=True)
         elif pretrain =='res50_ibn':
             model = torch.hub.load('XingangPan/IBN-Net', 'resnet50_ibn_a', pretrained=True)
         elif pretrain =='res50_lu': # pretrained on luperson dataset
@@ -690,6 +692,7 @@ class Resnet_4C(nn.Module):
         elif pretrain =='res34':
             model = models.resnet34(pretrained=True)
         else:
+            print('------Use resnet18!-----')
             model = models.resnet18(pretrained=True)
         weight = model.conv1.weight.clone()
         model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
