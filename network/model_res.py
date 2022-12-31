@@ -237,7 +237,7 @@ class ShapeEncoder(nn.Module):
         elif pretrain=='res18' or pretrain=='res34':
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
-        elif pretrain=='dense':
+        elif 'dense' in pretrain:
             self.encoder1 = Densenet_4C(pretrain)
             in_dim = 1024
         elif 'res50' in pretrain or 'rex50' in pretrain:
@@ -522,7 +522,7 @@ class TextureEncoder(nn.Module):
             del encoder
             outdim = 512
         elif 'dense' in pretrain:
-            encoder = Densenet_4C(pretrain='dense', stride=2)
+            encoder = Densenet_4C(pretrain, stride=2)
             self.block1 = nn.Sequential(*[encoder.model.features.conv0, encoder.model.features.norm0, encoder.model.features.relu0])
             self.block2 = encoder.model.features.pool0 # 64
             self.block3 = nn.Sequential(*[encoder.model.features.denseblock1, encoder.model.features.transition1]) # 128
@@ -736,7 +736,10 @@ class Resnet_4C(nn.Module):
 class Densenet_4C(nn.Module):
     def __init__(self, pretrain, stride = 1):
         super(Densenet_4C, self).__init__()
-        model = models.densenet121(pretrained=True)
+        if pretrain == 'densenet161':
+            model = models.densenet161(pretrained=True)
+        else:
+            model = models.densenet121(pretrained=True)
         model.classifier = nn.Sequential() # save memory
         model.fc = nn.Sequential()
         if stride == 1:
