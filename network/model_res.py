@@ -237,6 +237,9 @@ class ShapeEncoder(nn.Module):
         elif pretrain=='res18' or pretrain=='res34':
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 512 
+        elif pretrain=='dense':
+            self.encoder1 = Densenet_4C(pretrain)
+            in_dim = 1024
         elif 'res50' in pretrain or 'rex50' in pretrain:
             self.encoder1 = Resnet_4C(pretrain)
             in_dim = 2048 
@@ -717,6 +720,23 @@ class Resnet_4C(nn.Module):
         x = self.model.layer3(x)
         x = self.model.layer4(x)
         return x 
+
+class Densenet_4C(nn.Module):
+    def __init__(self, pretrain, stride = 1):
+        super(Densenet_4C, self).__init__()
+        model = models.densenet121(pretrained=True)
+        model.classifier = nn.Sequential() # save memory
+        model.fc = nn.Sequential()
+        if stride == 1:
+            model.features.transition3.pool.stride = 1
+        weight = model.features.conv0.weight.clone()
+        model.features.conv0 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False) #here 4 indicates 4-channel input
+        model.features.conv0.weight.data[:, :3] = weight
+        model.features.conv0.weight.data[:, 3] = torch.mean(weight, dim=1)
+        self.model = model
+    def forward(self, x):
+        return self.model.features(x)
+        
 
 class HRnet_4C(nn.Module):
     def __init__(self, pretrain):
