@@ -46,7 +46,7 @@ parser.add_argument('--template_path', default='./template/sphere.obj', help='te
 parser.add_argument('--ellipsoid', type=float, default = 1, help='init sphere to ellipsoid' )
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
 parser.add_argument('--pretrains', type=str, default='hr18sv2', help='pretrain shape encoder. default is hr18sv2 or hr18 or none or hr18sv1')
-parser.add_argument('--pretrainc', type=str, default='hr18sv1', help='pretrain camera encoder. default is hr18sv2 or hr18 or none or hr18sv1')
+parser.add_argument('--pretrainc', type=str, default='none', help='pretrain camera encoder. default is hr18sv2 or hr18 or none or hr18sv1')
 parser.add_argument('--pretraint', type=str, default='res34', help='pretrain texture encoder. default is hr18sv2 or hr18 or none or hr18sv1')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
