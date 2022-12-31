@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from torchvision import models
-from .utils import weights_init, weights_init_classifier
+from .utils import weights_init, weights_init_classifier, load_state_dict_mute
 import math
 import timm
 import os
@@ -220,7 +220,7 @@ class CameraEncoder(nn.Module):
 
 
 class ShapeEncoder(nn.Module):
-    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False, norm = 'bn', nolpl = False):
+    def __init__(self, nc, nk, num_vertices, pretrain='none', droprate=0.0, coordconv=False, norm = 'bn', nolpl = False, h = 128, w = 64):
         super(ShapeEncoder, self).__init__()
         self.num_vertices = num_vertices
         self.mmpool = MMPool((1,1))
@@ -242,7 +242,10 @@ class ShapeEncoder(nn.Module):
             in_dim = 1024
         elif 'res50' in pretrain or 'rex50' in pretrain:
             self.encoder1 = Resnet_4C(pretrain)
-            in_dim = 2048 
+            in_dim = 2048
+        elif 'swin' in pretrain:
+            self.encoder1 = Swin_4C(pretrain, input_size = (h, w))
+            in_dim = 1024 
         elif 'hr18' in pretrain:
             self.encoder1 = HRnet_4C(pretrain) # default is hr18sv2
             in_dim = 2048 
@@ -518,6 +521,15 @@ class TextureEncoder(nn.Module):
             self.block5 = encoder.model.layer4 # 512
             del encoder
             outdim = 512
+        elif 'dense' in pretrain:
+            encoder = Densenet_4C(pretrain='dense', stride=2)
+            self.block1 = nn.Sequential(*[encoder.model.features.conv0, encoder.model.features.norm0, encoder.model.features.relu0])
+            self.block2 = encoder.model.features.pool0 # 64
+            self.block3 = nn.Sequential(*[encoder.model.features.denseblock1, encoder.model.features.transition1]) # 128
+            self.block4 = nn.Sequential(*[encoder.model.features.denseblock2, encoder.model.features.transition2])
+            self.block5 = nn.Sequential(*[encoder.model.features.denseblock3, encoder.model.features.transition3])
+            del encoder # not use the final block. 
+            outdim = 512
         else:
             self.block1 = Conv2dBlock(nc, 32, nk, 2, 2, norm='bn', coordconv=coordconv) # 256 -> 128*128*32
         # 2-4-4-2
@@ -736,6 +748,25 @@ class Densenet_4C(nn.Module):
         self.model = model
     def forward(self, x):
         return self.model.features(x)
+        
+class Swin_4C(nn.Module):
+    def __init__(self, pretrain, input_size=(128, 64) ):
+        super(Swin_4C, self).__init__()
+        model = timm.create_model('swinv2_base_window12to16_192to256_22kft1k', pretrained=False, img_size = input_size, in_chans=4, drop_path_rate = 0.2)
+        model_full = timm.create_model('swinv2_base_window12to16_192to256_22kft1k', pretrained=True)
+        load_state_dict_mute(model, model_full.state_dict(), strict=False)
+        model.head = nn.Sequential()
+        #print(model)
+        #weight = model_full.patch_embed.proj.weight.clone()
+        #model.patch_embed.proj = nn.Conv2d(4, 128, kernel_size=4, stride=2, bias=False) #here 4 indicates 4-ch     annel input
+        #model.patch_embed.proj.weight.data[:, :3] = weight
+        #model.patch_embed.proj.weight.data[:, 3] = torch.mean(weight, dim=1)
+        self.model = model
+        self.dim = 1024
+    def forward(self, x):
+        B, _, h, w = x.shape
+        x = self.model.forward_features(x)
+        return x.permute((0,2,1)).view(B, self.dim, h//32, w//32 )
         
 
 class HRnet_4C(nn.Module):
