@@ -680,10 +680,11 @@ class Resnet_4C(nn.Module):
         elif pretrain =='res50_ibn':
             model = torch.hub.load('XingangPan/IBN-Net', 'resnet50_ibn_a', pretrained=True)
         elif pretrain =='res50_lu': # pretrained on luperson dataset
-            if not os.path.isfile('~/.cache/torch/checkpoints/lup_moco_r50.pth'):
-                os.system('gdrive download 1pFyAdt9BOZCtzaLiE-W3CsX_kgWABKK6 --path ~/.cache/torch/checkpoints/')
+            homepath = os.path.expanduser('~')
+            if not os.path.isfile(homepath+'/.cache/torch/checkpoints/lup_moco_r50.pth'):
+                os.system('gdrive download 1pFyAdt9BOZCtzaLiE-W3CsX_kgWABKK6 --path %s/.cache/torch/checkpoints/'%homepath)
             model = models.resnet50()
-            model.load_state_dict(torch.load("~/.cache/torch/checkpoints/lup_moco_r50.pth"), strict=False)
+            model.load_state_dict(torch.load(homepath+"/.cache/torch/checkpoints/lup_moco_r50.pth"), strict=False)
         elif pretrain =='res34d': # modify 1*1 conv stride 2 to mean pooling.
             model = timm.create_model('resnet34d', pretrained=True)
         elif pretrain =='res34':
@@ -720,9 +721,10 @@ class HRnet_4C(nn.Module):
         if pretrain == 'hr18':
             model = timm.create_model('hrnet_w18', pretrained=True)
         elif pretrain =='hr18_ssld': # imagenet21k
-            if not os.path.isfile('~/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth'):
-                os.system('wget https://github.com/HRNet/HRNet-Image-Classification/releases/download/PretrainedWeights/HRNet_W18_C_ssld_pretrained.pth -P ~/.cache/torch/checkpoints/')
-            model = timm.create_model('hrnet_w18', checkpoint_path="~/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth")
+            homepath = os.path.expanduser('~')
+            if not os.path.isfile(homepath+'/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth'):
+                os.system('wget https://github.com/HRNet/HRNet-Image-Classification/releases/download/PretrainedWeights/HRNet_W18_C_ssld_pretrained.pth -P %s/.cache/torch/checkpoints/'%homepath)
+            model = timm.create_model('hrnet_w18', checkpoint_path=homepath+"/.cache/torch/checkpoints/HRNet_W18_C_ssld_pretrained.pth")
         elif pretrain == 'hr18sv2':
             model = timm.create_model('hrnet_w18_small_v2', pretrained=True)
         elif pretrain == 'hr18sv1':
