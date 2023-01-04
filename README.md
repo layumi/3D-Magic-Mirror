@@ -107,7 +107,7 @@ Download the dataset:
 Download the processed data from [Google Drive](https://drive.google.com/file/d/10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
-gdown 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
+gdown https://drive.google.com/uc?id=10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 OR 
 gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 ```
@@ -117,7 +117,7 @@ gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
-gdown 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
+gdown https://drive.google.com/uc?id=1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 OR 
 gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 ```
@@ -128,7 +128,7 @@ gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc/view?usp=sharing). Or use the gdrive tool to download:
 
 ```
-gdown 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
+gdown https://drive.google.com/uc?id=1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
 OR 
 gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
 ```
@@ -138,7 +138,7 @@ gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL/view). Or use the gdrive tool to download:
 
 ```
-gdown 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
+gdown https://drive.google.com/uc?id=1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 OR
 gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 ```
