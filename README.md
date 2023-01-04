@@ -92,6 +92,7 @@ Our code is tested on PyTorch 1.9.0+ and torchvision 0.10.0+.
 Download tool:
 ```
 $ pip install gdown 
+$ pip install --upgrade gdown #!!important!!
 ```
 
 OR 
