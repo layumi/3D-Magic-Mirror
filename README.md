@@ -62,7 +62,6 @@ $ cd 3D-Magic-Mirror/
 $ conda create --name magic --file spec-file.txt
 $ conda activate magic
 $ pip install pytorch_msssim
-$ pip install gdown
 ```
 
 * gcc is needed by kaolin. If you have gcc about 7.3.0 - 9.5.0 (latest gcc may not work as well), please skip this step. 
@@ -91,6 +90,11 @@ Our code is tested on PyTorch 1.9.0+ and torchvision 0.10.0+.
 
 
 Download tool:
+```
+$ pip install gdown 
+```
+
+OR 
 
 Install gdrive for fast download the dataset from Google Driver. It is good for all command line users. (https://github.com/prasmussen/gdrive/releases/tag/2.1.1 )
 
