@@ -27,20 +27,20 @@ for img_path in seg_list:
     
 print(sum(percentage_list)/len(percentage_list))
 
-test_list = open('./datasets/ATR_test.txt','w') # 1606
-train_list = open('./datasets/ATR_train.txt','w') # 16000
+#test_list = open('./datasets/ATR_test.txt','w') # 1606
+#train_list = open('./datasets/ATR_train.txt','w') # 16000
 
-with open('./datasets/ATR_train_old.txt') as f:
-    lines = f.readlines()
-    for old_name in lines:
-        old_name = old_name.rstrip().replace('jpg', 'png')
-        train_list.writelines(os.path.basename(new_seg_list[old_name])+'\n')
+#with open('./datasets/ATR_train_old.txt') as f:
+#    lines = f.readlines()
+#    for old_name in lines:
+#        old_name = old_name.rstrip().replace('jpg', 'png')
+#        train_list.writelines(os.path.basename(new_seg_list[old_name])+'\n')
 
-with open('./datasets/ATR_test_old.txt') as f:
-    lines = f.readlines()
-    for old_name in lines:
-        old_name = old_name.rstrip().replace('jpg', 'png')
-        test_list.writelines(os.path.basename(new_seg_list[old_name])+'\n')
+#with open('./datasets/ATR_test_old.txt') as f:
+#    lines = f.readlines()
+#    for old_name in lines:
+#        old_name = old_name.rstrip().replace('jpg', 'png')
+#        test_list.writelines(os.path.basename(new_seg_list[old_name])+'\n')
 
-train_list.close()
-test_list.close()
+#train_list.close()
+#test_list.close()
