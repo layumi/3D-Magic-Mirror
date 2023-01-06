@@ -125,9 +125,9 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
     netD = netD.cuda()
 
     # setup optimizer
-    optimizer = optim.Adam
+    optimizer = optim._multi_tensor.Adam  #https://github.com/huggingface/transformers/issues/9965
     if opt.adamw:
-        optimizer = optim.AdamW
+        optimizer = optim._multi_tensor.AdamW
 
     ignored_params = list(map(id, netE.shape_enc.encoder1.parameters() ))
     add_params = filter(lambda p: id(p) not in ignored_params, netE.parameters())
