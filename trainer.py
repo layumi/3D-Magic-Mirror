@@ -281,7 +281,7 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 # bad case
                 mean_delta = torch.mean(torch.abs(Ae['delta_vertices'])[:,-1], dim = 1)
                 bad_index = np.argwhere(mean_delta.data.cpu().numpy()>0.4) 
-                print('Collapse index:', bad_index)
+                #print('Collapse index:', bad_index)
                 rand_a = np.random.permutation(batch_size)
                 rand_b = np.random.permutation(batch_size)
                 good_index = np.setdiff1d( np.arange(batch_size), bad_index) 
@@ -698,14 +698,17 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
                     Ae90 = deep_copy(Ae)
+                    Ae270 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32, device='cuda').uniform_(-opt.azi_scope/2, opt.azi_scope/2)
-                    Ai2['azimuths'] = Ai['azimuths'] + 90.0
+                    Ai2['azimuths'] = Ai['azimuths'] + 90.0 # random+90
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
-                    Ae90['azimuths'] += 90.0
+                    Ae90['azimuths'] += 90.0 # recon+90
+                    Ae270['azimuths'] -= 90.0 # recon-90
 
                     Xir, Ai = diffRender.render(**Ai)
-                    Xir2, Ai2 = diffRender.render(**Ai2)
-                    Xer90, Ae90 = diffRender.render(**Ae90)
+                    Xir2, _ = diffRender.render(**Ai2)
+                    Xer90, _ = diffRender.render(**Ae90)
+                    Xer270, _ = diffRender.render(**Ae270)
 
 
                     # multiprocess to save image
@@ -728,6 +731,9 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                         output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
                         #output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
+                        inter270_path = os.path.join(inter90_dir, '2+'+image_name)
+                        output_Xer270 = to_pil_image(Xer270[i, :3].detach().cpu())
+
                         rec_mask_path = os.path.join(rec_mask_dir, image_name)
                         output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
 
@@ -744,8 +750,8 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                             X_all.extend([output_Xa, output_ori_mask])
                             path_all.extend([ori_path, ori_mask_path])
 
-                        X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_rec_mask])
-                        path_all.extend([rec_path, inter_path, inter_path2, inter90_path, rec_mask_path])
+                        X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xer270, output_rec_mask])
+                        path_all.extend([rec_path, inter_path, inter_path2, inter90_path, inter270_path, rec_mask_path])
             # save image
             with Pool(4) as p:
                 p.map(save_img, zip(X_all, path_all) )        
@@ -785,14 +791,14 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
             print('Epoch %03d Test rotation fid: %0.2f' % (epoch, fid_inter))
             summary_writer.add_scalar('Test/fid_inter', fid_inter, epoch)
             fid_90 = calculate_fid_given_paths([ori_dir, inter90_dir], 64, True)
-            print('Epoch %03d Test rotat90 fid: %0.2f' % (epoch, fid_90))
+            print('Epoch %03d Test rotat90/270 fid: %0.2f' % (epoch, fid_90))
             summary_writer.add_scalar('Test/fid_90', fid_90, epoch)
             with open(output_txt, 'a') as fp:
                 fp.write('Epoch %03d recon ssim: %0.3f\n' % (epoch, np.mean(ssim_score)))
                 fp.write('Epoch %03d recon MaskIoU: %0.3f\n' % (epoch, np.mean(mask_score)))
                 fp.write('Epoch %03d Test recon fid: %0.2f\n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f\n' % (epoch, fid_inter))
-                fp.write('Epoch %03d Test rotate90 fid: %0.2f\n' % (epoch, fid_90))
+                fp.write('Epoch %03d Test rotate90/270 fid: %0.2f\n' % (epoch, fid_90))
 
             print('===========Saving Best Snapshot===========')
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
@@ -832,14 +838,17 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                     Ai = deep_copy(Ae)
                     Ai2 = deep_copy(Ae)
                     Ae90 = deep_copy(Ae)
+                    Ae270 = deep_copy(Ae)
                     Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32, device='cuda').uniform_(-opt.azi_scope/2, opt.azi_scope/2)
                     Ai2['azimuths'] = Ai['azimuths'] + 90.0
                     Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
                     Ae90['azimuths'] += 90.0
+                    Ae270['azimuths'] -= 90.0
 
-                    Xir, Ai = diffRender.render(**Ai)
-                    Xir2, Ai2 = diffRender.render(**Ai2)
-                    Xer90, Ae90 = diffRender.render(**Ae90)
+                    Xir, _ = diffRender.render(**Ai)
+                    Xir2, _ = diffRender.render(**Ai2)
+                    Xer90, _ = diffRender.render(**Ae90)
+                    Xer270, _ = diffRender.render(**Ae270)
 
 
                     # multiprocess to save image
@@ -862,6 +871,9 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                         output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
                         #output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
+                        inter270_path = os.path.join(inter90_dir, '2+'+image_name)
+                        output_Xer270 = to_pil_image(Xer270[i, :3].detach().cpu())
+
                         rec_mask_path = os.path.join(rec_mask_dir, image_name)
                         output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
 
@@ -878,8 +890,8 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                             X_all.extend([output_Xa, output_ori_mask])
                             path_all.extend([ori_path, ori_mask_path])
 
-                        X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_rec_mask])
-                        path_all.extend([rec_path, inter_path, inter_path2, inter90_path, rec_mask_path])
+                        X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xer270, output_rec_mask])
+                        path_all.extend([rec_path, inter_path, inter_path2, inter90_path, inter270_path, rec_mask_path])
             # save image
             with Pool(4) as p:
                 p.map(save_img, zip(X_all, path_all) )        
@@ -926,7 +938,7 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 fp.write('Epoch %03d recon MaskIoU: %0.3f (SWA) \n' % (epoch, np.mean(mask_score)))
                 fp.write('Epoch %03d Test recon fid: %0.2f (SWA) \n' % (epoch, fid_recon))
                 fp.write('Epoch %03d Test rotation fid: %0.2f (SWA) \n' % (epoch, fid_inter))
-                fp.write('Epoch %03d Test rotate90 fid: %0.2f (SWA) \n' % (epoch, fid_90))
+                fp.write('Epoch %03d Test rotate90/270 fid: %0.2f (SWA) \n' % (epoch, fid_90))
 
             print('===========Saving Best Snapshot===========')
             epoch_name = os.path.join(ckpt_dir, 'epoch_%05d.pth' % epoch)
