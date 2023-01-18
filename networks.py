@@ -532,13 +532,21 @@ class AttributeEncoder(nn.Module):
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init[None].cuda() # (1, V, 3) in [-1,1]
 
-        self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range, droprate = droprate, coordconv=coordconv, norm = norm, ratio = ratio, pretrain = pretrainc, nolpl = nolpl)
-        self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices, pretrain = pretrains, droprate = droprate, coordconv=coordconv, norm=norm, nolpl = nolpl)
-        self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, pretrain = pretraint, ratio = ratio, makeup = makeup, droprate = droprate, coordconv=coordconv, norm=norm)
-        self.light_enc = LightEncoder(nc=nc, nk=nk, droprate=droprate, coordconv=coordconv, norm=norm)
+        if isinstance(droprate, str):
+            # camera, light use one dropout. 
+            # texture, background use one dropout.
+            droprates = droprate.split(',')
+            droprate_c, droprate_s, droprate_t = float(droprates[0]), float(droprates[1]), float(droprates[2])
+        else: 
+            droprate_c, droprate_s, droprate_t = 0.2, 0.2, 0.2 
+        print('DropRate: %.2f, %.2f, %.2f'%(droprate_c, droprate_s, droprate_t/2) )
+        self.camera_enc = CameraEncoder(nc=nc, nk=nk, azi_scope=azi_scope, elev_range=elev_range, dist_range=dist_range, droprate = droprate_c, coordconv=coordconv, norm = norm, ratio = ratio, pretrain = pretrainc, nolpl = nolpl)
+        self.shape_enc = ShapeEncoder(nc=nc, nk=nk, num_vertices=self.num_vertices, pretrain = pretrains, droprate = droprate_s, coordconv=coordconv, norm=norm, nolpl = nolpl)
+        self.texture_enc = TextureEncoder(nc=nc, nk=nk, nf=nf, num_vertices=self.num_vertices, pretrain = pretraint, ratio = ratio, makeup = makeup, droprate = droprate_t, coordconv=coordconv, norm=norm)
+        self.light_enc = LightEncoder(nc=nc, nk=nk, droprate=droprate_c, coordconv=coordconv, norm=norm)
         self.bg = bg
         if self.bg:
-            self.bg_enc = BackgroundEncoder(nc=nc, droprate = droprate, coordconv=coordconv)
+            self.bg_enc = BackgroundEncoder(nc=nc, droprate = droprate_t, coordconv=coordconv)
         # self.feat_enc = FeatEncoder(nc=4, nf=32)
         self.romp = romp
         if self.romp:
