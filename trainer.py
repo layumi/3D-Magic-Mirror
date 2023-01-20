@@ -1070,7 +1070,7 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                     last_delta_vertices += delta_vertices_laplacian* opt.smooth  # move to the middle point towards the neighbor
                     if opt.em >= 6:
                         # more time to know neighbor's neighbor
-                        for avarage_times in range(opt.em-5):
+                        for smooth_times in range(int(opt.em-5)):
                             delta_vertices_laplacian = torch.matmul(diffRender.vertices_laplacian_matrix.cuda(), last_delta_vertices)
                             last_delta_vertices += delta_vertices_laplacian* opt.smooth
                 last_delta_vertices[last_delta_vertices>opt.clip] = opt.clip # clip 0.05 == 1/20
