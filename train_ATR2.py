@@ -155,7 +155,7 @@ if torch.cuda.is_available():
 
 train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.threshold, bg = opt.bg, ratio = opt.ratio)
 train_noaug_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=True, threshold = opt.clean_threshold, bg = opt.bg, ratio = opt.ratio)
-test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold = '0,1', bg = opt.bg, ratio = opt.ratio)
+test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold = opt.threshold, bg = opt.bg, ratio = opt.ratio)
 
 torch.set_num_threads(int(opt.workers)*2)
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=opt.batchSize,
