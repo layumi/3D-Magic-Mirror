@@ -178,8 +178,9 @@ if "MKT" in opt.name:
     ratio = 2
 elif "ATR2" in opt.name:
     opt.ratio = config['ratio']
-    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
-    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
+    opt.threshold = "0.09,0.49"
+    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
+    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
     print('ATR2-human with 1.666666:1')
     ratio = 1.666666
 elif "ATR" in opt.name:
@@ -323,15 +324,18 @@ if __name__ == '__main__':
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)
             Ae90 = deep_copy(Ae)
+            Ae270 = deep_copy(Ae)
             Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
             Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
             Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
 
             Ae90['azimuths'] += 90.0
+            Ae270['azimuths'] -= 90.0
 
             Xir, Ai = diffRender.render(**Ai)
             Xir2, Ai2 = diffRender.render(**Ai2)
             Xer90, Ae90 = diffRender.render(**Ae90)
+            Xer270, Ae270 = diffRender.render(**Ae270)
             ###
             #Ae90_recon = netE(Xer90) 
             #print(Ae90_recon['azimuths'])
@@ -359,6 +363,9 @@ if __name__ == '__main__':
                 output_Xer90 = to_pil_image(Xer90[i, :3].detach().cpu())
                 #output_Xer90.save(inter90_path, 'JPEG', quality=100)
 
+                inter270_path = os.path.join(inter90_dir, '2+'+image_name)
+                output_Xer270 = to_pil_image(Xer270[i, :3].detach().cpu())
+
                 ori_path = os.path.join(ori_dir, image_name)
                 output_Xa = to_pil_image(Xa[i, :3].detach().cpu())
                 #output_Xa.save(ori_path, 'JPEG', quality=100)
@@ -369,8 +376,8 @@ if __name__ == '__main__':
                 rec_mask_path = os.path.join(rec_mask_dir, image_name)
                 output_rec_mask = to_pil_image(Xer[i, 3].detach().cpu())
 
-                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xa, output_ori_mask, output_rec_mask])
-                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, ori_path, ori_mask_path, rec_mask_path])
+                X_all.extend([output_Xer, output_Xir, output_Xir2, output_Xer90, output_Xer270, output_Xa, output_ori_mask, output_rec_mask])
+                path_all.extend([rec_path, inter_path, inter_path2, inter90_path, inter270_path, ori_path, ori_mask_path, rec_mask_path])
 
     with Pool(4) as p:
         p.map(save_img, zip(X_all, path_all) )

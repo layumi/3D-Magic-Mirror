@@ -45,7 +45,15 @@ class ATR2Dataset(data.Dataset):
             print(len(old_im_list),'After threshold:',len(self.im_list))
         else:
             with open('datasets/ATR_test.txt', 'r') as f:
-                self.im_list = [root+'/'+line.strip() for line in f]
+                old_im_list = [root+'/'+line.strip() for line in f]
+            # threshold
+            threshold = threshold.replace(' ','').split(',')
+            for index, name in enumerate(old_im_list):
+                precentage = float(name[-8:-4])
+                if precentage>float(threshold[0]) and precentage<float(threshold[1]):
+                    self.im_list.append(name)
+            print(len(old_im_list),'After threshold:',len(self.im_list))
+
 
         self.transform = transform
         self.loader = loader
