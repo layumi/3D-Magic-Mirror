@@ -117,7 +117,7 @@ parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--em_step', type=float, default=0.1, help='parameter')
 parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
-parser.add_argument('--threshold', type=float, default='0.09, 0.64', help='parameter')
+parser.add_argument('--threshold', type=str, default='0.09, 0.64', help='parameter')
 parser.add_argument('--bias_range', type=float, default=0.5, help='parameter bias range')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="-25~25", help='~ elevantion')
@@ -177,10 +177,11 @@ if "MKT" in opt.name:
     print('Market-1501')
     ratio = 2
 elif "ATR2" in opt.name:
-    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg)
-    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg)
-    print('ATR2-human with 2:1')
-    ratio = 2
+    opt.ratio = config['ratio']
+    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
+    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
+    print('ATR2-human with 1.666666:1')
+    ratio = 1.666666
 elif "ATR" in opt.name:
     train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg)
     test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg)
@@ -427,8 +428,8 @@ if __name__ == '__main__':
             # SSIM
             ori_path = ori_dir + '/' + name
             rec_path = rec_dir + '/' + name
-            ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            ori = Image.open(ori_path).convert('RGB').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
+            rec = Image.open(rec_path).convert('RGB').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
             if 'CUB' in opt.name:
                 ori = Image.open(ori_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
                 rec = Image.open(rec_path).convert('RGB').resize((2*opt.imageSize, 2*opt.imageSize*opt.ratio))
@@ -438,8 +439,8 @@ if __name__ == '__main__':
             # Mask IoU
             ori_path = ori_mask_dir + '/' + name
             rec_path = rec_mask_dir + '/' + name
-            ori = Image.open(ori_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
-            rec = Image.open(rec_path).convert('L').resize((opt.imageSize, opt.imageSize*opt.ratio))
+            ori = Image.open(ori_path).convert('L').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
+            rec = Image.open(rec_path).convert('L').resize((opt.imageSize, round(opt.imageSize*opt.ratio)))
             ori = torchvision.transforms.functional.to_tensor(ori)
             rec = torchvision.transforms.functional.to_tensor(rec)
             mask_score.append(1 - mask_iou(ori, rec)) # the default mask iou is maskiou loss. https://github.com/NVIDIAGameWorks/kaolin/blob/master/kaolin/metrics/render.py. So we have to 1- maskiou loss to obtain the mask iou
