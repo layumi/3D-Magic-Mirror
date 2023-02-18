@@ -178,7 +178,6 @@ if "MKT" in opt.name:
     ratio = 2
 elif "ATR2" in opt.name:
     opt.ratio = config['ratio']
-    opt.threshold = "0.09,0.49"
     train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
     test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
     print('ATR2-human with 1.666666:1')
