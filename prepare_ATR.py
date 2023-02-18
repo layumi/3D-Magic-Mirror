@@ -1,7 +1,6 @@
 import glob
 import os
 from PIL import Image, ImageFilter, ImageOps
-from numba import jit
 import numpy as np
 import torchvision
 import torch
