@@ -117,7 +117,7 @@ parser.add_argument('--image_weight', type=float, default=1, help='parameter')
 parser.add_argument('--reg', type=float, default=0.0, help='parameter')
 parser.add_argument('--em_step', type=float, default=0.1, help='parameter')
 parser.add_argument('--hmr', type=float, default=0.0, help='parameter')
-parser.add_argument('--threshold', type=float, default=0.09, help='parameter')
+parser.add_argument('--threshold', type=float, default='0.09, 0.64', help='parameter')
 parser.add_argument('--bias_range', type=float, default=0.5, help='parameter bias range')
 parser.add_argument('--azi_scope', type=float, default=360, help='parameter')
 parser.add_argument('--elev_range', type=str, default="-25~25", help='~ elevantion')
@@ -177,18 +177,18 @@ if "MKT" in opt.name:
     print('Market-1501')
     ratio = 2
 elif "ATR2" in opt.name:
-    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
+    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg)
+    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg)
     print('ATR2-human with 2:1')
     ratio = 2
 elif "ATR" in opt.name:
-    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
+    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg)
+    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg)
     print('ATR-human with 1:1')
     ratio = 1
 else:
-    train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
+    train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg)
+    test_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg)
     print('CUB')
     ratio = 1
 
