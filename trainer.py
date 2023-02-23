@@ -233,9 +233,9 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 # (1) Update D network
                 ###########################
                 optimizerD.zero_grad()
-                Xa = data['data']['images'].cuda().detach()
+                Xa = data['data']['images'].cuda(non_blocking=True).detach()
                 if opt.hmr>0.0:
-                    Va = data['data']['obj'].cuda().detach()
+                    Va = data['data']['obj'].cuda(non_blocking=True).detach()
                 img_path = data['data']['path']
                 #Ea = data['data']['edge'].cuda()
                 batch_size = Xa.shape[0]
