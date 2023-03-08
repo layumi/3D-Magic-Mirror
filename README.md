@@ -171,7 +171,7 @@ python prepare_cub.py
 
 - Trained model 
 
-You may download it from [GoogleDrive]() and move it to the `log`.
+You may download it from [GoogleDrive](https://drive.google.com/file/d/1T9gB__r-euhb8ZMglDb4Uua0gy4I3q0t/view?usp=sharing) and move it to the `log`.
 ```
 ├── log/
 │   ├── CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67/
