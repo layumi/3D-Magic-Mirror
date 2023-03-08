@@ -171,16 +171,16 @@ python prepare_cub.py
 
 - Trained model 
 
-You may download it from [GoogleDrive](https://drive.google.com/file/d/1NUs2MoCo_gUsUXeHg1i6PqyfAxseJmk9/view?usp=sharing) and move it to the `log`.
+You may download it from [GoogleDrive]() and move it to the `log`.
 ```
 ├── log/
-│   ├── MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9/
+│   ├── CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67/
 |       |-- ckpts/
 ```
 
 - Visualization 
 ```bash
-python show_rainbow2.py --name  MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
+python show_rainbow2.py --name CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67
 ```
 It will generate the five gif animations in the `log/your_model_name/`.
 (We manually select some hard index to show the result.)
@@ -195,94 +195,35 @@ It will generate the five gif animations in the `log/your_model_name/`.
 
 `current_rotation_XY.gif`: Shift the camera in X-axis and Y-axis. 
 
-
 - Test Flops, maskIoU and SSIM 
 ```bash
-python test.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9
+python test.py --name CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67
 or
-python test.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depth0.2_data4_drop0.4_gap2_beta0.9
+python test.py --name ATR2_wgan_b48_ganW0_lr0.55_em7_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depthR0.15_data2_drop222_gap2_beta0.95_s96_clean1826 
 or 
-python test.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_lpl_reg0.1_data2_depth0.1_flat10_drop0.2_gap2_beta0.9 
+python test.py --name CUB_wgan_b48_ic1_hard_bg_L1_ganW0_lr0.7_em7_update-1_chf_lpl_reg0.1_data2_depthC0.1_flat10_drop220_gap2_beta0.95_bn_restart1_contour0.1 
 ```
 **Please make sure the dataset name in your model. We use model name to set the test dataset.**
 
 ### Training
-- Training on CUB
 
+- Training on Market (64*128)
 ```sh
-python train.py --name CUB_wgan_b16_ic1_hard_bg_L1_ganW0_lr0.3_em1_update-1_chf_lpl_reg0.1_data2_depth0.1_flat10_drop0.2_gap2_beta0.9 \
-                --drop 0.2 \
-                --imageSize 128 \
-                --batch 16 \
-                --gan_type wgan \
-                --bg \
-                --L1 \
-                --ganw 0 \
-                --hard \
-                --lr 3e-5 \
-                --em 1 \
-                --update -1 \
-                --chamfer \
-                --lambda_data 2 \
-                --lambda_depth 0.1 \
-                --lambda_flat 0.01 \
-                --unmask 2 \
-                --amsgrad \
-                --em_gap 2 \
-                --beta1 0.9
+python train_market.py --name CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67  --clean 0.36,0.49  --imageSize 64 --batch 48 --gan_type wgan --bg --L1 --ganw 0 --hard --lr 5e-5 --em 7 --update_shape -1  --lambda_data 2 --unmask 2  --lambda_flat 0.02 --lambda_depthR 0.15  --drop 0.2,0.2,0  --em_gap 2 --beta1 0.95   --pretrainc none
 ```
 
-- Training on ATR
-
+- Training on CUB (128*128)
 ```sh
-python train_ATR.py --name rereATR128_wgan_b48_ganW0_lr0.6_em1_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depth0.2_data4_drop0.4_gap2_beta0.9 \
-                    --imageSize 128 \
-                    --batch 48 \
-                    --gan_type wgan \
-                    --bg \
-                    --L1 \
-                    --ganw 0 \
-                    --hard \
-                    --lr 6e-5 \
-                    --em 1 \
-                    --update -1 \
-                    --chamfer \
-                    --unmask 2 \
-                    --lambda_data 4 \
-                    --lambda_flat 0.01 \
-                    --lambda_depth 0.2 \
-                    --drop 0.4 \
-                    --em_gap 2 \
-                    --beta1 0.9
+python train.py --name CUB_wgan_b48_ic1_hard_bg_L1_ganW0_lr0.7_em7_update-1_chf_lpl_reg0.1_data2_depthC0.1_flat10_drop220_gap2_beta0.95_bn_restart1_contour0.1  --drop 0.2,0.2,0 --imageSize 128 --batch 48 --gan_type wgan --bg --L1 --ganw 0 --hard --lr 7e-5 --em 7 --update_shape -1  --lambda_data 2 --lambda_depthC 0.1 --lambda_flat 0.01   --unmask 2   --em_gap 2 --beta1 0.95 --update_bn --gamma 0.1 --scheduler restart1 --lambda_contour 0.1
 ```
 
-- Training on Market
-
+- Training on ATR (96*160)
 ```sh
-python train_market.py --name MKT_wgan_b48_lr0.5_em1_update-1_chf_lpl_reg0.1_data2_m2_flat7_depth0.1_drop0.4_gap2_beta0.9 \
-                       --imageSize 64 \
-                       --batch 48 \
-                       --gan_type wgan \
-                       --bg \
-                       --L1 \
-                       --ganw 0 \
-                       --hard \
-                       --lr 5e-5 \
-                       --em 1 \
-                       --update -1 \
-                       --chamfer \
-                       --lambda_data 2 \
-                       --unmask 2 \
-                       --lambda_flat 0.01 \
-                       --lambda_depth 0.1 \
-                       --drop 0.4 \
-                       --amsgrad \
-                       --em_gap 2 \
-                       --beta1 0.9
+python train_ATR2.py --name ATR2_wgan_b48_ganW0_lr0.55_em7_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depthR0.15_data2_drop222_gap2_beta0.95_s96_clean1826  --imageSize 96 --batch 48 --gan_type wgan --bg --L1 --ganw 0 --hard --lr 5.5e-5 --em 7 --update_shape -1 --unmask 2 --lambda_data 2  --lambda_flat 0.01 --lambda_depthR 0.15  --drop 0.2,0.2,0.2  --em_gap 2 --beta1 0.95 --ratio 1.666666 --clean 0.18,0.26    --pretrainc none  
 ```
 
 ### Illustrations. 
-- `smooth` is for the accumulated template movement. If we set smooth=1, the movement will be the neighbor move. If we set smooth=0, the movement will be the single point move. by default 0.5 
+- `em` is for the accumulated template update. If we set smooth=6, the movement will be the neighbor move. If we set smooth=7, the movement will be the smooth over neighbors again. by default 7
 
 - `clip` is to truncate the movement. by default 0.05
 
