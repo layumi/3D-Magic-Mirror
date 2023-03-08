@@ -28,11 +28,6 @@
 
 ## News
 
-
-## To DO List
-- Check the EMA part code.
-- Running on a new machine. 
-
 ## Features
 We have supported:
 
@@ -217,7 +212,7 @@ python train_market.py --name CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_d
 python train.py --name CUB_wgan_b48_ic1_hard_bg_L1_ganW0_lr0.7_em7_update-1_chf_lpl_reg0.1_data2_depthC0.1_flat10_drop220_gap2_beta0.95_bn_restart1_contour0.1  --drop 0.2,0.2,0 --imageSize 128 --batch 48 --gan_type wgan --bg --L1 --ganw 0 --hard --lr 7e-5 --em 7 --update_shape -1  --lambda_data 2 --lambda_depthC 0.1 --lambda_flat 0.01   --unmask 2   --em_gap 2 --beta1 0.95 --update_bn --gamma 0.1 --scheduler restart1 --lambda_contour 0.1
 ```
 
-- Training on ATR (96*160)
+- Training on ATR (96*160) **We suggest to run this dataset on A100 or A5000, instead of P5000 or R5000. The result is more stable on A series GPUs. It may be due to the float accuracy.**
 ```sh
 python train_ATR2.py --name ATR2_wgan_b48_ganW0_lr0.55_em7_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depthR0.15_data2_drop222_gap2_beta0.95_s96_clean1826  --imageSize 96 --batch 48 --gan_type wgan --bg --L1 --ganw 0 --hard --lr 5.5e-5 --em 7 --update_shape -1 --unmask 2 --lambda_data 2  --lambda_flat 0.01 --lambda_depthR 0.15  --drop 0.2,0.2,0.2  --em_gap 2 --beta1 0.95 --ratio 1.666666 --clean 0.18,0.26    --pretrainc none  
 ```
