@@ -27,6 +27,7 @@
 * [License](#license)
 
 ## News
+- We will release a new arXiv recently.  We fix the stability problem. The results in paper are averaged with at least three runs. 
 
 ## Features
 We have supported:
