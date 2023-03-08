@@ -117,7 +117,7 @@ OR
 gdrive download 10gNi3n8Iny4O4MOZRs5dNFICfj8ri9eW
 ```
 
-- Market-Seg-HMR
+- Market-Seg-HMR (We deploy smoothed HMR results as foreground marks. We found human parsing results are sensitive to input domain, such as illumination.)
 
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR/view?usp=sharing). Or use the gdrive tool to download:
 
