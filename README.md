@@ -6,6 +6,10 @@
 ![](./doc/rainbow_github.gif)
 
 <pre align="center" >
+<center><img src="./doc/cub.gif" width="40%" /></center>
+</pre>
+
+<pre align="center" >
 <center><img src="./doc/current_rainbow_github.gif" width="40%" /></center>
 </pre>
 
