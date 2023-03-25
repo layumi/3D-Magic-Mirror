@@ -5,13 +5,10 @@
 
 ![](./doc/rainbow_github.gif)
 
-<pre align="center" >
-<center><img src="./doc/cub.gif" width="40%" /></center>
-</pre>
+Cub Bird         |  Market-HQ Exchange
+:-------------------------:|:-------------------------:
+![](https://github.com/layumi/3D-Magic-Mirror/blob/master/doc/cub.gif?raw=true)  |  ![](https://github.com/layumi/3D-Magic-Mirror/blob/master/doc/current_rainbow_github.gif?raw=true)
 
-<pre align="center" >
-<center><img src="./doc/current_rainbow_github.gif" width="40%" /></center>
-</pre>
 
 [[Project]](https://www.zdzheng.xyz/publication/3D-Magic2022) [[Code]](https://github.com/layumi/3D-Magic-Mirror) [[Paper]](https://zdzheng.xyz/files/3D_Recon.pdf)
 
