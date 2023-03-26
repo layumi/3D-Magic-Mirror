@@ -242,6 +242,8 @@ Please cite this paper if it helps your research:
 ## Related Work
 We would like to thank to the great projects in [SMR](https://github.com/dvlab-research/SMR) and [UMR](https://github.com/NVlabs/UMR).
 
+The person re-identification part is from [Pytorch re-ID](https://github.com/layumi/Person_reID_baseline_pytorch)
+
 ## License
 Copyright (C) 2022 NExT++ Lab. All rights reserved. Licensed under the MIT. The code is released for academic research use only. For commercial use, please contact [zdzheng@nus.edu.sg](zdzheng@nus.edu.sg).
 
