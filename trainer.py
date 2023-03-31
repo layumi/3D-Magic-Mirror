@@ -285,11 +285,12 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 rand_a = np.random.permutation(batch_size)
                 rand_b = np.random.permutation(batch_size)
                 good_index = np.setdiff1d( np.arange(batch_size), bad_index) 
-                for i in bad_index: 
-                    bad_indexa = np.argwhere(rand_a == i)
-                    rand_a[bad_indexa] = np.random.choice(good_index, 1)
-                    bad_indexb = np.argwhere(rand_b == i)
-                    rand_b[bad_indexb] = np.random.choice(good_index, 1)
+                if len(bad_index)>0:
+                    for i in bad_index: # resample good index 
+                        bad_indexa = np.argwhere(rand_a == i)
+                        rand_a[bad_indexa] = np.random.choice(good_index, 1)
+                        bad_indexb = np.argwhere(rand_b == i)
+                        rand_b[bad_indexb] = np.random.choice(good_index, 1)
                 rand_a = torch.LongTensor(rand_a)
                 rand_b = torch.LongTensor(rand_b)
                 Aa = deep_copy(Ae, rand_a)
