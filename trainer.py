@@ -284,8 +284,8 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 #print('Collapse index:', bad_index)
                 rand_a = np.random.permutation(batch_size)
                 rand_b = np.random.permutation(batch_size)
-                good_index = np.setdiff1d( np.arange(batch_size), bad_index) 
-                if len(bad_index)>0:
+                if opt.inv==0: # inv smooth is used, so here we take care the large movements.
+                    good_index = np.setdiff1d( np.arange(batch_size), bad_index) 
                     for i in bad_index: # resample good index 
                         bad_indexa = np.argwhere(rand_a == i)
                         rand_a[bad_indexa] = np.random.choice(good_index, 1)
