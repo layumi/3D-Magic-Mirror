@@ -89,7 +89,7 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                             pretraint = opt.pretraint, pretrainc = opt.pretrainc, pretrains = opt.pretrains, 
                             droprate = opt.droprate, romp = opt.romp, 
                             coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix,
-                            nolpl = opt.nolpl) # height = 2 * width
+                            nolpl = opt.nolpl, inv = opt.inv) # height = 2 * width
 
     if opt.multigpus:
         netE = torch.nn.DataParallel(netE)

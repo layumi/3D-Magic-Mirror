@@ -527,7 +527,7 @@ class Landmark_Consistency(nn.Module):
         return loss
 
 class AttributeEncoder(nn.Module):
-    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretraint = 'res34', pretrainc='hr18', pretrains='hr18', droprate=0.0, romp=False, coordconv=False, norm = 'bn', lpl = None, nolpl=False):
+    def __init__(self, num_vertices=642, vertices_init=None, azi_scope=360, elev_range='0-30', dist_range='2-6', nc=4, nf=32, nk=5, ratio=1, makeup=False, bg = False, pretraint = 'res34', pretrainc='hr18', pretrains='hr18', droprate=0.0, romp=False, coordconv=False, norm = 'bn', lpl = None, nolpl=False, inv = 0):
         super(AttributeEncoder, self).__init__()
         self.num_vertices = num_vertices # 642
         self.vertices_init = vertices_init[None].cuda() # (1, V, 3) in [-1,1]
@@ -551,7 +551,11 @@ class AttributeEncoder(nn.Module):
         self.romp = romp
         if self.romp:
             self.romp_enc = Image_processor()
-        self.lpl = lpl
+        self.lpl = lpl # 642*642
+        self.inv = inv
+        if self.inv>0:
+            M = torch.linalg.inv((torch.eye(lpl.size(0)) + inv*lpl)).cuda() # M = (I+3L)^(-1)
+            self.M = M*M
         #self.feat_enc = VGG19()
         #self.feat_enc.eval()
 
@@ -562,6 +566,14 @@ class AttributeEncoder(nn.Module):
         device = input_img.device
         batch_size = input_img.shape[0]
 
+        def vertice_hook(grad):
+            # https://rgl.epfl.ch/publications/Nicolet2021Large
+            grad_inv = grad.clone()
+            grad_inv = torch.permute(grad_inv, (0, 2, 1))
+            grad_inv = torch.matmul(grad_inv, self.M) # M = (I+3L)^(-2)
+            grad = torch.permute(grad_inv, (0, 2, 1))
+            return grad
+
         # camera + vertex 
         if train_shape == 1 or train_shape ==4 or train_shape ==5: 
             print("Fix Shape Encoder", end=', ')
@@ -571,6 +583,8 @@ class AttributeEncoder(nn.Module):
         else:
             print("Train Shape Encoder", end=', ') 
             delta_vertices = self.shape_enc(input_img, template = self.vertices_init, lpl = self.lpl) # 32 x 642x 3
+            if self.inv >0 and delta_vertices.requires_grad:
+                delta_vertices.register_hook(vertice_hook)
 
         if train_shape == 2 or train_shape == 3 or train_shape == 4:
             print("Fix Camera Encoder", end=', ')
