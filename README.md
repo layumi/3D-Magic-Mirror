@@ -124,7 +124,6 @@ OR
 gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 ```
 
-
 - CUB
 
 Download the processed data from [Google Drive](https://drive.google.com/file/d/1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc/view?usp=sharing). Or use the gdrive tool to download:
@@ -148,6 +147,15 @@ gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 
 
 ### Preparation: 
+
+Before prepare, the folder is like:
+```
+├── 3D-Magic-Mirror/
+├── kaolin/
+├── Market/
+│   ├── hq/
+|   |-- seg_hmr/
+```
 
 Only Market dataset requires preparation, and other datasets are ready to run after download.  
 This code will calculate the ratio of foreground against background. 
