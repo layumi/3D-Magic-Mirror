@@ -180,10 +180,17 @@ python prepare_cub.py
 
 - Trained model 
 
-You may download it from [GoogleDrive](https://drive.google.com/file/d/1T9gB__r-euhb8ZMglDb4Uua0gy4I3q0t/view?usp=sharing) and move it to the `log`.
+You may download it from [GoogleDrive-Market](https://drive.google.com/file/d/1T9gB__r-euhb8ZMglDb4Uua0gy4I3q0t/view?usp=sharing), [GoogleDrive-CUB](https://drive.google.com/file/d/1urxUeaULn2DNM-4XAcZ2_OmtGJuCSeYO/view?usp=sharing) and move it to the `log`.
+```
+gdown 1T9gB__r-euhb8ZMglDb4Uua0gy4I3q0t #Market model
+gdown 1urxUeaULn2DNM-4XAcZ2_OmtGJuCSeYO #CUB model
+```
+
 ```
 ├── log/
 │   ├── CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67/
+|       |-- ckpts/
+│   ├──CUB_wgan_b48_ic1_hard_bg_L1_ganW0_lr0.7_em7_update-1_chf_lpl_reg0.1_data2_depthC0.1_flat10_drop220_gap2_beta0.95_bn_restart1_contour0.1/
 |       |-- ckpts/
 ```
 
