@@ -151,10 +151,14 @@ gdrive download 1kpsMDrbM4FQqtP7Y1nKslp4OlRKNvbaL
 Before prepare, the folder is like:
 ```
 ├── 3D-Magic-Mirror/
+|   |-- data/
+|       |-- CUB_Data/
 ├── kaolin/
 ├── Market/
 │   ├── hq/
 |   |-- seg_hmr/
+|-- ATR/
+|   |-- humanparsing/
 ```
 
 Only Market dataset requires preparation, and other datasets are ready to run after download.  
