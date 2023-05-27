@@ -50,8 +50,6 @@ def save_img(output_name):
     return
 
 
-torch.autograd.set_detect_anomaly(True)
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
 parser.add_argument('--configs_yml', default='configs/image.yml', help='folder to output images and model checkpoints')
@@ -60,7 +58,9 @@ parser.add_argument('--ratio', type=int, default=2, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
-parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
+parser.add_argument('--pretrains', type=str, default='none', help='pretrain shape encoder')
+parser.add_argument('--pretrainc', type=str, default='none', help='pretrain camera encoder')
+parser.add_argument('--pretraint', type=str, default='none', help='pretrain texture encoder')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
@@ -150,7 +150,9 @@ opt.elev_range= config['elev_range']
 opt.dist_range = config['dist_range']
 opt.bg = config['bg']
 opt.coordconv = config['coordconv']
-opt.pretrain = config['pretrain']
+opt.pretrains = config['pretrains']
+opt.pretrainc = config['pretrainc']
+opt.pretraint = config['pretraint']
 opt.norm = config['norm']
 opt.threshold = config['threshold']
 opt.droprate = config['droprate']
@@ -199,8 +201,9 @@ if __name__ == '__main__':
         epoch = checkpoint['epoch']
         
     diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight)
-    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
-    print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
+    #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
+    #print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
+    latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
     diffRender.vertices_init = latest_template_file.vertices
 
     print('Vertices Number:', template_file.vertices.shape[0]) #642
@@ -210,7 +213,8 @@ if __name__ == '__main__':
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
-                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
+                            pretrains = opt.pretrains, pretrainc = opt.pretrainc, pretraint = opt.pretraint,
+                            droprate = opt.droprate, romp = opt.romp, 
                             coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix) # height = 2 * width
 
     if opt.multigpus:
@@ -247,10 +251,11 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    #seg_path = '../Market/hq/seg_hmr/query/0345/0345_c6s1_079326_00.jpg_0.39.png'
+    seg_path = '../Market/hq/seg_hmr/query/0345/0345_c6s1_079326_00.jpg_0.39.png'
+    img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.png'
     #img_path = '../Market/hq/pytorch/query/0345/0345_c6s1_079326_00.jpg.png'
-    seg_path = '../Market/hq/seg_hmr/query/1064/1064_c5s2_143149_00.jpg_0.27.png'
-    img_path = '../Market/hq/pytorch/query/1064/1064_c5s2_143149_00.jpg.png'
+    #seg_path = '../Market/hq/seg_hmr/query/1064/1064_c5s2_143149_00.jpg_0.27.png'
+    #img_path = '../Market/hq/pytorch/query/1064/1064_c5s2_143149_00.jpg.png'
     img = Image.open(img_path).convert('RGB')
     seg = Image.open(seg_path).convert('L').point(lambda p: p > 0 and 255)
     target_width = opt.imageSize
@@ -267,6 +272,7 @@ if __name__ == '__main__':
     Xa = Variable(torch.unsqueeze(rgbs, 0) ).cuda()
     with torch.no_grad():
             print(Xa.shape)
+            M = Xa[0,3,:,:].unsqueeze(0).repeat(3,1,1)
             Ae = netE(Xa)
             Xer, Ae = diffRender.render(**Ae)
             
@@ -305,8 +311,15 @@ if __name__ == '__main__':
             output_Xir = to_pil_image(Xir[0, :3].detach().cpu())
             ori_path = 'demo_single/ori_'+ image_name
             output_Xa = to_pil_image(Xa[0, :3].detach().cpu())
-            X_all.extend([output_Xer, output_Xir, output_Xa])
-            path_all.extend([rec_path, inter_path, ori_path])
+            msk_path = 'demo_single/msk_'+ image_name
+            output_Mask = to_pil_image(M.detach().cpu())
+
+            all_path = 'demo_single/concat_'+ image_name
+            Xall = torch.concat( (Xa[0, :3], M, Xer[0, :3]), dim=2 )
+            output_All = to_pil_image(Xall.detach().cpu())
+
+            X_all.extend([output_Xer, output_Xir, output_Xa, output_Mask, output_All])
+            path_all.extend([rec_path, inter_path, ori_path, msk_path, all_path])
 
     with Pool(4) as p:
         p.map(save_img, zip(X_all, path_all) )
