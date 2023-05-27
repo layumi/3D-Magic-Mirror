@@ -184,11 +184,13 @@ class DiffRender(object):
         vertices_min = vertices.min(0, True)[0]
         vertices = (vertices - vertices_min) / (vertices_max - vertices_min)
         vertices_init = vertices * 2.0 - 1.0 # (V, 3)
-        vertices_init[:,2] = vertices_init[:,2] / 2 # depth = 1/2 * height. z axis is different from x axis. 
-        if init_ellipsoid != 1:
-            print('using the ellipsoid template')
-            vertices_init[:,0] = vertices_init[:,0] / init_ellipsoid  # width = 1/2 * height
-            vertices_init[:,2] = vertices_init[:,2] / init_ellipsoid  # depth = 1/4 * height
+        # ellipsoid for better initial gradients
+        if not init_ellipsoid == -1:
+            vertices_init[:,2] = vertices_init[:,2] / 2 # depth = 1/2 * height. z axis is different from x axis. 
+            if init_ellipsoid != 1:
+                print('using the ellipsoid template')
+                vertices_init[:,0] = vertices_init[:,0] / init_ellipsoid  # width = 1/2 * height
+                vertices_init[:,2] = vertices_init[:,2] / init_ellipsoid  # depth = 1/4 * height
         vertices_init *= 0.9 # scale a little small
         # get face_uvs
         faces = mesh.faces
