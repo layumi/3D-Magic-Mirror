@@ -61,8 +61,11 @@ parser.add_argument('--dataroot', default='../Market/hq/seg_hmr', help='path to 
 parser.add_argument('--ratio', type=int, default=2, help='height/width')
 parser.add_argument('--gan_type', default='wgan', help='wgan or lsgan')
 parser.add_argument('--template_path', default='./template/ellipsoid.obj', help='template mesh path')
+parser.add_argument('--ellipsoid', type=float, default = 2, help='init sphere to ellipsoid' )
 parser.add_argument('--category', type=str, default='bird', help='list of object classes to use')
-parser.add_argument('--pretrain', type=str, default='none', help='pretrain shape encoder')
+parser.add_argument('--pretrainc', type=str, default='none', help='pretrain shape encoder')
+parser.add_argument('--pretrains', type=str, default='hr18sv2', help='pretrain shape encoder')
+parser.add_argument('--pretraint', type=str, default='res34', help='pretrain shape encoder')
 parser.add_argument('--norm', type=str, default='bn', help='norm function')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
@@ -152,11 +155,14 @@ opt.elev_range= config['elev_range']
 opt.dist_range = config['dist_range']
 opt.bg = config['bg']
 opt.coordconv = config['coordconv']
-opt.pretrain = config['pretrain']
+opt.pretrainc = config['pretrainc']
+opt.pretrains = config['pretrains']
+opt.pretraint = config['pretraint']
 opt.norm = config['norm']
 opt.threshold = config['threshold']
 opt.droprate = config['droprate']
 opt.ratio = config['ratio']
+opt.ellipsoid = config['ellipsoid']
 
 print(opt)
 
@@ -203,7 +209,7 @@ if "MKT" in opt.name:
     #print(selected_index) 
     train_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr, selected_index = selected_index)
-    print('Market-1501')
+    print('Market-1501: %d'% len(test_dataset))
     ratio = 2
 elif "ATR" in opt.name:
     selected_index = np.arange(70, 16000, 16000//opt.batchSize) 
@@ -259,7 +265,8 @@ if __name__ == '__main__':
     netE = AttributeEncoder(num_vertices=diffRender.num_vertices, vertices_init=diffRender.vertices_init, 
                             azi_scope=opt.azi_scope, elev_range=opt.elev_range, dist_range=opt.dist_range, 
                             nc=4, nk=opt.nk, nf=opt.nf, ratio=opt.ratio, makeup=opt.makeup, bg = opt.bg, 
-                            pretrain = opt.pretrain, droprate = opt.droprate, romp = opt.romp, 
+                            pretrainc = opt.pretrainc, pretrains = opt.pretrains, pretraint = opt.pretraint,
+                            droprate = opt.droprate, romp = opt.romp, 
                             coordconv = opt.coordconv, norm = opt.norm, lpl = diffRender.vertices_laplacian_matrix) # height = 2 * width
 
     if opt.multigpus:
