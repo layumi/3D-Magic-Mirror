@@ -53,7 +53,7 @@ def save_img(output_name):
     return
 
 
-torch.autograd.set_detect_anomaly(True)
+#torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')
@@ -327,6 +327,7 @@ if __name__ == '__main__':
 
     for i, data in tqdm.tqdm(enumerate(test_dataloader)):
     #for i, data in tqdm.tqdm(enumerate(train_dataloader)):
+        print('yes')
         Xa = Variable(data['data']['images']).cuda()
         paths = data['data']['path']
         # Xa = fliplr(Xa)

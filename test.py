@@ -54,7 +54,7 @@ def save_img(output_name):
     return
 
 
-torch.autograd.set_detect_anomaly(True)
+#torch.autograd.set_detect_anomaly(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', default='baseline-MKT', help='folder to output images and model checkpoints')

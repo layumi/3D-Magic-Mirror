@@ -180,10 +180,10 @@ python prepare_cub.py
 
 - Trained model 
 
-You may download it from [GoogleDrive-Market](https://drive.google.com/file/d/1T9gB__r-euhb8ZMglDb4Uua0gy4I3q0t/view?usp=sharing), [GoogleDrive-CUB](https://drive.google.com/file/d/1urxUeaULn2DNM-4XAcZ2_OmtGJuCSeYO/view?usp=sharing) and move it to the `log`.
+You may download it from [GoogleDrive-Market](https://drive.google.com/file/d/1-eqnnFt3D7-jUelJ5uj_4QcFv-TMok8c/view?usp=sharing), [GoogleDrive-CUB](https://drive.google.com/file/d/1urxUeaULn2DNM-4XAcZ2_OmtGJuCSeYO/view?usp=sharing) and move it to the `log`.
 Or directly use the following code:
 ```
-gdown 1T9gB__r-euhb8ZMglDb4Uua0gy4I3q0t #Market model
+gdown 1-eqnnFt3D7-jUelJ5uj_4QcFv-TMok8c #Market model
 gdown 1urxUeaULn2DNM-4XAcZ2_OmtGJuCSeYO #CUB model
 ```
 
