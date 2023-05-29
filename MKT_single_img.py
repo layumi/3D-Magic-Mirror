@@ -251,7 +251,7 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    seg_path = '../Market/hq/seg_hmr/query/0345/0345_c6s1_079326_00.jpg_0.39.png'
+    seg_path = '../Market/hq/seg_hmr/query/0005/0005_c1s1_001351_00.jpg_0.31.png'
     img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.png'
     #img_path = '../Market/hq/pytorch/query/0345/0345_c6s1_079326_00.jpg.png'
     #seg_path = '../Market/hq/seg_hmr/query/1064/1064_c5s2_143149_00.jpg_0.27.png'
@@ -270,10 +270,20 @@ if __name__ == '__main__':
 
     rgbs = torch.cat([rgb, seg], dim=0)
     Xa = Variable(torch.unsqueeze(rgbs, 0) ).cuda()
+    noise = {}
+    noise[0] = torch.zeros(Xa[0,3,:,:].shape).cuda()
+    noise[1] = (torch.rand(Xa[0,3,:,:].shape)<0.1).cuda()
     with torch.no_grad():
-            print(Xa.shape)
-            M = Xa[0,3,:,:].unsqueeze(0).repeat(3,1,1)
-            Ae = netE(Xa)
+        for i in range(3):
+            Xa_clone = Xa.clone()
+            if i==1:
+                Xa_clone[0,3,:,:] += noise[i]
+            elif i==2:
+                blur= torchvision.transforms.GaussianBlur(7, sigma=3)
+                Xa_clone[0,3,:,:] = blur(Xa_clone[0,3,:,:].unsqueeze(0)).squeeze()
+            print(Xa_clone.shape)
+            M = Xa_clone[0,3,:,:].unsqueeze(0).repeat(3,1,1)
+            Ae = netE(Xa_clone)
             Xer, Ae = diffRender.render(**Ae)
             
             azimuths = torch.cat((azimuths, Ae['azimuths']))
@@ -287,7 +297,9 @@ if __name__ == '__main__':
             Ai = deep_copy(Ae)
             Ai2 = deep_copy(Ae)
             Ae90 = deep_copy(Ae)
-            Ai['azimuths'] = - torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
+            Ai['azimuths'] = Ai['azimuths'] + 45
+            Ai['azimuths'][Ai['azimuths']>180] -= 360.0
+            #- torch.empty((Xa.shape[0]), dtype=torch.float32).uniform_(-opt.azi_scope/2, opt.azi_scope/2).cuda()
             Ai2['azimuths'] = Ai['azimuths'] + 90.0 # -90, 270
             Ai2['azimuths'][Ai2['azimuths']>180] -= 360.0 # -180, 180
 
@@ -300,26 +312,49 @@ if __name__ == '__main__':
             #Ae90_recon = netE(Xer90) 
             #print(Ae90_recon['azimuths'])
             #break
-            Xa = mask(Xa) # remove bg
+            Xa_clone = mask(Xa_clone) # remove bg
                    
             path = img_path
             filename.append(path)
             image_name = os.path.basename(path) + '.jpg'
-            rec_path = 'demo_single/rec_'+ image_name
+            rec_path = 'demo_single/%d_rec_'%i+ image_name
             output_Xer = to_pil_image(Xer[0, :3].detach().cpu())
-            inter_path = 'demo_single/inter_'+ image_name
+            inter_path = 'demo_single/%d_inter_'%i+ image_name
             output_Xir = to_pil_image(Xir[0, :3].detach().cpu())
-            ori_path = 'demo_single/ori_'+ image_name
+            ori_path = 'demo_single/%d_ori_'%i+ image_name
             output_Xa = to_pil_image(Xa[0, :3].detach().cpu())
-            msk_path = 'demo_single/msk_'+ image_name
+            msk_path = 'demo_single/%d_msk_'%i+ image_name
             output_Mask = to_pil_image(M.detach().cpu())
 
-            all_path = 'demo_single/concat_'+ image_name
-            Xall = torch.concat( (Xa[0, :3], M, Xer[0, :3]), dim=2 )
+            all_path = 'demo_single/%d_concat_'%i+ image_name
+            Xall = torch.concat( (Xa[0, :3], M, Xer[0, :3], Xir[0, :3]), dim=2 )
             output_All = to_pil_image(Xall.detach().cpu())
 
-            X_all.extend([output_Xer, output_Xir, output_Xa, output_Mask, output_All])
-            path_all.extend([rec_path, inter_path, ori_path, msk_path, all_path])
+            # Single Output
+            #X_all.extend([output_Xer, output_Xir, output_Xa, output_Mask, output_All])
+            #path_all.extend([rec_path, inter_path, ori_path, msk_path, all_path])
+            
+            X_all.extend([output_All])
+            path_all.extend([all_path])
+
+            # gif
+            print('===========Saving Gif-Azi===========')
+            rotate_path = 'demo_single/%d_'%i+ image_name + '_rotation.gif'
+            writer = imageio.get_writer(rotate_path, mode='I')
+            loop = tqdm.tqdm(list(range(0, int(opt.azi_scope), 10))) # 0, 360
+            A_tmp = deep_copy(Ae)
+            loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
+            for delta_azimuth in loop:
+                A_tmp['azimuths'] = Ae['azimuths'] -  delta_azimuth
+                predictions, _ = diffRender.render(**A_tmp)
+                predictions = predictions[:, :3]
+                image = vutils.make_grid(predictions)
+                image = torch.concat( (Xa[0, :3], M, image), dim=2 )
+                image = image.permute(1, 2, 0).detach().cpu().numpy()
+                image = (image * 255.0).astype(np.uint8)
+                writer.append_data(image)
+            writer.close()
+
 
     with Pool(4) as p:
         p.map(save_img, zip(X_all, path_all) )
