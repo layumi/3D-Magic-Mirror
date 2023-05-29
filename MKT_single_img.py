@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
 
     # load updated template
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
     if os.path.exists(resume_path):
         checkpoint = torch.load(resume_path)
         epoch = checkpoint['epoch']
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     # restore from latest_ckpt.path
     # start_iter = 0
     # start_epoch = 0
-    resume_path = os.path.join(opt.outf, 'ckpts/latest_ckpt.pth')
+    resume_path = os.path.join(opt.outf, 'ckpts/best_ckpt.pth')
     if os.path.exists(resume_path):
         # Map model to be loaded to specified single gpu.
         # checkpoint has been loaded
@@ -251,16 +251,15 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    seg_path = '../Market/hq/seg_hmr/query/0005/0005_c1s1_001351_00.jpg_0.31.png'
+    #seg_path = '../Market/hq/seg_hmr/query/0567/0567_c4s3_030754_00.jpg_0.31.png'
+    seg_path = '../Market/hq/seg_hmr/query/0387/0387_c2s1_090996_00.jpg_0.33.png'
     img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.png'
-    #img_path = '../Market/hq/pytorch/query/0345/0345_c6s1_079326_00.jpg.png'
-    #seg_path = '../Market/hq/seg_hmr/query/1064/1064_c5s2_143149_00.jpg_0.27.png'
-    #img_path = '../Market/hq/pytorch/query/1064/1064_c5s2_143149_00.jpg.png'
     img = Image.open(img_path).convert('RGB')
     seg = Image.open(seg_path).convert('L').point(lambda p: p > 0 and 255)
     target_width = opt.imageSize
     img = img.resize((int(target_width), int(target_width*2)))
     seg = seg.resize((int(target_width), int(target_width*2)), Image.NEAREST)
+    seg = seg.point(lambda p: p > 160 and 255)
     img = torchvision.transforms.functional.to_tensor(img)
     seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
     if opt.bg:
