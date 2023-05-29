@@ -157,6 +157,7 @@ opt.norm = config['norm']
 opt.threshold = config['threshold']
 opt.droprate = config['droprate']
 opt.ratio = config['ratio']
+opt.ellipsoid = config['ellipsoid']
 
 print(opt)
 
@@ -168,10 +169,16 @@ if "MKT" in opt.name:
     test_dataset = MarketDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg, hmr = opt.hmr)
     print('Market-1501')
     ratio = 2
+elif "ATR2" in opt.name:
+    opt.ratio = config['ratio']
+    train_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=True, aug=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
+    test_dataset = ATR2Dataset(opt.dataroot, opt.imageSize, train=False, aug=False, threshold=opt.threshold, bg = opt.bg, ratio = opt.ratio)
+    print('ATR2-human with 1.666666:1')
+    ratio = 1.666666
 elif "ATR" in opt.name:
-    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
-    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, bg = opt.bg)
-    print('ATR-human')
+    train_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=True, threshold=opt.threshold, bg = opt.bg)
+    test_dataset = ATRDataset(opt.dataroot, opt.imageSize, train=False, threshold=opt.threshold, bg = opt.bg)
+    print('ATR-human with 1:1')
     ratio = 1
 else:
     train_dataset = CUBDataset(opt.dataroot, opt.imageSize, train=True, bg = opt.bg)
@@ -200,7 +207,7 @@ if __name__ == '__main__':
         checkpoint = torch.load(resume_path)
         epoch = checkpoint['epoch']
         
-    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, image_weight=opt.image_weight)
+    diffRender = DiffRender(mesh_name=opt.template_path, image_size=opt.imageSize, ratio = opt.ratio, init_ellipsoid = opt.ellipsoid, image_weight=opt.image_weight)
     #latest_template_file = kal.io.obj.import_mesh(opt.outf + '/epoch_{:03d}_template.obj'.format(epoch), with_materials=True)
     #print('Loading template as epoch_{:03d}_template.obj'.format(epoch))
     latest_template_file = kal.io.obj.import_mesh(opt.outf + '/ckpts/best_mesh.obj', with_materials=True)
@@ -251,8 +258,8 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    #seg_path = '../Market/hq/seg_hmr/query/0567/0567_c4s3_030754_00.jpg_0.31.png'
-    seg_path = '../Market/hq/seg_hmr/query/0387/0387_c2s1_090996_00.jpg_0.33.png'
+    seg_path = '../Market/hq/seg_hmr/query/0041/0041_c2s3_057627_00.jpg_0.36.png'
+    #seg_path = '../Market/hq/seg_hmr/query/0387/0387_c2s1_090996_00.jpg_0.33.png'
     img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.png'
     img = Image.open(img_path).convert('RGB')
     seg = Image.open(seg_path).convert('L').point(lambda p: p > 0 and 255)
