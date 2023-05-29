@@ -229,6 +229,7 @@ if __name__ == '__main__':
     netE = netE.cuda()
 
     os.makedirs('demo_single', exist_ok=True)
+    os.makedirs('demo_single/CUB', exist_ok=True)
     # restore from latest_ckpt.path
     # start_iter = 0
     # start_epoch = 0
@@ -258,15 +259,26 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    seg_path = '../Market/hq/seg_hmr/query/0283/0283_c1s1_062131_00.jpg_0.38.png'
-    #seg_path = '../Market/hq/seg_hmr/query/1366/1366_c1s5_069091_00.jpg.png'
-    #seg_path = '../Market/hq/seg_hmr/query/0387/0387_c2s1_090996_00.jpg_0.33.png'
-    img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.png'
+    #seg_path = './data/CUB_Data/test/003.Sooty_Albatross/Sooty_Albatross_0029_796357_0.31.png'
+    #seg_path = './data/CUB_Data/test/133.White_throated_Sparrow/White_Throated_Sparrow_0038_128853_0.28.png'
+    #seg_path = './data/CUB_Data/test/010.Red_winged_Blackbird/Red_Winged_Blackbird_0088_4007_0.23.png'
+    seg_path = './data/CUB_Data/test/001.Black_footed_Albatross/Black_Footed_Albatross_0035_796140_0.12.png'
+    
+    img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.jpg'
     img = Image.open(img_path).convert('RGB')
     seg = Image.open(seg_path).convert('L').point(lambda p: p > 0 and 255)
     target_width = opt.imageSize
-    img = img.resize((int(target_width), int(target_width*2)))
-    seg = seg.resize((int(target_width), int(target_width*2)), Image.NEAREST)
+    W, H = img.size
+    desired_size = max(W, H)
+    delta_w = desired_size - W
+    delta_h = desired_size - H
+    padding = (delta_w//2, delta_h//2, delta_w-(delta_w//2), delta_h-(delta_h//2))
+    img = ImageOps.expand(img, padding)
+    seg = ImageOps.expand(seg, padding)
+
+    img = img.resize((opt.imageSize, opt.imageSize))
+    seg = seg.resize((opt.imageSize, opt.imageSize), Image.NEAREST)
+
     seg = seg.point(lambda p: p > 160 and 255)
     img = torchvision.transforms.functional.to_tensor(img)
     seg = torchvision.transforms.functional.to_tensor(seg).max(0, True)[0]
@@ -281,7 +293,7 @@ if __name__ == '__main__':
     noise[0] = torch.zeros(Xa[0,3,:,:].shape).cuda()
     noise[1] = (torch.rand(Xa[0,3,:,:].shape)<0.1).cuda()
     with torch.no_grad():
-        for i in range(3):
+        for i in range(1): # if want noisy mask 
             Xa_clone = Xa.clone()
             if i==1:
                 Xa_clone[0,3,:,:] += noise[i]
@@ -329,23 +341,24 @@ if __name__ == '__main__':
             filename.append(path)
             image_name = os.path.basename(path) + '.jpg'
             # recon img
-            rec_path = 'demo_single/%d_rec_'%i+ image_name
+            rec_path = 'demo_single/CUB/%d_rec_'%i+ image_name
             output_Xer = to_pil_image(Xer[0, :3].detach().cpu())
             # recon normals
-            en_path = 'demo_single/%d_en_'%i+ image_name
+            en_path = 'demo_single/CUB/%d_en_'%i+ image_name
             output_en = to_pil_image(Xer_norm[0].detach().cpu())
             # rotate
-            inter_path = 'demo_single/%d_inter_'%i+ image_name
+            inter_path = 'demo_single/CUB/%d_inter_'%i+ image_name
             output_Xir = to_pil_image(Xir[0, :3].detach().cpu())
             # original img
-            ori_path = 'demo_single/%d_ori_'%i+ image_name
+            ori_path = 'demo_single/CUB/%d_ori_'%i+ image_name
             output_Xa = to_pil_image(Xa[0, :3].detach().cpu())
             # input mask
-            msk_path = 'demo_single/%d_msk_'%i+ image_name
+            msk_path = 'demo_single/CUB/%d_msk_'%i+ image_name
             output_Mask = to_pil_image(M.detach().cpu())
             
 
-            all_path = 'demo_single/%d_concat_'%i+ image_name
+            all_path = 'demo_single/CUB/%d_concat_'%i+ image_name
+            print(Xa.shape, M.shape, Xer.shape, Xir.shape)
             Xall = torch.concat( (Xa[0, :3], M, Xer[0, :3], Xir[0, :3]), dim=2 )
             output_All = to_pil_image(Xall.detach().cpu())
 
@@ -358,7 +371,7 @@ if __name__ == '__main__':
 
             # gif
             print('===========Saving Gif-Azi===========')
-            rotate_path = 'demo_single/%d_'%i+ image_name + '_rotation.gif'
+            rotate_path = 'demo_single/CUB/%d_'%i+ image_name + '_rotation.gif'
             writer = imageio.get_writer(rotate_path, mode='I')
             loop = tqdm.tqdm(list(range(0, int(opt.azi_scope), 10))) # 0, 360
             A_tmp = deep_copy(Ae)
@@ -402,7 +415,7 @@ if __name__ == '__main__':
     ax3.hist( z.cpu().numpy(), 5, density=True, facecolor='g', alpha=0.75)
     ax4.hist( elevations.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
     ax5.hist( x.cpu().numpy(), 36, density=True, facecolor='g', alpha=0.75)
-    fig.savefig("demo_single/hist.png")
+    fig.savefig("demo_single/CUB/hist.png")
 
     print(azimuths_result)
     print(biases_result)

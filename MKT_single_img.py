@@ -258,8 +258,9 @@ if __name__ == '__main__':
     X_all = []
     path_all = []
 
-    seg_path = '../Market/hq/seg_hmr/query/0283/0283_c1s1_062131_00.jpg_0.38.png'
-    #seg_path = '../Market/hq/seg_hmr/query/1366/1366_c1s5_069091_00.jpg.png'
+    #seg_path = '../Market/hq/seg_hmr/query/0283/0283_c1s1_062131_00.jpg_0.38.png'
+    #seg_path = '../Market/hq/seg_hmr/query/1366/1366_c1s5_069091_00.jpg_0.37.png'
+    seg_path = '../Market/hq/seg_hmr/query/0467/0467_c3s1_120708_00.jpg_0.34.png'
     #seg_path = '../Market/hq/seg_hmr/query/0387/0387_c2s1_090996_00.jpg_0.33.png'
     img_path = seg_path.replace('seg_hmr', 'pytorch')[:-9] + '.png'
     img = Image.open(img_path).convert('RGB')
