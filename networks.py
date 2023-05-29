@@ -317,9 +317,10 @@ class DiffRender(object):
         rgbs = torch.cat([render_img, render_silhouttes], axis=-1).permute(0, 3, 1, 2)
 
         attributes['face_normals'] = face_normals
+        attributes['imnormal'] = imnormal # visualize only. not train
         #attributes['face_areas'] = face_areas
         #attributes['faces_image'] = face_vertices_image.mean(dim=2)
-        #attributes['visiable_faces'] = face_normals[:, :, -1] > 0.1
+        #attributes['visible_faces'] = face_normals[:, :, -1] > 0.1
         return rgbs, attributes
 
     def recon_att(self, pred_att, target_att, L1 = False, chamfer = False, azim=1):

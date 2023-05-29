@@ -281,7 +281,6 @@ if __name__ == '__main__':
             elif i==2:
                 blur= torchvision.transforms.GaussianBlur(7, sigma=3)
                 Xa_clone[0,3,:,:] = blur(Xa_clone[0,3,:,:].unsqueeze(0)).squeeze()
-            print(Xa_clone.shape)
             M = Xa_clone[0,3,:,:].unsqueeze(0).repeat(3,1,1)
             Ae = netE(Xa_clone)
             Xer, Ae = diffRender.render(**Ae)
@@ -308,6 +307,11 @@ if __name__ == '__main__':
             Xir, Ai = diffRender.render(**Ai)
             Xir2, Ai2 = diffRender.render(**Ai2)
             Xer90, Ae90 = diffRender.render(**Ae90)
+
+            ### Face Normals
+            Xer_norm = Ae['imnormal'].permute(0, 3, 1, 2)
+            Xer_norm = (Xer_norm+1)/2
+            print(Xer_norm.shape)
             ###
             #Ae90_recon = netE(Xer90) 
             #print(Ae90_recon['azimuths'])
@@ -317,14 +321,22 @@ if __name__ == '__main__':
             path = img_path
             filename.append(path)
             image_name = os.path.basename(path) + '.jpg'
+            # recon img
             rec_path = 'demo_single/%d_rec_'%i+ image_name
             output_Xer = to_pil_image(Xer[0, :3].detach().cpu())
+            # recon normals
+            en_path = 'demo_single/%d_en_'%i+ image_name
+            output_en = to_pil_image(Xer_norm[0].detach().cpu())
+            # rotate
             inter_path = 'demo_single/%d_inter_'%i+ image_name
             output_Xir = to_pil_image(Xir[0, :3].detach().cpu())
+            # original img
             ori_path = 'demo_single/%d_ori_'%i+ image_name
             output_Xa = to_pil_image(Xa[0, :3].detach().cpu())
+            # input mask
             msk_path = 'demo_single/%d_msk_'%i+ image_name
             output_Mask = to_pil_image(M.detach().cpu())
+            
 
             all_path = 'demo_single/%d_concat_'%i+ image_name
             Xall = torch.concat( (Xa[0, :3], M, Xer[0, :3], Xir[0, :3]), dim=2 )
@@ -334,8 +346,8 @@ if __name__ == '__main__':
             #X_all.extend([output_Xer, output_Xir, output_Xa, output_Mask, output_All])
             #path_all.extend([rec_path, inter_path, ori_path, msk_path, all_path])
             
-            X_all.extend([output_All])
-            path_all.extend([all_path])
+            X_all.extend([output_All, output_en])
+            path_all.extend([all_path, en_path])
 
             # gif
             print('===========Saving Gif-Azi===========')
@@ -346,10 +358,12 @@ if __name__ == '__main__':
             loop.set_description('Drawing Dib_Renderer SphericalHarmonics (Gif_azi)')
             for delta_azimuth in loop:
                 A_tmp['azimuths'] = Ae['azimuths'] -  delta_azimuth
-                predictions, _ = diffRender.render(**A_tmp)
+                predictions, a = diffRender.render(**A_tmp)
                 predictions = predictions[:, :3]
-                image = vutils.make_grid(predictions)
-                image = torch.concat( (Xa[0, :3], M, image), dim=2 )
+                image = vutils.make_grid(predictions) # 0~1
+                norm = a['imnormal'].permute(0, 3, 1, 2).squeeze() # -1 ~ 1
+                norm = (norm+1)/2
+                image = torch.concat( (Xa[0, :3], M, image, norm), dim=2 )
                 image = image.permute(1, 2, 0).detach().cpu().numpy()
                 image = (image * 255.0).astype(np.uint8)
                 writer.append_data(image)
