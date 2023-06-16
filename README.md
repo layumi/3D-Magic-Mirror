@@ -156,7 +156,7 @@ Before prepare, the folder is like:
 ├── kaolin/
 ├── Market/
 │   ├── hq/
-|   |-- seg_hmr/
+|       |-- seg_hmr/
 |-- ATR/
 |   |-- humanparsing/
 ```
