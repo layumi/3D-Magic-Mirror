@@ -14,6 +14,8 @@ Cub Bird         |  Market-HQ Exchange
 
 3D Magic Mirror: Clothing Reconstruction from a Single Image via a Causal Perspective, arXiv preprint arXiv:2204.13096, 2022.<br>[Zhedong Zheng](http://zdzheng.xyz/), [Jiayin Zhu](https://github.com/viridityzhu), [Wei Ji](https://jiwei0523.github.io/), [Yi Yang](https://www.uts.edu.au/staff/yi.yang), [Tat-Seng Chua](https://www.chuatatseng.com/)
 
+<meta name="og:image" content="https://github.com/layumi/3D-Magic-Mirror/blob/master/doc/current_rainbow_github.gif?raw=true">
+
 ## Table of contents
 * [News](#news)
 * [Features](#features)
@@ -156,7 +158,7 @@ Before prepare, the folder is like:
 ├── kaolin/
 ├── Market/
 │   ├── hq/
-|   |-- seg_hmr/
+|       |-- seg_hmr/
 |-- ATR/
 |   |-- humanparsing/
 ```
