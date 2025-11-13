@@ -77,6 +77,7 @@ $ ln x86_64-conda-linux-gnu-g++ g++
 (You need to mute/comment some warning like cython to install it.)
 ```sh
 $ git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+$ cd kaolin
 $ git checkout v0.12.0
 $ python setup.py develop
 ```
