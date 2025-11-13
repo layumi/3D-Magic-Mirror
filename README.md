@@ -1,4 +1,4 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) ![Python 3.7](https://img.shields.io/badge/python-3.7-green.svg) [![Language grade: Python](https://img.shields.io/lgtm/grade/python/github/layumi/3D-Magic-Mirror.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/github/layumi/3D-Magic-Mirror/context:python)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) ![Python 3.7](https://img.shields.io/badge/python-3.7-green.svg) 
 
 ## 3D Magic Mirror: Clothing Reconstruction from a Single Image via a Causal Perspective
 ![](./doc/camera_github.gif)
