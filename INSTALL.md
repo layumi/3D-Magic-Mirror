@@ -1,5 +1,12 @@
 Our code is tested on PyTorch 1.9.0+ and torchvision 0.10.0+. But you can try CUDA12 with latest packages. 
 
+- Clone this repo:
+```sh
+$ git clone https://github.com/layumi/3D-Magic-Mirror.git
+$ cd 3D-Magic-Mirror/
+```
+
+
 ## Install with Cuda11
 
 ```sh
