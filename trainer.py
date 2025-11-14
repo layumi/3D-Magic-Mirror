@@ -125,9 +125,20 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
     netD = netD.cuda()
 
     # setup optimizer
-    optimizer = optim._multi_tensor.Adam  #https://github.com/huggingface/transformers/issues/9965
-    if opt.adamw:
-        optimizer = optim._multi_tensor.AdamW
+    if torch.__version__.startswith('1.'):
+        print(f"PyTorch Version {torch.__version__}: Detecting 1.x")
+        if opt.adamw:
+            optimizer = optim._multi_tensor.AdamW #https://github.com/huggingface/transformers/issues/9965
+        else:
+            optimizer = optim._multi_tensor.Adam
+        print("Using _multi_tensor optimizer (Adam/AdamW).")
+    else:
+        print(f"PyTorch Version {torch.__version__}: Detecting 2.x or later.")
+        if opt.adamw:
+            optimizer = optim.AdamW
+        else:
+            optimizer = optim.Adam
+        print("Using standard optimizer (Adam/AdamW).")
 
     ignored_params = list(map(id, netE.shape_enc.encoder1.parameters() ))
     add_params = filter(lambda p: id(p) not in ignored_params, netE.parameters())
@@ -1093,4 +1104,5 @@ def trainer(opt, train_dataloader, test_dataloader, train_noaug_dataloader):
                 opt.em_step = opt.em_step*0.99 # decay
                 if opt.update_bn: update_bn(train_dataloader, netE)
         netE.train()
+
 
