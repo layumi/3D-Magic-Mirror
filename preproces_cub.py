@@ -7,8 +7,8 @@ from skimage.draw import circle
 import tqdm
 import cv2
 
-root_dir = "./raw"
-dst_dir = "./Crop_Seg_Images"
+root_dir = "./data/CUB_200_2011"
+dst_dir = "./data/CUB_Data"
 
 image_paths = np.loadtxt(os.path.join(root_dir, 'images.txt'), dtype=str, delimiter=' ')
 image_class_labels = np.loadtxt(os.path.join(root_dir, 'image_class_labels.txt'), dtype=int, delimiter=' ')
