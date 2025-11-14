@@ -7,7 +7,7 @@ $ cd 3D-Magic-Mirror/
 ```
 
 
-## Install with Cuda11
+## Install with CUDA11
 
 ```sh
 $ conda create --name magic --file spec-file.txt
@@ -37,7 +37,7 @@ $ python setup.py develop
 
 
 
-## Install with Cuda12 
+## Install with CUDA12 
 
 ```sh
 $ conda create  --name magic python=3.9
