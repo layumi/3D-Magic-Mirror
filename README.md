@@ -207,6 +207,12 @@ python train.py --name CUB_wgan_b48_ic1_hard_bg_L1_ganW0_lr0.7_em7_update-1_chf_
 python train_ATR2.py --name ATR2_wgan_b48_ganW0_lr0.55_em7_update-1_chf_lpl_reg0.1_m2_recon2_flat10_depthR0.15_data2_drop222_gap2_beta0.95_s96_clean1826  --imageSize 96 --batch 48 --gan_type wgan --bg --L1 --ganw 0 --hard --lr 5.5e-5 --em 7 --update_shape -1 --unmask 2 --lambda_data 2  --lambda_flat 0.01 --lambda_depthR 0.15  --drop 0.2,0.2,0.2  --em_gap 2 --beta1 0.95 --ratio 1.666666 --clean 0.18,0.26    --pretrainc none  
 ```
 
+### Template Changes
+After you train the model, the code will automatically store the intermediate template. You can use the following code to generate the template change animation. 
+```sh
+python template-change-animation.py
+```
+
 ### Illustrations. 
 - `em` is for the accumulated template update. If we set smooth=6, the movement will be the neighbor move. If we set smooth=7, the movement will be the smooth over neighbors again. by default 7
 
