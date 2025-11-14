@@ -54,7 +54,7 @@ If you use CUDA 10, please download the corresponding pytorch and kaolin 0.9 to 
 $ git clone https://github.com/layumi/3D-Magic-Mirror.git
 $ cd 3D-Magic-Mirror/
 ```
-Please refer to INSTALL.md
+Please refer to [INSTALL.md](https://github.com/layumi/3D-Magic-Mirror/blob/master/INSTALL.md)
 
 ### Dataset Preparation
 
