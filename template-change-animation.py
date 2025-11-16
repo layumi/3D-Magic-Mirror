@@ -24,7 +24,9 @@ from pytorch3d.structures import Meshes
 # --- 1. Configuration (Please Edit) ---
 
 # 包含 .obj 文件的目录
-OBJ_DIR = Path('log/CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67')
+# OBJ_DIR = Path('log/CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67')
+OBJ_DIR = Path('log/CUB_wgan_b48_ic1_hard_bg_L1_ganW0_lr0.7_em7_update-1_chf_lpl_reg0.1_data2_depthC0.1_flat10_drop220_gap2_beta0.95_bn_restart1_contour0.1/')
+
 
 # 存储中间 PNG 帧的目录
 PNG_DIR = Path('temp')
@@ -107,7 +109,7 @@ print(f"Found {len(obj_files)} .obj files. Starting render loop...")
 image_filepaths = []
 
 # 定义拼接PNG所需的目标
-TARGET_EPOCHS = ['010', '020', '040', '080', '160']
+TARGET_EPOCHS = ['020', '040', '080', '160', '320'
 TARGET_STEMS = [f'epoch_{epoch}_template' for epoch in TARGET_EPOCHS]
 composite_images_map = {}
 
