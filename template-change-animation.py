@@ -5,6 +5,19 @@ import os
 from tqdm import tqdm
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont # <-- 1. Import Pillow components
+from pytorch3d.renderer import (
+    look_at_view_transform,
+    PerspectiveCameras,
+    PointLights,
+    DirectionalLights,
+    Materials,
+    RasterizationSettings,
+    MeshRenderer,
+    MeshRasterizer,
+    SoftPhongShader,
+    TexturesUV,
+    TexturesVertex
+)
 
 # --- 1. Configuration (Please Edit) ---
 
