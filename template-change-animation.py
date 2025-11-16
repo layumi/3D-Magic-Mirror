@@ -3,23 +3,8 @@ import imageio
 from pathlib import Path
 import os
 from tqdm import tqdm
-import numpy as np  # <-- 1. Added numpy
-
-from pytorch3d.io import load_obj
-from pytorch3d.structures import Meshes
-from pytorch3d.renderer import (
-    look_at_view_transform,
-    PerspectiveCameras,
-    PointLights,
-    DirectionalLights,
-    Materials,
-    RasterizationSettings,
-    MeshRenderer,
-    MeshRasterizer,
-    SoftPhongShader,
-    TexturesUV,
-    TexturesVertex
-)
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont # <-- 1. Import Pillow components
 
 # --- 1. Configuration (Please Edit) ---
 
@@ -32,14 +17,23 @@ PNG_DIR = Path('temp')
 # Final GIF file path
 GIF_PATH = 'animation_pytorch3d.gif'
 
-# <-- 2. NEW: File path for the composite PNG -->
-COMPOSITE_PNG_PATH = 'composite_epochs.png'
+# File path for the composite PNG
+COMPOSITE_PNG_PATH = 'composite_epochs_captioned.png' # Changed name to reflect captioning
 
 # GIF frames per second
 GIF_FPS = 10
 
 # Image size (Height, Width)
 IMAGE_SIZE = (512, 512)
+
+# --- NEW: Captioning Configuration ---
+FONT_PATH = "arial.ttf" # <-- IMPORTANT: Change this to a valid font path on your system!
+# Example for Windows: "C:/Windows/Fonts/arial.ttf"
+# Example for macOS: "/System/Library/Fonts/Arial.ttf"
+# Example for Linux: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FONT_SIZE = 40
+TEXT_COLOR = (255, 255, 255) # White color for text (R, G, B)
+TEXT_POSITION_OFFSET = (10, 10) # Offset from top-left corner (x, y)
 
 # --- 2. Setup Device (GPU if available) ---
 if torch.cuda.is_available():
@@ -52,7 +46,6 @@ else:
 # --- 3. Setup Pytorch3D Renderer ---
 
 # --- Camera Setup ---
-# (dist=distance, elev=elevation, azim=azimuth)
 R, T = look_at_view_transform(dist=2.7, elev=30, azim=0) 
 cameras = PerspectiveCameras(device=device, R=R, T=T)
 
@@ -97,23 +90,26 @@ print(f"Found {len(obj_files)} .obj files. Starting render loop...")
 
 image_filepaths = []
 
-# --- 5. Render Loop (OBJ to PNG) ---
-
-# <-- 3. Define targets for the composite PNG -->
+# Define targets for the composite PNG
 TARGET_EPOCHS = ['010', '020', '040', '080', '160']
-# Assuming file format 'epoch_XXX_template.obj'
 TARGET_STEMS = [f'epoch_{epoch}_template' for epoch in TARGET_EPOCHS]
-# Use a dictionary to store the image data for specific frames by name
 composite_images_map = {}
 
+# --- NEW: Load font for captions ---
+try:
+    font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
+except IOError:
+    print(f"WARNING: Could not load font from {FONT_PATH}. Using default font. Please check FONT_PATH.")
+    font = ImageFont.load_default()
 
+# --- 5. Render Loop (OBJ to PNG) ---
 for i, obj_file_path in enumerate(tqdm(obj_files, desc="Rendering Frames")):
     
     # 1. Load the OBJ file
     verts, faces, aux = load_obj(obj_file_path, device=device)
     
     # 2. Create a Textures object (using white vertex colors)
-    verts_rgb = torch.ones_like(verts)[None]  # (1, V, 3)
+    verts_rgb = torch.ones_like(verts)[None]
     textures = TexturesVertex(verts_features=verts_rgb.to(device))
 
     # 3. Create a Meshes object
@@ -131,13 +127,23 @@ for i, obj_file_path in enumerate(tqdm(obj_files, desc="Rendering Frames")):
         output_image = images[0, ..., :3].cpu().numpy()
         output_image_uint8 = (output_image * 255).astype('uint8')
         
-        # <-- 4. Check if this is one of our target frames -->
+        # Check if this is one of our target frames
         file_stem = obj_file_path.stem
-        if file_stem in TARGET_STEMS:
-            # If so, store its numpy array in the dictionary
-            composite_images_map[file_stem] = output_image_uint8
+        
+        # Extract epoch number from stem (e.g., 'epoch_010_template' -> '010')
+        epoch_str = file_stem.replace('epoch_', '').replace('_template', '')
+        
+        # --- NEW: Add caption to the image for composite PNG ---
+        if epoch_str in TARGET_EPOCHS:
+            # Convert numpy array to PIL Image
+            pil_image = Image.fromarray(output_image_uint8)
+            draw = ImageDraw.Draw(pil_image)
+            # Add text caption
+            draw.text(TEXT_POSITION_OFFSET, f"epoch{epoch_str}", font=font, fill=TEXT_COLOR)
+            # Store the captioned PIL Image back into the map
+            composite_images_map[file_stem] = np.array(pil_image) # Convert back to numpy array
             
-        # 6. Save the temporary PNG for the GIF
+        # Save the temporary PNG for the GIF (you might want to caption these too, but current request is for composite)
         output_png_path = PNG_DIR / f'frame_{i:04d}.png'
         imageio.imwrite(output_png_path, output_image_uint8)
         image_filepaths.append(output_png_path)
@@ -157,13 +163,12 @@ with imageio.get_writer(GIF_PATH, mode='I', fps=GIF_FPS) as writer:
 
 print(f"GIF saved: {GIF_PATH}")
 
-# --- 6.5. Create Composite PNG (Newly Added Section) ---
-print(f"\nCreating composite PNG at {COMPOSITE_PNG_PATH}...")
+# --- 6.5. Create Composite PNG (With Captions) ---
+print(f"\nCreating captioned composite PNG at {COMPOSITE_PNG_PATH}...")
 
 images_to_stack = []
 missing_epochs = []
 
-# Collect images in the order specified by TARGET_STEMS
 for stem in TARGET_STEMS:
     if stem in composite_images_map:
         images_to_stack.append(composite_images_map[stem])
@@ -176,11 +181,11 @@ if missing_epochs:
 
 if images_to_stack:
     try:
-        # Use numpy.hstack (horizontal stack) to join images
+        # Use numpy.hstack (horizontal stack) to join images that now include captions
         composite_image = np.hstack(images_to_stack)
         # Save the composite image
         imageio.imwrite(COMPOSITE_PNG_PATH, composite_image)
-        print(f"Composite PNG saved: {COMPOSITE_PNG_PATH}")
+        print(f"Captioned Composite PNG saved: {COMPOSITE_PNG_PATH}")
     except Exception as e:
         print(f"Error creating composite image: {e}")
 else:
