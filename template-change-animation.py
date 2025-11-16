@@ -109,7 +109,7 @@ print(f"Found {len(obj_files)} .obj files. Starting render loop...")
 image_filepaths = []
 
 # 定义拼接PNG所需的目标
-TARGET_EPOCHS = ['020', '040', '080', '160', '320'
+TARGET_EPOCHS = ['020', '040', '080', '160', '320']
 TARGET_STEMS = [f'epoch_{epoch}_template' for epoch in TARGET_EPOCHS]
 composite_images_map = {}
 
