@@ -23,32 +23,33 @@ from pytorch3d.structures import Meshes
 
 # --- 1. Configuration (Please Edit) ---
 
-# Directory containing your .obj files.
+# 包含 .obj 文件的目录
 OBJ_DIR = Path('log/CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67')
 
-# Directory to store intermediate PNG frames
+# 存储中间 PNG 帧的目录
 PNG_DIR = Path('temp')
 
-# Final GIF file path
+# 最终 GIF 文件路径
 GIF_PATH = 'animation_pytorch3d.gif'
 
-# File path for the composite PNG
-COMPOSITE_PNG_PATH = 'composite_epochs_captioned.png' # Changed name to reflect captioning
+# 拼接 PNG 的文件路径
+COMPOSITE_PNG_PATH = 'composite_epochs_captioned.png'
 
-# GIF frames per second
+# GIF 帧率
 GIF_FPS = 10
 
-# Image size (Height, Width)
+# 图像尺寸 (高, 宽)
 IMAGE_SIZE = (512, 512)
 
-# --- NEW: Captioning Configuration ---
-FONT_PATH = "arial.ttf" # <-- IMPORTANT: Change this to a valid font path on your system!
-# Example for Windows: "C:/Windows/Fonts/arial.ttf"
-# Example for macOS: "/System/Library/Fonts/Arial.ttf"
-# Example for Linux: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+# --- 标题配置 (新) ---
+# !! 重要: 修改为你系统上的真实字体路径 !!
+FONT_PATH = "arial.ttf" 
+# 例如 Windows: "C:/Windows/Fonts/arial.ttf"
+# 例如 macOS: "/System/Library/Fonts/Arial.ttf"
+# 例如 Linux: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_SIZE = 40
-TEXT_COLOR = (255, 255, 255) # White color for text (R, G, B)
-TEXT_POSITION_OFFSET = (10, 10) # Offset from top-left corner (x, y)
+TEXT_COLOR = (0, 0, 0) # (R, G, B) - 黑色
+TEXT_MARGIN_TOP = 10   # 标题距离图像顶部的像素
 
 # --- 2. Setup Device (GPU if available) ---
 if torch.cuda.is_available():
@@ -105,62 +106,97 @@ print(f"Found {len(obj_files)} .obj files. Starting render loop...")
 
 image_filepaths = []
 
-# Define targets for the composite PNG
+# 定义拼接PNG所需的目标
 TARGET_EPOCHS = ['010', '020', '040', '080', '160']
 TARGET_STEMS = [f'epoch_{epoch}_template' for epoch in TARGET_EPOCHS]
 composite_images_map = {}
 
-# --- NEW: Load font for captions ---
+# --- 加载字体 ---
 try:
     font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
 except IOError:
-    print(f"WARNING: Could not load font from {FONT_PATH}. Using default font. Please check FONT_PATH.")
+    print(f"WARNING: 无法从 {FONT_PATH} 加载字体。将使用默认字体。")
+    print(f"请检查 FONT_PATH 变量是否设置正确。")
     font = ImageFont.load_default()
 
 # --- 5. Render Loop (OBJ to PNG) ---
+#
+# !! 主要修改在此处 !!
+#
 for i, obj_file_path in enumerate(tqdm(obj_files, desc="Rendering Frames")):
     
-    # 1. Load the OBJ file
+    # 1. 加载 OBJ
     verts, faces, aux = load_obj(obj_file_path, device=device)
     
-    # 2. Create a Textures object (using white vertex colors)
+    # 2. 创建 Textures (使用白色顶点色)
     verts_rgb = torch.ones_like(verts)[None]
     textures = TexturesVertex(verts_features=verts_rgb.to(device))
 
-    # 3. Create a Meshes object
+    # 3. 创建 Meshes
     mesh = Meshes(
         verts=[verts.to(device)],
         faces=[faces.verts_idx.to(device)],
         textures=textures
     )
 
-    # 4. Render the mesh
+    # 4. 渲染
     try:
         images = renderer(mesh)
         
-        # 5. Convert and Save Image
+        # 5. 转换图像为 uint8 numpy 数组
         output_image = images[0, ..., :3].cpu().numpy()
         output_image_uint8 = (output_image * 255).astype('uint8')
         
-        # Check if this is one of our target frames
+        # --- 6. (新) 添加居中标题 ---
+        
+        # 从文件名提取 epoch 编号 (例如 'epoch_010_template' -> '010')
         file_stem = obj_file_path.stem
-        
-        # Extract epoch number from stem (e.g., 'epoch_010_template' -> '010')
-        epoch_str = file_stem.replace('epoch_', '').replace('_template', '')
-        
-        # --- NEW: Add caption to the image for composite PNG ---
-        if epoch_str in TARGET_EPOCHS:
-            # Convert numpy array to PIL Image
-            pil_image = Image.fromarray(output_image_uint8)
-            draw = ImageDraw.Draw(pil_image)
-            # Add text caption
-            draw.text(TEXT_POSITION_OFFSET, f"epoch{epoch_str}", font=font, fill=TEXT_COLOR)
-            # Store the captioned PIL Image back into the map
-            composite_images_map[file_stem] = np.array(pil_image) # Convert back to numpy array
+        try:
+            # 假设格式为 epoch_XXX_...
+            epoch_str = file_stem.split('_')[1] 
+        except IndexError:
+            epoch_str = "???" # 如果命名不规范，则使用 '???'
             
-        # Save the temporary PNG for the GIF (you might want to caption these too, but current request is for composite)
+        caption_text = f"epoch{epoch_str}"
+
+        # 将 numpy 数组转换为 PIL 图像以便绘制
+        pil_image = Image.fromarray(output_image_uint8)
+        draw = ImageDraw.Draw(pil_image)
+
+        # 计算文本宽度以实现居中
+        try:
+            # 较新版本 Pillow
+            text_width = draw.textlength(caption_text, font=font)
+        except AttributeError:
+            # 兼容旧版本 Pillow
+            text_width, _ = font.getsize(caption_text)
+            
+        image_width, _ = pil_image.size
+        
+        # 计算 x 坐标
+        text_x = (image_width - text_width) / 2
+        
+        # 在图像上绘制黑色居中标题
+        draw.text(
+            (text_x, TEXT_MARGIN_TOP), 
+            caption_text, 
+            font=font, 
+            fill=TEXT_COLOR
+        )
+
+        # 将带标题的 PIL 图像转换回 numpy 数组
+        captioned_image_np = np.array(pil_image)
+
+        # --- 7. 保存图像 ---
+
+        # 检查是否为我们想要的特定帧
+        if file_stem in TARGET_STEMS:
+            # 存储带标题的图像，用于拼接
+            composite_images_map[file_stem] = captioned_image_np
+            
+        # 保存带标题的临时PNG，用于GIF
         output_png_path = PNG_DIR / f'frame_{i:04d}.png'
-        imageio.imwrite(output_png_path, output_image_uint8)
+        imageio.imwrite(output_png_path, captioned_image_np)
         image_filepaths.append(output_png_path)
         
     except Exception as e:
@@ -179,6 +215,9 @@ with imageio.get_writer(GIF_PATH, mode='I', fps=GIF_FPS) as writer:
 print(f"GIF saved: {GIF_PATH}")
 
 # --- 6.5. Create Composite PNG (With Captions) ---
+#
+# !! 这部分被简化了，因为它现在使用的是已经带标题的图片 !!
+#
 print(f"\nCreating captioned composite PNG at {COMPOSITE_PNG_PATH}...")
 
 images_to_stack = []
@@ -186,19 +225,20 @@ missing_epochs = []
 
 for stem in TARGET_STEMS:
     if stem in composite_images_map:
+        # composite_images_map[stem] 已经包含标题了
         images_to_stack.append(composite_images_map[stem])
     else:
         missing_epochs.append(stem)
 
 if missing_epochs:
-    print(f"WARNING: Could not find rendered images for all target epochs.")
-    print(f"Missing: {', '.join(missing_epochs)}")
+    print(f"WARNING: 未能找到所有目标epoch的渲染结果。")
+    print(f"缺失: {', '.join(missing_epochs)}")
 
 if images_to_stack:
     try:
-        # Use numpy.hstack (horizontal stack) to join images that now include captions
+        # 使用 numpy.hstack 水平拼接图像
         composite_image = np.hstack(images_to_stack)
-        # Save the composite image
+        # 保存组合后的图像
         imageio.imwrite(COMPOSITE_PNG_PATH, composite_image)
         print(f"Captioned Composite PNG saved: {COMPOSITE_PNG_PATH}")
     except Exception as e:
