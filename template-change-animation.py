@@ -47,7 +47,7 @@ FONT_PATH = "arial.ttf"
 # 例如 Windows: "C:/Windows/Fonts/arial.ttf"
 # 例如 macOS: "/System/Library/Fonts/Arial.ttf"
 # 例如 Linux: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-FONT_SIZE = 40
+FONT_SIZE = 80
 TEXT_COLOR = (0, 0, 0) # (R, G, B) - 黑色
 TEXT_MARGIN_TOP = 10   # 标题距离图像顶部的像素
 
