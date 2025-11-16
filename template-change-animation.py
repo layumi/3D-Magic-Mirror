@@ -18,6 +18,8 @@ from pytorch3d.renderer import (
     TexturesUV,
     TexturesVertex
 )
+from pytorch3d.io import load_obj
+from pytorch3d.structures import Meshes
 
 # --- 1. Configuration (Please Edit) ---
 
