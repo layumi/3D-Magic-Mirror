@@ -94,13 +94,8 @@ gdrive download 1JwQTQA4F9WOqLAc7fhQN0DTYwnv6XrAR
 
 - CUB
 
-Download the processed data from [Google Drive](https://drive.google.com/file/d/1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc/view?usp=sharing). Or use the gdrive tool to download:
+Please refer to [PREPARE-CUB.md](https://github.com/layumi/3D-Magic-Mirror/blob/master/PREPARE-CUB.md )  
 
-```
-gdown https://drive.google.com/uc?id=1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
-OR 
-gdrive download 1SkX_FWUfLOaTr371TBkQnDH9oDJ5Khwc
-```
 
 - ATR
 
