@@ -3,6 +3,7 @@ import imageio
 from pathlib import Path
 import os
 from tqdm import tqdm
+import numpy as np  # <-- 1. Added numpy
 
 from pytorch3d.io import load_obj
 from pytorch3d.structures import Meshes
@@ -22,7 +23,7 @@ from pytorch3d.renderer import (
 
 # --- 1. Configuration (Please Edit) ---
 
-# Directory containing your .obj files. You need to retrain the model.
+# Directory containing your .obj files.
 OBJ_DIR = Path('log/CamN2_MKT_wgan_b48_lr0.5_em7_update-1_lpl_reg0.1_data2_m2_flat20_depthR0.15_drop220_gap2_beta0.95_clean67')
 
 # Directory to store intermediate PNG frames
@@ -30,6 +31,9 @@ PNG_DIR = Path('temp')
 
 # Final GIF file path
 GIF_PATH = 'animation_pytorch3d.gif'
+
+# <-- 2. NEW: File path for the composite PNG -->
+COMPOSITE_PNG_PATH = 'composite_epochs.png'
 
 # GIF frames per second
 GIF_FPS = 10
@@ -48,15 +52,11 @@ else:
 # --- 3. Setup Pytorch3D Renderer ---
 
 # --- Camera Setup ---
-# We need a fixed camera for all frames.
-# You may need to adjust 'dist', 'elev', 'azim' to get the best view.
-# 'dist' = distance from origin
-# 'elev' = elevation angle (up/down)
-# 'azim' = azimuth angle (left/right)
+# (dist=distance, elev=elevation, azim=azimuth)
 R, T = look_at_view_transform(dist=2.7, elev=30, azim=0) 
 cameras = PerspectiveCameras(device=device, R=R, T=T)
 
-# --- Rasterizer Setup (Defines how to draw pixels) ---
+# --- Rasterizer Setup ---
 raster_settings = RasterizationSettings(
     image_size=IMAGE_SIZE,
     blur_radius=0.0,
@@ -64,12 +64,9 @@ raster_settings = RasterizationSettings(
 )
 
 # --- Light Setup ---
-# Place a point light
 lights = PointLights(device=device, location=[[2.0, 2.0, 2.0]])
 
-# --- Shader Setup (Defines how the mesh reacts to light) ---
-# We will use a simple shader that uses vertex colors
-# If your .obj has materials, this gets more complex.
+# --- Shader Setup ---
 shader = SoftPhongShader(
     device=device,
     cameras=cameras,
@@ -101,22 +98,25 @@ print(f"Found {len(obj_files)} .obj files. Starting render loop...")
 image_filepaths = []
 
 # --- 5. Render Loop (OBJ to PNG) ---
+
+# <-- 3. Define targets for the composite PNG -->
+TARGET_EPOCHS = ['010', '020', '040', '080', '160']
+# Assuming file format 'epoch_XXX_template.obj'
+TARGET_STEMS = [f'epoch_{epoch}_template' for epoch in TARGET_EPOCHS]
+# Use a dictionary to store the image data for specific frames by name
+composite_images_map = {}
+
+
 for i, obj_file_path in enumerate(tqdm(obj_files, desc="Rendering Frames")):
     
     # 1. Load the OBJ file
-    # 'load_obj' is a simple loader. It might not handle complex materials.
     verts, faces, aux = load_obj(obj_file_path, device=device)
     
-    # 2. Create a Textures object
-    # This assumes no texture map, just simple vertex colors (all white)
-    # If your .obj has UVs (in aux.verts_uvs), you'd load a TexturesUV
-    # For simplicity, we create a white color for all vertices
+    # 2. Create a Textures object (using white vertex colors)
     verts_rgb = torch.ones_like(verts)[None]  # (1, V, 3)
     textures = TexturesVertex(verts_features=verts_rgb.to(device))
 
     # 3. Create a Meshes object
-    # Note: Pytorch3D expects meshes in a batch.
-    # We wrap our single mesh in a list.
     mesh = Meshes(
         verts=[verts.to(device)],
         faces=[faces.verts_idx.to(device)],
@@ -124,18 +124,21 @@ for i, obj_file_path in enumerate(tqdm(obj_files, desc="Rendering Frames")):
     )
 
     # 4. Render the mesh
-    # 'renderer' returns a batch of images. We take the first one [0].
     try:
         images = renderer(mesh)
         
         # 5. Convert and Save Image
         output_image = images[0, ..., :3].cpu().numpy()
-        
-        # Convert from 0-1 float to 0-255 uint8
         output_image_uint8 = (output_image * 255).astype('uint8')
         
+        # <-- 4. Check if this is one of our target frames -->
+        file_stem = obj_file_path.stem
+        if file_stem in TARGET_STEMS:
+            # If so, store its numpy array in the dictionary
+            composite_images_map[file_stem] = output_image_uint8
+            
+        # 6. Save the temporary PNG for the GIF
         output_png_path = PNG_DIR / f'frame_{i:04d}.png'
-        
         imageio.imwrite(output_png_path, output_image_uint8)
         image_filepaths.append(output_png_path)
         
@@ -154,8 +157,38 @@ with imageio.get_writer(GIF_PATH, mode='I', fps=GIF_FPS) as writer:
 
 print(f"GIF saved: {GIF_PATH}")
 
+# --- 6.5. Create Composite PNG (Newly Added Section) ---
+print(f"\nCreating composite PNG at {COMPOSITE_PNG_PATH}...")
+
+images_to_stack = []
+missing_epochs = []
+
+# Collect images in the order specified by TARGET_STEMS
+for stem in TARGET_STEMS:
+    if stem in composite_images_map:
+        images_to_stack.append(composite_images_map[stem])
+    else:
+        missing_epochs.append(stem)
+
+if missing_epochs:
+    print(f"WARNING: Could not find rendered images for all target epochs.")
+    print(f"Missing: {', '.join(missing_epochs)}")
+
+if images_to_stack:
+    try:
+        # Use numpy.hstack (horizontal stack) to join images
+        composite_image = np.hstack(images_to_stack)
+        # Save the composite image
+        imageio.imwrite(COMPOSITE_PNG_PATH, composite_image)
+        print(f"Composite PNG saved: {COMPOSITE_PNG_PATH}")
+    except Exception as e:
+        print(f"Error creating composite image: {e}")
+else:
+    print("No images found for composite. Skipping.")
+
+
 # --- 7. (Optional) Cleanup ---
-print("Cleaning up intermediate PNG files...")
+print("\nCleaning up intermediate PNG files...")
 for filename in image_filepaths:
     os.remove(filename)
 os.rmdir(PNG_DIR)
