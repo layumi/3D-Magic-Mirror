@@ -64,7 +64,7 @@ else:
 # --- 3. Setup Pytorch3D Renderer ---
 
 # --- Camera Setup ---
-if 'CUB' in OBJ_DIR:
+if 'CUB' in str(OBJ_DIR):
     R, T = look_at_view_transform(dist=2.7, elev=30, azim=0)
 else:
     R, T = look_at_view_transform(dist=2.7, elev=30, azim=-45)
