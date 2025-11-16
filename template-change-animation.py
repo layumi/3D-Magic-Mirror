@@ -49,9 +49,9 @@ FONT_PATH = "arial.ttf"
 # 例如 Windows: "C:/Windows/Fonts/arial.ttf"
 # 例如 macOS: "/System/Library/Fonts/Arial.ttf"
 # 例如 Linux: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-FONT_SIZE = 64
+FONT_SIZE = 128
 TEXT_COLOR = (0, 0, 0) # (R, G, B) - 黑色
-TEXT_MARGIN_TOP = 128   # 标题距离图像顶部的像素
+TEXT_MARGIN_TOP = 64   # 标题距离图像顶部的像素
 
 # --- 2. Setup Device (GPU if available) ---
 if torch.cuda.is_available():
@@ -64,7 +64,10 @@ else:
 # --- 3. Setup Pytorch3D Renderer ---
 
 # --- Camera Setup ---
-R, T = look_at_view_transform(dist=2.7, elev=30, azim=0) 
+if 'CUB' in OBJ_DIR:
+    R, T = look_at_view_transform(dist=2.7, elev=30, azim=0)
+else:
+    R, T = look_at_view_transform(dist=2.7, elev=30, azim=-45)
 cameras = PerspectiveCameras(device=device, R=R, T=T)
 
 # --- Rasterizer Setup ---
