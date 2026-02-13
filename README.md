@@ -220,11 +220,13 @@ python template-change-animation.py
 Please cite this paper if it helps your research:
 
 ```bibtex
-@article{zheng2022magic,
+@article{zheng2026magic,
   title={3D Magic Mirror: Clothing Reconstruction from a Single Image via a Causal Perspective},
   author={Zheng, Zhedong and Zhu, Jiayin and Ji, Wei and Yang, Yi and Chua, Tat-Seng},
-  journal={arXiv preprint arXiv:2204.13096},
-  year={2022}
+  journal={npj Artificial Intelligence},
+  url = {https://zdzheng.xyz/files/3D_Recon.pdf}, 
+  code = {https://github.com/layumi/3D-Magic-Mirror}, 
+  year={2026}
 }
 ```
 
